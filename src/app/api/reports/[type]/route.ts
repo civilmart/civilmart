@@ -152,7 +152,7 @@ async function getInventoryReport() {
     },
   });
 
-  const avgCostByMaterial = new Map<string, number>();
+  const avgCostByMaterial = new Map<string, { totalCost: number; totalQty: number }>();
   for (const item of purchaseItems) {
     const qty = Number(item.quantity);
     const cost = Number(item.costPerUnit);

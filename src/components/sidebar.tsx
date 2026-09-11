@@ -19,9 +19,22 @@ import {
   Sparkles,
   Truck,
   Users,
+  type LucideIcon,
 } from "lucide-react";
 
-const menuSections = [
+type NavItem = {
+  name: string;
+  icon: LucideIcon;
+  href: string;
+  adminOnly?: boolean;
+};
+
+type MenuSection = {
+  title: string;
+  items: NavItem[];
+};
+
+const menuSections: MenuSection[] = [
   {
     title: "",
     items: [
