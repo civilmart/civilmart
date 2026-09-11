@@ -416,6 +416,40 @@ export type EnumProductionBatchStatusWithAggregatesFilter<$PrismaModel = never> 
   _max?: Prisma.NestedEnumProductionBatchStatusFilter<$PrismaModel>
 }
 
+export type EnumQCCheckResultFilter<$PrismaModel = never> = {
+  equals?: $Enums.QCCheckResult | Prisma.EnumQCCheckResultFieldRefInput<$PrismaModel>
+  in?: $Enums.QCCheckResult[] | Prisma.ListEnumQCCheckResultFieldRefInput<$PrismaModel>
+  notIn?: $Enums.QCCheckResult[] | Prisma.ListEnumQCCheckResultFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumQCCheckResultFilter<$PrismaModel> | $Enums.QCCheckResult
+}
+
+export type EnumQCDecisionFilter<$PrismaModel = never> = {
+  equals?: $Enums.QCDecision | Prisma.EnumQCDecisionFieldRefInput<$PrismaModel>
+  in?: $Enums.QCDecision[] | Prisma.ListEnumQCDecisionFieldRefInput<$PrismaModel>
+  notIn?: $Enums.QCDecision[] | Prisma.ListEnumQCDecisionFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumQCDecisionFilter<$PrismaModel> | $Enums.QCDecision
+}
+
+export type EnumQCCheckResultWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.QCCheckResult | Prisma.EnumQCCheckResultFieldRefInput<$PrismaModel>
+  in?: $Enums.QCCheckResult[] | Prisma.ListEnumQCCheckResultFieldRefInput<$PrismaModel>
+  notIn?: $Enums.QCCheckResult[] | Prisma.ListEnumQCCheckResultFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumQCCheckResultWithAggregatesFilter<$PrismaModel> | $Enums.QCCheckResult
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumQCCheckResultFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumQCCheckResultFilter<$PrismaModel>
+}
+
+export type EnumQCDecisionWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.QCDecision | Prisma.EnumQCDecisionFieldRefInput<$PrismaModel>
+  in?: $Enums.QCDecision[] | Prisma.ListEnumQCDecisionFieldRefInput<$PrismaModel>
+  notIn?: $Enums.QCDecision[] | Prisma.ListEnumQCDecisionFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumQCDecisionWithAggregatesFilter<$PrismaModel> | $Enums.QCDecision
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumQCDecisionFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumQCDecisionFilter<$PrismaModel>
+}
+
 export type NestedStringFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
@@ -829,6 +863,40 @@ export type NestedEnumProductionBatchStatusWithAggregatesFilter<$PrismaModel = n
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumProductionBatchStatusFilter<$PrismaModel>
   _max?: Prisma.NestedEnumProductionBatchStatusFilter<$PrismaModel>
+}
+
+export type NestedEnumQCCheckResultFilter<$PrismaModel = never> = {
+  equals?: $Enums.QCCheckResult | Prisma.EnumQCCheckResultFieldRefInput<$PrismaModel>
+  in?: $Enums.QCCheckResult[] | Prisma.ListEnumQCCheckResultFieldRefInput<$PrismaModel>
+  notIn?: $Enums.QCCheckResult[] | Prisma.ListEnumQCCheckResultFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumQCCheckResultFilter<$PrismaModel> | $Enums.QCCheckResult
+}
+
+export type NestedEnumQCDecisionFilter<$PrismaModel = never> = {
+  equals?: $Enums.QCDecision | Prisma.EnumQCDecisionFieldRefInput<$PrismaModel>
+  in?: $Enums.QCDecision[] | Prisma.ListEnumQCDecisionFieldRefInput<$PrismaModel>
+  notIn?: $Enums.QCDecision[] | Prisma.ListEnumQCDecisionFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumQCDecisionFilter<$PrismaModel> | $Enums.QCDecision
+}
+
+export type NestedEnumQCCheckResultWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.QCCheckResult | Prisma.EnumQCCheckResultFieldRefInput<$PrismaModel>
+  in?: $Enums.QCCheckResult[] | Prisma.ListEnumQCCheckResultFieldRefInput<$PrismaModel>
+  notIn?: $Enums.QCCheckResult[] | Prisma.ListEnumQCCheckResultFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumQCCheckResultWithAggregatesFilter<$PrismaModel> | $Enums.QCCheckResult
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumQCCheckResultFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumQCCheckResultFilter<$PrismaModel>
+}
+
+export type NestedEnumQCDecisionWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.QCDecision | Prisma.EnumQCDecisionFieldRefInput<$PrismaModel>
+  in?: $Enums.QCDecision[] | Prisma.ListEnumQCDecisionFieldRefInput<$PrismaModel>
+  notIn?: $Enums.QCDecision[] | Prisma.ListEnumQCDecisionFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumQCDecisionWithAggregatesFilter<$PrismaModel> | $Enums.QCDecision
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumQCDecisionFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumQCDecisionFilter<$PrismaModel>
 }
 
 

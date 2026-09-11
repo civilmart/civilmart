@@ -49,6 +49,7 @@ export type ProductionBatchMinAggregateOutputType = {
   plannedAt: Date | null
   startedAt: Date | null
   completedAt: Date | null
+  releasedAt: Date | null
   notes: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -67,6 +68,7 @@ export type ProductionBatchMaxAggregateOutputType = {
   plannedAt: Date | null
   startedAt: Date | null
   completedAt: Date | null
+  releasedAt: Date | null
   notes: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -85,6 +87,7 @@ export type ProductionBatchCountAggregateOutputType = {
   plannedAt: number
   startedAt: number
   completedAt: number
+  releasedAt: number
   notes: number
   createdAt: number
   updatedAt: number
@@ -115,6 +118,7 @@ export type ProductionBatchMinAggregateInputType = {
   plannedAt?: true
   startedAt?: true
   completedAt?: true
+  releasedAt?: true
   notes?: true
   createdAt?: true
   updatedAt?: true
@@ -133,6 +137,7 @@ export type ProductionBatchMaxAggregateInputType = {
   plannedAt?: true
   startedAt?: true
   completedAt?: true
+  releasedAt?: true
   notes?: true
   createdAt?: true
   updatedAt?: true
@@ -151,6 +156,7 @@ export type ProductionBatchCountAggregateInputType = {
   plannedAt?: true
   startedAt?: true
   completedAt?: true
+  releasedAt?: true
   notes?: true
   createdAt?: true
   updatedAt?: true
@@ -256,6 +262,7 @@ export type ProductionBatchGroupByOutputType = {
   plannedAt: Date | null
   startedAt: Date | null
   completedAt: Date | null
+  releasedAt: Date | null
   notes: string | null
   createdAt: Date
   updatedAt: Date
@@ -297,6 +304,7 @@ export type ProductionBatchWhereInput = {
   plannedAt?: Prisma.DateTimeNullableFilter<"ProductionBatch"> | Date | string | null
   startedAt?: Prisma.DateTimeNullableFilter<"ProductionBatch"> | Date | string | null
   completedAt?: Prisma.DateTimeNullableFilter<"ProductionBatch"> | Date | string | null
+  releasedAt?: Prisma.DateTimeNullableFilter<"ProductionBatch"> | Date | string | null
   notes?: Prisma.StringNullableFilter<"ProductionBatch"> | string | null
   createdAt?: Prisma.DateTimeFilter<"ProductionBatch"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ProductionBatch"> | Date | string
@@ -305,6 +313,7 @@ export type ProductionBatchWhereInput = {
   formula?: Prisma.XOR<Prisma.FormulaScalarRelationFilter, Prisma.FormulaWhereInput>
   formulaVersion?: Prisma.XOR<Prisma.FormulaVersionScalarRelationFilter, Prisma.FormulaVersionWhereInput>
   materialConsumptions?: Prisma.MaterialConsumptionListRelationFilter
+  qualityControl?: Prisma.XOR<Prisma.QualityControlNullableScalarRelationFilter, Prisma.QualityControlWhereInput> | null
 }
 
 export type ProductionBatchOrderByWithRelationInput = {
@@ -320,6 +329,7 @@ export type ProductionBatchOrderByWithRelationInput = {
   plannedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   startedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   completedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  releasedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -328,6 +338,7 @@ export type ProductionBatchOrderByWithRelationInput = {
   formula?: Prisma.FormulaOrderByWithRelationInput
   formulaVersion?: Prisma.FormulaVersionOrderByWithRelationInput
   materialConsumptions?: Prisma.MaterialConsumptionOrderByRelationAggregateInput
+  qualityControl?: Prisma.QualityControlOrderByWithRelationInput
 }
 
 export type ProductionBatchWhereUniqueInput = Prisma.AtLeast<{
@@ -346,6 +357,7 @@ export type ProductionBatchWhereUniqueInput = Prisma.AtLeast<{
   plannedAt?: Prisma.DateTimeNullableFilter<"ProductionBatch"> | Date | string | null
   startedAt?: Prisma.DateTimeNullableFilter<"ProductionBatch"> | Date | string | null
   completedAt?: Prisma.DateTimeNullableFilter<"ProductionBatch"> | Date | string | null
+  releasedAt?: Prisma.DateTimeNullableFilter<"ProductionBatch"> | Date | string | null
   notes?: Prisma.StringNullableFilter<"ProductionBatch"> | string | null
   createdAt?: Prisma.DateTimeFilter<"ProductionBatch"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ProductionBatch"> | Date | string
@@ -354,6 +366,7 @@ export type ProductionBatchWhereUniqueInput = Prisma.AtLeast<{
   formula?: Prisma.XOR<Prisma.FormulaScalarRelationFilter, Prisma.FormulaWhereInput>
   formulaVersion?: Prisma.XOR<Prisma.FormulaVersionScalarRelationFilter, Prisma.FormulaVersionWhereInput>
   materialConsumptions?: Prisma.MaterialConsumptionListRelationFilter
+  qualityControl?: Prisma.XOR<Prisma.QualityControlNullableScalarRelationFilter, Prisma.QualityControlWhereInput> | null
 }, "id" | "batchNumber">
 
 export type ProductionBatchOrderByWithAggregationInput = {
@@ -369,6 +382,7 @@ export type ProductionBatchOrderByWithAggregationInput = {
   plannedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   startedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   completedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  releasedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -395,6 +409,7 @@ export type ProductionBatchScalarWhereWithAggregatesInput = {
   plannedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ProductionBatch"> | Date | string | null
   startedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ProductionBatch"> | Date | string | null
   completedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ProductionBatch"> | Date | string | null
+  releasedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"ProductionBatch"> | Date | string | null
   notes?: Prisma.StringNullableWithAggregatesFilter<"ProductionBatch"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"ProductionBatch"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"ProductionBatch"> | Date | string
@@ -409,6 +424,7 @@ export type ProductionBatchCreateInput = {
   plannedAt?: Date | string | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
+  releasedAt?: Date | string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -417,6 +433,7 @@ export type ProductionBatchCreateInput = {
   formula: Prisma.FormulaCreateNestedOneWithoutProductionBatchesInput
   formulaVersion: Prisma.FormulaVersionCreateNestedOneWithoutProductionBatchesInput
   materialConsumptions?: Prisma.MaterialConsumptionCreateNestedManyWithoutProductionBatchInput
+  qualityControl?: Prisma.QualityControlCreateNestedOneWithoutProductionBatchInput
 }
 
 export type ProductionBatchUncheckedCreateInput = {
@@ -432,10 +449,12 @@ export type ProductionBatchUncheckedCreateInput = {
   plannedAt?: Date | string | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
+  releasedAt?: Date | string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   materialConsumptions?: Prisma.MaterialConsumptionUncheckedCreateNestedManyWithoutProductionBatchInput
+  qualityControl?: Prisma.QualityControlUncheckedCreateNestedOneWithoutProductionBatchInput
 }
 
 export type ProductionBatchUpdateInput = {
@@ -447,6 +466,7 @@ export type ProductionBatchUpdateInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -455,6 +475,7 @@ export type ProductionBatchUpdateInput = {
   formula?: Prisma.FormulaUpdateOneRequiredWithoutProductionBatchesNestedInput
   formulaVersion?: Prisma.FormulaVersionUpdateOneRequiredWithoutProductionBatchesNestedInput
   materialConsumptions?: Prisma.MaterialConsumptionUpdateManyWithoutProductionBatchNestedInput
+  qualityControl?: Prisma.QualityControlUpdateOneWithoutProductionBatchNestedInput
 }
 
 export type ProductionBatchUncheckedUpdateInput = {
@@ -470,10 +491,12 @@ export type ProductionBatchUncheckedUpdateInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   materialConsumptions?: Prisma.MaterialConsumptionUncheckedUpdateManyWithoutProductionBatchNestedInput
+  qualityControl?: Prisma.QualityControlUncheckedUpdateOneWithoutProductionBatchNestedInput
 }
 
 export type ProductionBatchCreateManyInput = {
@@ -489,6 +512,7 @@ export type ProductionBatchCreateManyInput = {
   plannedAt?: Date | string | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
+  releasedAt?: Date | string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -503,6 +527,7 @@ export type ProductionBatchUpdateManyMutationInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -521,6 +546,7 @@ export type ProductionBatchUncheckedUpdateManyInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -549,6 +575,7 @@ export type ProductionBatchCountOrderByAggregateInput = {
   plannedAt?: Prisma.SortOrder
   startedAt?: Prisma.SortOrder
   completedAt?: Prisma.SortOrder
+  releasedAt?: Prisma.SortOrder
   notes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -572,6 +599,7 @@ export type ProductionBatchMaxOrderByAggregateInput = {
   plannedAt?: Prisma.SortOrder
   startedAt?: Prisma.SortOrder
   completedAt?: Prisma.SortOrder
+  releasedAt?: Prisma.SortOrder
   notes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -590,6 +618,7 @@ export type ProductionBatchMinOrderByAggregateInput = {
   plannedAt?: Prisma.SortOrder
   startedAt?: Prisma.SortOrder
   completedAt?: Prisma.SortOrder
+  releasedAt?: Prisma.SortOrder
   notes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -791,6 +820,20 @@ export type ProductionBatchUpdateOneRequiredWithoutMaterialConsumptionsNestedInp
   update?: Prisma.XOR<Prisma.XOR<Prisma.ProductionBatchUpdateToOneWithWhereWithoutMaterialConsumptionsInput, Prisma.ProductionBatchUpdateWithoutMaterialConsumptionsInput>, Prisma.ProductionBatchUncheckedUpdateWithoutMaterialConsumptionsInput>
 }
 
+export type ProductionBatchCreateNestedOneWithoutQualityControlInput = {
+  create?: Prisma.XOR<Prisma.ProductionBatchCreateWithoutQualityControlInput, Prisma.ProductionBatchUncheckedCreateWithoutQualityControlInput>
+  connectOrCreate?: Prisma.ProductionBatchCreateOrConnectWithoutQualityControlInput
+  connect?: Prisma.ProductionBatchWhereUniqueInput
+}
+
+export type ProductionBatchUpdateOneRequiredWithoutQualityControlNestedInput = {
+  create?: Prisma.XOR<Prisma.ProductionBatchCreateWithoutQualityControlInput, Prisma.ProductionBatchUncheckedCreateWithoutQualityControlInput>
+  connectOrCreate?: Prisma.ProductionBatchCreateOrConnectWithoutQualityControlInput
+  upsert?: Prisma.ProductionBatchUpsertWithoutQualityControlInput
+  connect?: Prisma.ProductionBatchWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ProductionBatchUpdateToOneWithWhereWithoutQualityControlInput, Prisma.ProductionBatchUpdateWithoutQualityControlInput>, Prisma.ProductionBatchUncheckedUpdateWithoutQualityControlInput>
+}
+
 export type ProductionBatchCreateWithoutProductInput = {
   id?: string
   batchNumber: string
@@ -800,6 +843,7 @@ export type ProductionBatchCreateWithoutProductInput = {
   plannedAt?: Date | string | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
+  releasedAt?: Date | string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -807,6 +851,7 @@ export type ProductionBatchCreateWithoutProductInput = {
   formula: Prisma.FormulaCreateNestedOneWithoutProductionBatchesInput
   formulaVersion: Prisma.FormulaVersionCreateNestedOneWithoutProductionBatchesInput
   materialConsumptions?: Prisma.MaterialConsumptionCreateNestedManyWithoutProductionBatchInput
+  qualityControl?: Prisma.QualityControlCreateNestedOneWithoutProductionBatchInput
 }
 
 export type ProductionBatchUncheckedCreateWithoutProductInput = {
@@ -821,10 +866,12 @@ export type ProductionBatchUncheckedCreateWithoutProductInput = {
   plannedAt?: Date | string | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
+  releasedAt?: Date | string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   materialConsumptions?: Prisma.MaterialConsumptionUncheckedCreateNestedManyWithoutProductionBatchInput
+  qualityControl?: Prisma.QualityControlUncheckedCreateNestedOneWithoutProductionBatchInput
 }
 
 export type ProductionBatchCreateOrConnectWithoutProductInput = {
@@ -869,6 +916,7 @@ export type ProductionBatchScalarWhereInput = {
   plannedAt?: Prisma.DateTimeNullableFilter<"ProductionBatch"> | Date | string | null
   startedAt?: Prisma.DateTimeNullableFilter<"ProductionBatch"> | Date | string | null
   completedAt?: Prisma.DateTimeNullableFilter<"ProductionBatch"> | Date | string | null
+  releasedAt?: Prisma.DateTimeNullableFilter<"ProductionBatch"> | Date | string | null
   notes?: Prisma.StringNullableFilter<"ProductionBatch"> | string | null
   createdAt?: Prisma.DateTimeFilter<"ProductionBatch"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ProductionBatch"> | Date | string
@@ -883,6 +931,7 @@ export type ProductionBatchCreateWithoutProductVariantInput = {
   plannedAt?: Date | string | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
+  releasedAt?: Date | string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -890,6 +939,7 @@ export type ProductionBatchCreateWithoutProductVariantInput = {
   formula: Prisma.FormulaCreateNestedOneWithoutProductionBatchesInput
   formulaVersion: Prisma.FormulaVersionCreateNestedOneWithoutProductionBatchesInput
   materialConsumptions?: Prisma.MaterialConsumptionCreateNestedManyWithoutProductionBatchInput
+  qualityControl?: Prisma.QualityControlCreateNestedOneWithoutProductionBatchInput
 }
 
 export type ProductionBatchUncheckedCreateWithoutProductVariantInput = {
@@ -904,10 +954,12 @@ export type ProductionBatchUncheckedCreateWithoutProductVariantInput = {
   plannedAt?: Date | string | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
+  releasedAt?: Date | string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   materialConsumptions?: Prisma.MaterialConsumptionUncheckedCreateNestedManyWithoutProductionBatchInput
+  qualityControl?: Prisma.QualityControlUncheckedCreateNestedOneWithoutProductionBatchInput
 }
 
 export type ProductionBatchCreateOrConnectWithoutProductVariantInput = {
@@ -945,6 +997,7 @@ export type ProductionBatchCreateWithoutFormulaInput = {
   plannedAt?: Date | string | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
+  releasedAt?: Date | string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -952,6 +1005,7 @@ export type ProductionBatchCreateWithoutFormulaInput = {
   productVariant?: Prisma.ProductVariantCreateNestedOneWithoutProductionBatchesInput
   formulaVersion: Prisma.FormulaVersionCreateNestedOneWithoutProductionBatchesInput
   materialConsumptions?: Prisma.MaterialConsumptionCreateNestedManyWithoutProductionBatchInput
+  qualityControl?: Prisma.QualityControlCreateNestedOneWithoutProductionBatchInput
 }
 
 export type ProductionBatchUncheckedCreateWithoutFormulaInput = {
@@ -966,10 +1020,12 @@ export type ProductionBatchUncheckedCreateWithoutFormulaInput = {
   plannedAt?: Date | string | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
+  releasedAt?: Date | string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   materialConsumptions?: Prisma.MaterialConsumptionUncheckedCreateNestedManyWithoutProductionBatchInput
+  qualityControl?: Prisma.QualityControlUncheckedCreateNestedOneWithoutProductionBatchInput
 }
 
 export type ProductionBatchCreateOrConnectWithoutFormulaInput = {
@@ -1007,6 +1063,7 @@ export type ProductionBatchCreateWithoutFormulaVersionInput = {
   plannedAt?: Date | string | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
+  releasedAt?: Date | string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1014,6 +1071,7 @@ export type ProductionBatchCreateWithoutFormulaVersionInput = {
   productVariant?: Prisma.ProductVariantCreateNestedOneWithoutProductionBatchesInput
   formula: Prisma.FormulaCreateNestedOneWithoutProductionBatchesInput
   materialConsumptions?: Prisma.MaterialConsumptionCreateNestedManyWithoutProductionBatchInput
+  qualityControl?: Prisma.QualityControlCreateNestedOneWithoutProductionBatchInput
 }
 
 export type ProductionBatchUncheckedCreateWithoutFormulaVersionInput = {
@@ -1028,10 +1086,12 @@ export type ProductionBatchUncheckedCreateWithoutFormulaVersionInput = {
   plannedAt?: Date | string | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
+  releasedAt?: Date | string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   materialConsumptions?: Prisma.MaterialConsumptionUncheckedCreateNestedManyWithoutProductionBatchInput
+  qualityControl?: Prisma.QualityControlUncheckedCreateNestedOneWithoutProductionBatchInput
 }
 
 export type ProductionBatchCreateOrConnectWithoutFormulaVersionInput = {
@@ -1069,6 +1129,7 @@ export type ProductionBatchCreateWithoutMaterialConsumptionsInput = {
   plannedAt?: Date | string | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
+  releasedAt?: Date | string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1076,6 +1137,7 @@ export type ProductionBatchCreateWithoutMaterialConsumptionsInput = {
   productVariant?: Prisma.ProductVariantCreateNestedOneWithoutProductionBatchesInput
   formula: Prisma.FormulaCreateNestedOneWithoutProductionBatchesInput
   formulaVersion: Prisma.FormulaVersionCreateNestedOneWithoutProductionBatchesInput
+  qualityControl?: Prisma.QualityControlCreateNestedOneWithoutProductionBatchInput
 }
 
 export type ProductionBatchUncheckedCreateWithoutMaterialConsumptionsInput = {
@@ -1091,9 +1153,11 @@ export type ProductionBatchUncheckedCreateWithoutMaterialConsumptionsInput = {
   plannedAt?: Date | string | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
+  releasedAt?: Date | string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  qualityControl?: Prisma.QualityControlUncheckedCreateNestedOneWithoutProductionBatchInput
 }
 
 export type ProductionBatchCreateOrConnectWithoutMaterialConsumptionsInput = {
@@ -1121,6 +1185,7 @@ export type ProductionBatchUpdateWithoutMaterialConsumptionsInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1128,6 +1193,7 @@ export type ProductionBatchUpdateWithoutMaterialConsumptionsInput = {
   productVariant?: Prisma.ProductVariantUpdateOneWithoutProductionBatchesNestedInput
   formula?: Prisma.FormulaUpdateOneRequiredWithoutProductionBatchesNestedInput
   formulaVersion?: Prisma.FormulaVersionUpdateOneRequiredWithoutProductionBatchesNestedInput
+  qualityControl?: Prisma.QualityControlUpdateOneWithoutProductionBatchNestedInput
 }
 
 export type ProductionBatchUncheckedUpdateWithoutMaterialConsumptionsInput = {
@@ -1143,9 +1209,107 @@ export type ProductionBatchUncheckedUpdateWithoutMaterialConsumptionsInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  qualityControl?: Prisma.QualityControlUncheckedUpdateOneWithoutProductionBatchNestedInput
+}
+
+export type ProductionBatchCreateWithoutQualityControlInput = {
+  id?: string
+  batchNumber: string
+  plannedQuantity: runtime.Decimal | runtime.DecimalJsLike | number | string
+  producedQuantity?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  status?: $Enums.ProductionBatchStatus
+  plannedAt?: Date | string | null
+  startedAt?: Date | string | null
+  completedAt?: Date | string | null
+  releasedAt?: Date | string | null
+  notes?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  product: Prisma.ProductCreateNestedOneWithoutProductionBatchesInput
+  productVariant?: Prisma.ProductVariantCreateNestedOneWithoutProductionBatchesInput
+  formula: Prisma.FormulaCreateNestedOneWithoutProductionBatchesInput
+  formulaVersion: Prisma.FormulaVersionCreateNestedOneWithoutProductionBatchesInput
+  materialConsumptions?: Prisma.MaterialConsumptionCreateNestedManyWithoutProductionBatchInput
+}
+
+export type ProductionBatchUncheckedCreateWithoutQualityControlInput = {
+  id?: string
+  batchNumber: string
+  productId: string
+  productVariantId?: string | null
+  formulaId: string
+  formulaVersionId: string
+  plannedQuantity: runtime.Decimal | runtime.DecimalJsLike | number | string
+  producedQuantity?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  status?: $Enums.ProductionBatchStatus
+  plannedAt?: Date | string | null
+  startedAt?: Date | string | null
+  completedAt?: Date | string | null
+  releasedAt?: Date | string | null
+  notes?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  materialConsumptions?: Prisma.MaterialConsumptionUncheckedCreateNestedManyWithoutProductionBatchInput
+}
+
+export type ProductionBatchCreateOrConnectWithoutQualityControlInput = {
+  where: Prisma.ProductionBatchWhereUniqueInput
+  create: Prisma.XOR<Prisma.ProductionBatchCreateWithoutQualityControlInput, Prisma.ProductionBatchUncheckedCreateWithoutQualityControlInput>
+}
+
+export type ProductionBatchUpsertWithoutQualityControlInput = {
+  update: Prisma.XOR<Prisma.ProductionBatchUpdateWithoutQualityControlInput, Prisma.ProductionBatchUncheckedUpdateWithoutQualityControlInput>
+  create: Prisma.XOR<Prisma.ProductionBatchCreateWithoutQualityControlInput, Prisma.ProductionBatchUncheckedCreateWithoutQualityControlInput>
+  where?: Prisma.ProductionBatchWhereInput
+}
+
+export type ProductionBatchUpdateToOneWithWhereWithoutQualityControlInput = {
+  where?: Prisma.ProductionBatchWhereInput
+  data: Prisma.XOR<Prisma.ProductionBatchUpdateWithoutQualityControlInput, Prisma.ProductionBatchUncheckedUpdateWithoutQualityControlInput>
+}
+
+export type ProductionBatchUpdateWithoutQualityControlInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  plannedQuantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  producedQuantity?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  status?: Prisma.EnumProductionBatchStatusFieldUpdateOperationsInput | $Enums.ProductionBatchStatus
+  plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  product?: Prisma.ProductUpdateOneRequiredWithoutProductionBatchesNestedInput
+  productVariant?: Prisma.ProductVariantUpdateOneWithoutProductionBatchesNestedInput
+  formula?: Prisma.FormulaUpdateOneRequiredWithoutProductionBatchesNestedInput
+  formulaVersion?: Prisma.FormulaVersionUpdateOneRequiredWithoutProductionBatchesNestedInput
+  materialConsumptions?: Prisma.MaterialConsumptionUpdateManyWithoutProductionBatchNestedInput
+}
+
+export type ProductionBatchUncheckedUpdateWithoutQualityControlInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  batchNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  productId?: Prisma.StringFieldUpdateOperationsInput | string
+  productVariantId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  formulaId?: Prisma.StringFieldUpdateOperationsInput | string
+  formulaVersionId?: Prisma.StringFieldUpdateOperationsInput | string
+  plannedQuantity?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  producedQuantity?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  status?: Prisma.EnumProductionBatchStatusFieldUpdateOperationsInput | $Enums.ProductionBatchStatus
+  plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  materialConsumptions?: Prisma.MaterialConsumptionUncheckedUpdateManyWithoutProductionBatchNestedInput
 }
 
 export type ProductionBatchCreateManyProductInput = {
@@ -1160,6 +1324,7 @@ export type ProductionBatchCreateManyProductInput = {
   plannedAt?: Date | string | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
+  releasedAt?: Date | string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1174,6 +1339,7 @@ export type ProductionBatchUpdateWithoutProductInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1181,6 +1347,7 @@ export type ProductionBatchUpdateWithoutProductInput = {
   formula?: Prisma.FormulaUpdateOneRequiredWithoutProductionBatchesNestedInput
   formulaVersion?: Prisma.FormulaVersionUpdateOneRequiredWithoutProductionBatchesNestedInput
   materialConsumptions?: Prisma.MaterialConsumptionUpdateManyWithoutProductionBatchNestedInput
+  qualityControl?: Prisma.QualityControlUpdateOneWithoutProductionBatchNestedInput
 }
 
 export type ProductionBatchUncheckedUpdateWithoutProductInput = {
@@ -1195,10 +1362,12 @@ export type ProductionBatchUncheckedUpdateWithoutProductInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   materialConsumptions?: Prisma.MaterialConsumptionUncheckedUpdateManyWithoutProductionBatchNestedInput
+  qualityControl?: Prisma.QualityControlUncheckedUpdateOneWithoutProductionBatchNestedInput
 }
 
 export type ProductionBatchUncheckedUpdateManyWithoutProductInput = {
@@ -1213,6 +1382,7 @@ export type ProductionBatchUncheckedUpdateManyWithoutProductInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1230,6 +1400,7 @@ export type ProductionBatchCreateManyProductVariantInput = {
   plannedAt?: Date | string | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
+  releasedAt?: Date | string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1244,6 +1415,7 @@ export type ProductionBatchUpdateWithoutProductVariantInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1251,6 +1423,7 @@ export type ProductionBatchUpdateWithoutProductVariantInput = {
   formula?: Prisma.FormulaUpdateOneRequiredWithoutProductionBatchesNestedInput
   formulaVersion?: Prisma.FormulaVersionUpdateOneRequiredWithoutProductionBatchesNestedInput
   materialConsumptions?: Prisma.MaterialConsumptionUpdateManyWithoutProductionBatchNestedInput
+  qualityControl?: Prisma.QualityControlUpdateOneWithoutProductionBatchNestedInput
 }
 
 export type ProductionBatchUncheckedUpdateWithoutProductVariantInput = {
@@ -1265,10 +1438,12 @@ export type ProductionBatchUncheckedUpdateWithoutProductVariantInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   materialConsumptions?: Prisma.MaterialConsumptionUncheckedUpdateManyWithoutProductionBatchNestedInput
+  qualityControl?: Prisma.QualityControlUncheckedUpdateOneWithoutProductionBatchNestedInput
 }
 
 export type ProductionBatchUncheckedUpdateManyWithoutProductVariantInput = {
@@ -1283,6 +1458,7 @@ export type ProductionBatchUncheckedUpdateManyWithoutProductVariantInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1300,6 +1476,7 @@ export type ProductionBatchCreateManyFormulaInput = {
   plannedAt?: Date | string | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
+  releasedAt?: Date | string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1314,6 +1491,7 @@ export type ProductionBatchUpdateWithoutFormulaInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1321,6 +1499,7 @@ export type ProductionBatchUpdateWithoutFormulaInput = {
   productVariant?: Prisma.ProductVariantUpdateOneWithoutProductionBatchesNestedInput
   formulaVersion?: Prisma.FormulaVersionUpdateOneRequiredWithoutProductionBatchesNestedInput
   materialConsumptions?: Prisma.MaterialConsumptionUpdateManyWithoutProductionBatchNestedInput
+  qualityControl?: Prisma.QualityControlUpdateOneWithoutProductionBatchNestedInput
 }
 
 export type ProductionBatchUncheckedUpdateWithoutFormulaInput = {
@@ -1335,10 +1514,12 @@ export type ProductionBatchUncheckedUpdateWithoutFormulaInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   materialConsumptions?: Prisma.MaterialConsumptionUncheckedUpdateManyWithoutProductionBatchNestedInput
+  qualityControl?: Prisma.QualityControlUncheckedUpdateOneWithoutProductionBatchNestedInput
 }
 
 export type ProductionBatchUncheckedUpdateManyWithoutFormulaInput = {
@@ -1353,6 +1534,7 @@ export type ProductionBatchUncheckedUpdateManyWithoutFormulaInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1370,6 +1552,7 @@ export type ProductionBatchCreateManyFormulaVersionInput = {
   plannedAt?: Date | string | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
+  releasedAt?: Date | string | null
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1384,6 +1567,7 @@ export type ProductionBatchUpdateWithoutFormulaVersionInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1391,6 +1575,7 @@ export type ProductionBatchUpdateWithoutFormulaVersionInput = {
   productVariant?: Prisma.ProductVariantUpdateOneWithoutProductionBatchesNestedInput
   formula?: Prisma.FormulaUpdateOneRequiredWithoutProductionBatchesNestedInput
   materialConsumptions?: Prisma.MaterialConsumptionUpdateManyWithoutProductionBatchNestedInput
+  qualityControl?: Prisma.QualityControlUpdateOneWithoutProductionBatchNestedInput
 }
 
 export type ProductionBatchUncheckedUpdateWithoutFormulaVersionInput = {
@@ -1405,10 +1590,12 @@ export type ProductionBatchUncheckedUpdateWithoutFormulaVersionInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   materialConsumptions?: Prisma.MaterialConsumptionUncheckedUpdateManyWithoutProductionBatchNestedInput
+  qualityControl?: Prisma.QualityControlUncheckedUpdateOneWithoutProductionBatchNestedInput
 }
 
 export type ProductionBatchUncheckedUpdateManyWithoutFormulaVersionInput = {
@@ -1423,6 +1610,7 @@ export type ProductionBatchUncheckedUpdateManyWithoutFormulaVersionInput = {
   plannedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  releasedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1472,6 +1660,7 @@ export type ProductionBatchSelect<ExtArgs extends runtime.Types.Extensions.Inter
   plannedAt?: boolean
   startedAt?: boolean
   completedAt?: boolean
+  releasedAt?: boolean
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1480,6 +1669,7 @@ export type ProductionBatchSelect<ExtArgs extends runtime.Types.Extensions.Inter
   formula?: boolean | Prisma.FormulaDefaultArgs<ExtArgs>
   formulaVersion?: boolean | Prisma.FormulaVersionDefaultArgs<ExtArgs>
   materialConsumptions?: boolean | Prisma.ProductionBatch$materialConsumptionsArgs<ExtArgs>
+  qualityControl?: boolean | Prisma.ProductionBatch$qualityControlArgs<ExtArgs>
   _count?: boolean | Prisma.ProductionBatchCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["productionBatch"]>
 
@@ -1496,6 +1686,7 @@ export type ProductionBatchSelectCreateManyAndReturn<ExtArgs extends runtime.Typ
   plannedAt?: boolean
   startedAt?: boolean
   completedAt?: boolean
+  releasedAt?: boolean
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1518,6 +1709,7 @@ export type ProductionBatchSelectUpdateManyAndReturn<ExtArgs extends runtime.Typ
   plannedAt?: boolean
   startedAt?: boolean
   completedAt?: boolean
+  releasedAt?: boolean
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1540,18 +1732,20 @@ export type ProductionBatchSelectScalar = {
   plannedAt?: boolean
   startedAt?: boolean
   completedAt?: boolean
+  releasedAt?: boolean
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type ProductionBatchOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "batchNumber" | "productId" | "productVariantId" | "formulaId" | "formulaVersionId" | "plannedQuantity" | "producedQuantity" | "status" | "plannedAt" | "startedAt" | "completedAt" | "notes" | "createdAt" | "updatedAt", ExtArgs["result"]["productionBatch"]>
+export type ProductionBatchOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "batchNumber" | "productId" | "productVariantId" | "formulaId" | "formulaVersionId" | "plannedQuantity" | "producedQuantity" | "status" | "plannedAt" | "startedAt" | "completedAt" | "releasedAt" | "notes" | "createdAt" | "updatedAt", ExtArgs["result"]["productionBatch"]>
 export type ProductionBatchInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
   productVariant?: boolean | Prisma.ProductionBatch$productVariantArgs<ExtArgs>
   formula?: boolean | Prisma.FormulaDefaultArgs<ExtArgs>
   formulaVersion?: boolean | Prisma.FormulaVersionDefaultArgs<ExtArgs>
   materialConsumptions?: boolean | Prisma.ProductionBatch$materialConsumptionsArgs<ExtArgs>
+  qualityControl?: boolean | Prisma.ProductionBatch$qualityControlArgs<ExtArgs>
   _count?: boolean | Prisma.ProductionBatchCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ProductionBatchIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1575,6 +1769,7 @@ export type $ProductionBatchPayload<ExtArgs extends runtime.Types.Extensions.Int
     formula: Prisma.$FormulaPayload<ExtArgs>
     formulaVersion: Prisma.$FormulaVersionPayload<ExtArgs>
     materialConsumptions: Prisma.$MaterialConsumptionPayload<ExtArgs>[]
+    qualityControl: Prisma.$QualityControlPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1589,6 +1784,7 @@ export type $ProductionBatchPayload<ExtArgs extends runtime.Types.Extensions.Int
     plannedAt: Date | null
     startedAt: Date | null
     completedAt: Date | null
+    releasedAt: Date | null
     notes: string | null
     createdAt: Date
     updatedAt: Date
@@ -1991,6 +2187,7 @@ export interface Prisma__ProductionBatchClient<T, Null = never, ExtArgs extends 
   formula<T extends Prisma.FormulaDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.FormulaDefaultArgs<ExtArgs>>): Prisma.Prisma__FormulaClient<runtime.Types.Result.GetResult<Prisma.$FormulaPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   formulaVersion<T extends Prisma.FormulaVersionDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.FormulaVersionDefaultArgs<ExtArgs>>): Prisma.Prisma__FormulaVersionClient<runtime.Types.Result.GetResult<Prisma.$FormulaVersionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   materialConsumptions<T extends Prisma.ProductionBatch$materialConsumptionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ProductionBatch$materialConsumptionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MaterialConsumptionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  qualityControl<T extends Prisma.ProductionBatch$qualityControlArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ProductionBatch$qualityControlArgs<ExtArgs>>): Prisma.Prisma__QualityControlClient<runtime.Types.Result.GetResult<Prisma.$QualityControlPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2032,6 +2229,7 @@ export interface ProductionBatchFieldRefs {
   readonly plannedAt: Prisma.FieldRef<"ProductionBatch", 'DateTime'>
   readonly startedAt: Prisma.FieldRef<"ProductionBatch", 'DateTime'>
   readonly completedAt: Prisma.FieldRef<"ProductionBatch", 'DateTime'>
+  readonly releasedAt: Prisma.FieldRef<"ProductionBatch", 'DateTime'>
   readonly notes: Prisma.FieldRef<"ProductionBatch", 'String'>
   readonly createdAt: Prisma.FieldRef<"ProductionBatch", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"ProductionBatch", 'DateTime'>
@@ -2476,6 +2674,25 @@ export type ProductionBatch$materialConsumptionsArgs<ExtArgs extends runtime.Typ
   take?: number
   skip?: number
   distinct?: Prisma.MaterialConsumptionScalarFieldEnum | Prisma.MaterialConsumptionScalarFieldEnum[]
+}
+
+/**
+ * ProductionBatch.qualityControl
+ */
+export type ProductionBatch$qualityControlArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the QualityControl
+   */
+  select?: Prisma.QualityControlSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the QualityControl
+   */
+  omit?: Prisma.QualityControlOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.QualityControlInclude<ExtArgs> | null
+  where?: Prisma.QualityControlWhereInput
 }
 
 /**

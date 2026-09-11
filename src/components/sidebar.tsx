@@ -1,17 +1,22 @@
 "use client";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import {
   BarChart3,
   Beaker,
   Boxes,
   ClipboardCheck,
+  ClipboardList,
   Factory,
   FileText,
   FlaskConical,
   LayoutDashboard,
+  LogOut,
   Package,
   Settings,
   ShoppingCart,
+  Sparkles,
   Truck,
   Users,
 } from "lucide-react";
@@ -70,6 +75,11 @@ const menuSections = [
         icon: FileText,
         href: "/purchase-orders",
       },
+      {
+        name: "Recommendations",
+        icon: Sparkles,
+        href: "/recommendations",
+      },
     ],
   },
   {
@@ -100,6 +110,11 @@ const menuSections = [
         icon: ClipboardCheck,
         href: "/qc",
       },
+      {
+        name: "QC Records",
+        icon: ClipboardList,
+        href: "/qc-records",
+      },
     ],
   },
   {
@@ -109,22 +124,58 @@ const menuSections = [
         name: "Reports",
         icon: BarChart3,
         href: "/reports",
+        adminOnly: false,
       },
       {
         name: "Users",
         icon: Users,
         href: "/users",
+        adminOnly: true,
       },
       {
         name: "Settings",
         icon: Settings,
         href: "/settings",
+        adminOnly: true,
       },
     ],
   },
 ];
 
+type AuthUser = {
+  id: string;
+  username: string;
+  name: string | null;
+  role: string;
+};
+
 export function Sidebar() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    if (pathname === "/login") return;
+
+    fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.success) setUser(d.data);
+      })
+      .catch(() => {});
+  }, [pathname]);
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    setUser(null);
+    router.push("/login");
+    router.refresh();
+  }
+
+  if (pathname === "/login") return null;
+
+  const isAdmin = user?.role === "ADMIN";
+
   return (
     <aside className="flex h-screen w-64 flex-col border-r bg-background">
       <div className="flex h-16 items-center border-b px-6">
@@ -147,20 +198,22 @@ export function Sidebar() {
               )}
 
               <div className="space-y-1">
-                {section.items.map((item) => {
-                  const Icon = item.icon;
+                {section.items
+                  .filter((item) => !item.adminOnly || isAdmin)
+                  .map((item) => {
+                    const Icon = item.icon;
 
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    >
-                      <Icon className="h-4 w-4" />
-                      <span>{item.name}</span>
-                    </Link>
-                  );
-                })}
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span>{item.name}</span>
+                      </Link>
+                    );
+                  })}
               </div>
             </div>
           ))}
@@ -168,12 +221,28 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t p-4">
-        <div className="rounded-lg bg-muted p-3">
-          <p className="text-sm font-medium">NaranScents</p>
-          <p className="text-xs text-muted-foreground">
-            Management System
-          </p>
-        </div>
+        {user ? (
+          <div className="space-y-2">
+            <div className="rounded-lg bg-muted p-3">
+              <p className="text-sm font-medium">{user.name || user.username}</p>
+              <p className="text-xs text-muted-foreground capitalize">
+                {user.role.toLowerCase().replace("_", " ")}
+              </p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sign out</span>
+            </button>
+          </div>
+        ) : (
+          <div className="rounded-lg bg-muted p-3">
+            <p className="text-sm font-medium">NaranScents</p>
+            <p className="text-xs text-muted-foreground">Management System</p>
+          </div>
+        )}
       </div>
     </aside>
   );

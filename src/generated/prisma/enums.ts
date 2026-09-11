@@ -131,7 +131,27 @@ export const ProductionBatchStatus = {
   PLANNED: 'PLANNED',
   IN_PROGRESS: 'IN_PROGRESS',
   COMPLETED: 'COMPLETED',
+  RELEASED: 'RELEASED',
   CANCELLED: 'CANCELLED'
 } as const
 
 export type ProductionBatchStatus = (typeof ProductionBatchStatus)[keyof typeof ProductionBatchStatus]
+
+
+export const QCCheckResult = {
+  PENDING: 'PENDING',
+  PASS: 'PASS',
+  FAIL: 'FAIL'
+} as const
+
+export type QCCheckResult = (typeof QCCheckResult)[keyof typeof QCCheckResult]
+
+
+export const QCDecision = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  ON_HOLD: 'ON_HOLD'
+} as const
+
+export type QCDecision = (typeof QCDecision)[keyof typeof QCDecision]

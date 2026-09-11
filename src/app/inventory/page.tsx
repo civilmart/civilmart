@@ -5,6 +5,8 @@ import {
   AlertTriangle,
   Boxes,
   CheckCircle2,
+  FileText,
+  Loader2,
   PackageX,
   RefreshCw,
   Search,
@@ -14,6 +16,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -38,10 +46,30 @@ type InventoryItem = {
   stockStatus: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
 };
 
+type LedgerEntry = {
+  id: string;
+  transactionType: string;
+  quantity: number;
+  unit: string;
+  unitType: string;
+  referenceType: string | null;
+  referenceId: string | null;
+  notes: string | null;
+  createdAt: string;
+  lot: { id: string; lotNumber: string } | null;
+  rawMaterial: { id: string; code: string; name: string; unitType: string };
+  runningBalance: number;
+};
+
 export default function InventoryPage() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const [ledgerOpen, setLedgerOpen] = useState(false);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [ledgerMaterial, setLedgerMaterial] = useState<InventoryItem | null>(null);
+  const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
 
   const loadInventory = async () => {
     try {
@@ -63,6 +91,28 @@ export default function InventoryPage() {
   useEffect(() => {
     loadInventory();
   }, []);
+
+  const openLedger = async (item: InventoryItem) => {
+    setLedgerMaterial(item);
+    setLedgerOpen(true);
+    setLedgerLoading(true);
+    setLedgerEntries([]);
+
+    try {
+      const response = await fetch(
+        `/api/inventory/ledger?rawMaterialId=${item.id}`
+      );
+      const result = await response.json();
+
+      if (result.success) {
+        setLedgerEntries(result.data);
+      }
+    } catch (error) {
+      console.error("Failed to load ledger:", error);
+    } finally {
+      setLedgerLoading(false);
+    }
+  };
 
   const filteredInventory = useMemo(() => {
     const query = search.toLowerCase().trim();
@@ -116,6 +166,21 @@ export default function InventoryPage() {
     }
 
     return "PIECE";
+  };
+
+  const formatTransactionType = (type: string) => {
+    return type
+      .replaceAll("_", " ")
+      .toLowerCase()
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
+  const formatReferenceType = (ref: string | null) => {
+    if (!ref) return "—";
+    return ref
+      .replaceAll("_", " ")
+      .toLowerCase()
+      .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
   const getStatusBadge = (status: InventoryItem["stockStatus"]) => {
@@ -285,6 +350,7 @@ export default function InventoryPage() {
                     <TableHead>Consumed</TableHead>
                     <TableHead>Reorder Level</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
 
@@ -324,6 +390,19 @@ export default function InventoryPage() {
                       <TableCell>
                         {getStatusBadge(item.stockStatus)}
                       </TableCell>
+
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openLedger(item)}
+                          >
+                            <FileText className="mr-1 h-4 w-4" />
+                            Ledger
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -332,6 +411,118 @@ export default function InventoryPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={ledgerOpen} onOpenChange={setLedgerOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>
+              {ledgerMaterial
+                ? `Stock Ledger — ${ledgerMaterial.name} (${ledgerMaterial.code})`
+                : "Stock Ledger"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {ledgerLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : ledgerEntries.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <FileText className="mb-3 h-10 w-10 text-muted-foreground" />
+              <h3 className="font-semibold">No transactions found</h3>
+              <p className="text-sm text-muted-foreground">
+                This material has no inventory transactions yet.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between rounded-md border bg-muted/50 p-3 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Current Balance: </span>
+                  <span className="font-semibold">
+                    {formatNumber(ledgerEntries[ledgerEntries.length - 1].runningBalance)}{" "}
+                    {ledgerEntries[ledgerEntries.length - 1].unit}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Transactions: </span>
+                  <span className="font-semibold">{ledgerEntries.length}</span>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left">
+                      <th className="px-3 py-3 font-medium">Date</th>
+                      <th className="px-3 py-3 font-medium">Type</th>
+                      <th className="px-3 py-3 font-medium">Lot</th>
+                      <th className="px-3 py-3 font-medium text-right">Quantity</th>
+                      <th className="px-3 py-3 font-medium">Unit</th>
+                      <th className="px-3 py-3 font-medium">Reference</th>
+                      <th className="px-3 py-3 font-medium">Notes</th>
+                      <th className="px-3 py-3 font-medium text-right">Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ledgerEntries.map((entry) => {
+                      const isIncoming = [
+                        "PURCHASE",
+                        "RETURN",
+                        "TRANSFER_IN",
+                        "OPENING_BALANCE",
+                        "ADJUSTMENT_IN",
+                        "CORRECTION",
+                      ].includes(entry.transactionType);
+
+                      return (
+                        <tr key={entry.id} className="border-b last:border-0">
+                          <td className="px-3 py-3 whitespace-nowrap">
+                            {new Date(entry.createdAt).toLocaleDateString()}{" "}
+                            {new Date(entry.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </td>
+                          <td className="px-3 py-3">
+                            <Badge
+                              variant="outline"
+                              className={
+                                isIncoming
+                                  ? "border-green-200 bg-green-50 text-green-700"
+                                  : "border-red-200 bg-red-50 text-red-700"
+                              }
+                            >
+                              {formatTransactionType(entry.transactionType)}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-3">
+                            {entry.lot ? entry.lot.lotNumber : "—"}
+                          </td>
+                          <td className="px-3 py-3 text-right font-medium">
+                            {isIncoming ? "+" : "-"}
+                            {formatNumber(entry.quantity)}
+                          </td>
+                          <td className="px-3 py-3">{entry.unit}</td>
+                          <td className="px-3 py-3">
+                            {formatReferenceType(entry.referenceType)}
+                          </td>
+                          <td className="px-3 py-3 max-w-[200px] truncate text-muted-foreground">
+                            {entry.notes || "—"}
+                          </td>
+                          <td className="px-3 py-3 text-right font-semibold">
+                            {formatNumber(entry.runningBalance)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

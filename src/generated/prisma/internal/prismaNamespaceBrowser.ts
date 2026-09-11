@@ -66,7 +66,8 @@ export const ModelName = {
   PurchaseOrder: 'PurchaseOrder',
   PurchaseOrderItem: 'PurchaseOrderItem',
   ProductionBatch: 'ProductionBatch',
-  MaterialConsumption: 'MaterialConsumption'
+  MaterialConsumption: 'MaterialConsumption',
+  QualityControl: 'QualityControl'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -324,6 +325,7 @@ export const ProductionBatchScalarFieldEnum = {
   plannedAt: 'plannedAt',
   startedAt: 'startedAt',
   completedAt: 'completedAt',
+  releasedAt: 'releasedAt',
   notes: 'notes',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -345,6 +347,51 @@ export const MaterialConsumptionScalarFieldEnum = {
 } as const
 
 export type MaterialConsumptionScalarFieldEnum = (typeof MaterialConsumptionScalarFieldEnum)[keyof typeof MaterialConsumptionScalarFieldEnum]
+
+
+export const QualityControlScalarFieldEnum = {
+  id: 'id',
+  productionBatchId: 'productionBatchId',
+  maturationResult: 'maturationResult',
+  maturationValue: 'maturationValue',
+  maturationNotes: 'maturationNotes',
+  maturationCheckedBy: 'maturationCheckedBy',
+  maturationCheckedAt: 'maturationCheckedAt',
+  stabilityResult: 'stabilityResult',
+  stabilityValue: 'stabilityValue',
+  stabilityNotes: 'stabilityNotes',
+  stabilityCheckedBy: 'stabilityCheckedBy',
+  stabilityCheckedAt: 'stabilityCheckedAt',
+  clarityResult: 'clarityResult',
+  clarityValue: 'clarityValue',
+  clarityNotes: 'clarityNotes',
+  clarityCheckedBy: 'clarityCheckedBy',
+  clarityCheckedAt: 'clarityCheckedAt',
+  colourResult: 'colourResult',
+  colourValue: 'colourValue',
+  colourNotes: 'colourNotes',
+  colourCheckedBy: 'colourCheckedBy',
+  colourCheckedAt: 'colourCheckedAt',
+  odourResult: 'odourResult',
+  odourValue: 'odourValue',
+  odourNotes: 'odourNotes',
+  odourCheckedBy: 'odourCheckedBy',
+  odourCheckedAt: 'odourCheckedAt',
+  regulatoryReviewResult: 'regulatoryReviewResult',
+  regulatoryReviewNotes: 'regulatoryReviewNotes',
+  regulatoryReviewedBy: 'regulatoryReviewedBy',
+  regulatoryReviewedAt: 'regulatoryReviewedAt',
+  decision: 'decision',
+  decisionNotes: 'decisionNotes',
+  decidedBy: 'decidedBy',
+  decidedAt: 'decidedAt',
+  releasedBy: 'releasedBy',
+  releasedAt: 'releasedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type QualityControlScalarFieldEnum = (typeof QualityControlScalarFieldEnum)[keyof typeof QualityControlScalarFieldEnum]
 
 
 export const SortOrder = {

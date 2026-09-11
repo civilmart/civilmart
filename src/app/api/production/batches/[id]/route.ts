@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { calculateBatchRequirements } from "@/lib/production";
+import { consumeBatchMaterials } from "@/lib/production";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -60,6 +60,39 @@ export async function PATCH(
         { error: "A completed batch cannot be changed." },
         { status: 400 }
       );
+    }
+
+    // Starting production is the single moment materials get consumed.
+    // The system picks lots automatically (nearest expiry first) —
+    // nobody selects a lot or a quantity by hand. If stock is short,
+    // nothing is consumed and the batch does not start.
+    if (status === "IN_PROGRESS") {
+      let consumptionResult;
+
+      try {
+        consumptionResult = await consumeBatchMaterials(id);
+      } catch (error) {
+        return NextResponse.json(
+          {
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to consume production materials.",
+          },
+          { status: 500 }
+        );
+      }
+
+      if (consumptionResult.status === "shortage") {
+        return NextResponse.json(
+          {
+            error:
+              "Insufficient raw-material stock. No materials were consumed and production was not started.",
+            shortages: consumptionResult.shortages,
+          },
+          { status: 409 }
+        );
+      }
     }
 
     const now = new Date();

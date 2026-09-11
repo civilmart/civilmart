@@ -100,7 +100,21 @@ enum ProductionBatchStatus {
   PLANNED
   IN_PROGRESS
   COMPLETED
+  RELEASED
   CANCELLED
+}
+
+enum QCCheckResult {
+  PENDING
+  PASS
+  FAIL
+}
+
+enum QCDecision {
+  PENDING
+  APPROVED
+  REJECTED
+  ON_HOLD
 }
 
 // ============================================================
@@ -488,6 +502,7 @@ model ProductionBatch {
   plannedAt   DateTime?
   startedAt   DateTime?
   completedAt DateTime?
+  releasedAt  DateTime?
 
   notes     String?
   createdAt DateTime @default(now())
@@ -499,6 +514,7 @@ model ProductionBatch {
   formulaVersion FormulaVersion  @relation(fields: [formulaVersionId], references: [id])
 
   materialConsumptions MaterialConsumption[]
+  qualityControl       QualityControl?
 
   @@index([productId])
   @@index([formulaId])
@@ -529,4 +545,82 @@ model MaterialConsumption {
   @@index([rawMaterialId])
   @@index([lotId])
   @@map("material_consumptions")
+}
+
+// ============================================================
+// QUALITY CONTROL
+// ============================================================
+//
+// One QualityControl record per production batch. It is created
+// automatically the moment a batch's status becomes COMPLETED
+// (see the batch status-update route). Every check starts out
+// PENDING; a QC user fills in the result/value/notes as testing
+// happens. The overall `decision` can only move to APPROVED once
+// every check and the regulatory review have passed. Only after
+// APPROVED can the batch be released (see the /release route),
+// which stamps this record and flips the batch to RELEASED.
+// ============================================================
+
+model QualityControl {
+  id                String @id @default(cuid())
+  productionBatchId String @unique
+
+  // Maturation
+  maturationResult    QCCheckResult @default(PENDING)
+  maturationValue     String?
+  maturationNotes     String?
+  maturationCheckedBy String?
+  maturationCheckedAt DateTime?
+
+  // Stability
+  stabilityResult    QCCheckResult @default(PENDING)
+  stabilityValue     String?
+  stabilityNotes     String?
+  stabilityCheckedBy String?
+  stabilityCheckedAt DateTime?
+
+  // Clarity
+  clarityResult    QCCheckResult @default(PENDING)
+  clarityValue     String?
+  clarityNotes     String?
+  clarityCheckedBy String?
+  clarityCheckedAt DateTime?
+
+  // Colour
+  colourResult    QCCheckResult @default(PENDING)
+  colourValue     String?
+  colourNotes     String?
+  colourCheckedBy String?
+  colourCheckedAt DateTime?
+
+  // Odour
+  odourResult    QCCheckResult @default(PENDING)
+  odourValue     String?
+  odourNotes     String?
+  odourCheckedBy String?
+  odourCheckedAt DateTime?
+
+  // Regulatory review
+  regulatoryReviewResult QCCheckResult @default(PENDING)
+  regulatoryReviewNotes  String?
+  regulatoryReviewedBy   String?
+  regulatoryReviewedAt   DateTime?
+
+  // Overall QC decision
+  decision      QCDecision @default(PENDING)
+  decisionNotes String?
+  decidedBy     String?
+  decidedAt     DateTime?
+
+  // Final release
+  releasedBy String?
+  releasedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  productionBatch ProductionBatch @relation(fields: [productionBatchId], references: [id], onDelete: Cascade)
+
+  @@index([decision])
+  @@map("quality_controls")
 }

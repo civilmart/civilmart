@@ -121,3 +121,8 @@ export type ProductionBatch = Prisma.ProductionBatchModel
  * 
  */
 export type MaterialConsumption = Prisma.MaterialConsumptionModel
+/**
+ * Model QualityControl
+ * 
+ */
+export type QualityControl = Prisma.QualityControlModel

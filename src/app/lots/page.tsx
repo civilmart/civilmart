@@ -6,6 +6,8 @@ import {
   Search,
   Package,
   Loader2,
+  GitBranch,
+  AlertTriangle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -33,6 +35,21 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { getExpiryStatus, type ExpiryStatus } from "@/lib/expiry";
+
+const expiryStatusClasses: Record<ExpiryStatus, string> = {
+  OK: "border-slate-200 bg-slate-50 text-slate-600",
+  EXPIRING_SOON: "border-amber-200 bg-amber-50 text-amber-700",
+  EXPIRED: "border-red-200 bg-red-50 text-red-700",
+  NO_EXPIRY: "border-slate-200 bg-slate-50 text-slate-400",
+};
+
+const expiryStatusLabels: Record<ExpiryStatus, string> = {
+  OK: "OK",
+  EXPIRING_SOON: "Expiring Soon",
+  EXPIRED: "Needs Retest",
+  NO_EXPIRY: "—",
+};
 
 type RawMaterial = {
   id: string;
@@ -62,6 +79,46 @@ type Lot = {
   supplier: Supplier | null;
 };
 
+type AffectedBatch = {
+  id: string;
+  batchNumber: string;
+  status: string;
+  product: { name: string; code: string };
+  productVariant: { name: string; sku: string } | null;
+  formulaName: string;
+  formulaVersion: number;
+  quantityConsumed: number;
+  unit: string;
+  lastConsumedAt: string;
+  completedAt: string | null;
+  releasedAt: string | null;
+  qcDecision: string | null;
+};
+
+type LotTraceResult = {
+  lot: Lot;
+  affectedBatches: AffectedBatch[];
+  summary: { totalBatches: number; releasedBatches: number };
+};
+
+type ExpirySummary = { expired: number; expiringSoon: number };
+
+const batchStatusClasses: Record<string, string> = {
+  DRAFT: "border-slate-200 bg-slate-50 text-slate-600",
+  PLANNED: "border-blue-200 bg-blue-50 text-blue-700",
+  IN_PROGRESS: "border-amber-200 bg-amber-50 text-amber-700",
+  COMPLETED: "border-purple-200 bg-purple-50 text-purple-700",
+  RELEASED: "border-green-200 bg-green-50 text-green-700",
+  CANCELLED: "border-red-200 bg-red-50 text-red-700",
+};
+
+const qcDecisionClasses: Record<string, string> = {
+  PENDING: "border-slate-200 bg-slate-50 text-slate-600",
+  APPROVED: "border-green-200 bg-green-50 text-green-700",
+  REJECTED: "border-red-200 bg-red-50 text-red-700",
+  ON_HOLD: "border-amber-200 bg-amber-50 text-amber-700",
+};
+
 const initialForm = {
   rawMaterialId: "",
   supplierId: "",
@@ -88,23 +145,58 @@ export default function LotsPage() {
 
   const [form, setForm] = useState(initialForm);
 
+  const [traceOpen, setTraceOpen] = useState(false);
+  const [traceLoading, setTraceLoading] = useState(false);
+  const [traceResult, setTraceResult] =
+    useState<LotTraceResult | null>(null);
+
+  const [expirySummary, setExpirySummary] =
+    useState<ExpirySummary>({ expired: 0, expiringSoon: 0 });
+  const [expiryFilter, setExpiryFilter] =
+    useState<"ALL" | "EXPIRED" | "EXPIRING_SOON">("ALL");
+
+  async function openTrace(lotId: string) {
+    setTraceOpen(true);
+    setTraceLoading(true);
+    setTraceResult(null);
+
+    try {
+      const response = await fetch(`/api/traceability/lot/${lotId}`);
+      const result = await response.json();
+
+      if (result.success) {
+        setTraceResult(result.data);
+      }
+    } catch (error) {
+      console.error("Failed to trace lot:", error);
+    } finally {
+      setTraceLoading(false);
+    }
+  }
+
   async function loadData() {
     try {
       setLoading(true);
 
-      const [lotsRes, materialsRes, suppliersRes] =
+      const [lotsRes, materialsRes, suppliersRes, expiryRes] =
         await Promise.all([
           fetch("/api/lots"),
           fetch("/api/raw-materials"),
           fetch("/api/suppliers"),
+          fetch("/api/lots/expiry-alerts"),
         ]);
 
       const lotsJson = await lotsRes.json();
       const materialsJson = await materialsRes.json();
       const suppliersJson = await suppliersRes.json();
+      const expiryJson = await expiryRes.json();
 
       if (lotsJson.success) {
         setLots(lotsJson.data);
+      }
+
+      if (expiryJson.success) {
+        setExpirySummary(expiryJson.data.summary);
       }
 
       if (materialsJson.success) {
@@ -210,7 +302,7 @@ export default function LotsPage() {
   const filteredLots = lots.filter((lot) => {
     const searchText = search.toLowerCase();
 
-    return (
+    const matchesSearch =
       lot.lotNumber.toLowerCase().includes(searchText) ||
       lot.rawMaterial.name
         .toLowerCase()
@@ -220,8 +312,13 @@ export default function LotsPage() {
         .includes(searchText) ||
       lot.supplier?.name
         .toLowerCase()
-        .includes(searchText)
-    );
+        .includes(searchText);
+
+    if (!matchesSearch) return false;
+
+    if (expiryFilter === "ALL") return true;
+
+    return getExpiryStatus(lot.expiryDate) === expiryFilter;
   });
 
   const units =
@@ -514,6 +611,67 @@ export default function LotsPage() {
         </Dialog>
       </div>
 
+      {(expirySummary.expired > 0 ||
+        expirySummary.expiringSoon > 0) && (
+        <div className="flex flex-col gap-3 rounded-md border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+
+            <p className="text-sm text-amber-800">
+              {expirySummary.expired > 0 && (
+                <>
+                  <strong>{expirySummary.expired}</strong> lot
+                  {expirySummary.expired === 1 ? "" : "s"} past
+                  expiry and awaiting retest
+                  {expirySummary.expiringSoon > 0 ? ", " : "."}
+                </>
+              )}
+              {expirySummary.expiringSoon > 0 && (
+                <>
+                  <strong>{expirySummary.expiringSoon}</strong> lot
+                  {expirySummary.expiringSoon === 1 ? "" : "s"}{" "}
+                  expiring within {30} days.
+                </>
+              )}
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              variant={
+                expiryFilter === "EXPIRED" ? "default" : "outline"
+              }
+              size="sm"
+              onClick={() =>
+                setExpiryFilter(
+                  expiryFilter === "EXPIRED" ? "ALL" : "EXPIRED"
+                )
+              }
+            >
+              Show Expired
+            </Button>
+
+            <Button
+              variant={
+                expiryFilter === "EXPIRING_SOON"
+                  ? "default"
+                  : "outline"
+              }
+              size="sm"
+              onClick={() =>
+                setExpiryFilter(
+                  expiryFilter === "EXPIRING_SOON"
+                    ? "ALL"
+                    : "EXPIRING_SOON"
+                )
+              }
+            >
+              Show Expiring Soon
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -579,6 +737,9 @@ export default function LotsPage() {
                     <th className="px-3 py-3 font-medium">
                       Expiry
                     </th>
+                    <th className="px-3 py-3 font-medium">
+                      Traceability
+                    </th>
                   </tr>
                 </thead>
 
@@ -632,11 +793,46 @@ export default function LotsPage() {
                       </td>
 
                       <td className="px-3 py-3">
-                        {lot.expiryDate
-                          ? new Date(
-                              lot.expiryDate
-                            ).toLocaleDateString()
-                          : "—"}
+                        {lot.expiryDate ? (
+                          <div className="flex flex-col gap-1">
+                            <span>
+                              {new Date(
+                                lot.expiryDate
+                              ).toLocaleDateString()}
+                            </span>
+
+                            {getExpiryStatus(lot.expiryDate) !==
+                              "OK" && (
+                              <Badge
+                                variant="outline"
+                                className={
+                                  expiryStatusClasses[
+                                    getExpiryStatus(lot.expiryDate)
+                                  ]
+                                }
+                              >
+                                {
+                                  expiryStatusLabels[
+                                    getExpiryStatus(lot.expiryDate)
+                                  ]
+                                }
+                              </Badge>
+                            )}
+                          </div>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+
+                      <td className="px-3 py-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openTrace(lot.id)}
+                        >
+                          <GitBranch className="mr-2 h-3.5 w-3.5" />
+                          Trace
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -646,6 +842,173 @@ export default function LotsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={traceOpen} onOpenChange={setTraceOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {traceResult
+                ? `Traceability — Lot ${traceResult.lot.lotNumber}`
+                : "Traceability"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {traceLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : !traceResult ? (
+            <p className="py-6 text-sm text-muted-foreground">
+              Could not load traceability data for this lot.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-md border p-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="font-medium">
+                      {traceResult.lot.rawMaterial.name}{" "}
+                      <span className="text-muted-foreground">
+                        ({traceResult.lot.rawMaterial.code})
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-muted-foreground">
+                      Supplier:{" "}
+                      {traceResult.lot.supplier?.name || "—"}
+                    </div>
+                  </div>
+
+                  <Badge variant="secondary">
+                    {traceResult.summary.totalBatches} batch
+                    {traceResult.summary.totalBatches === 1
+                      ? ""
+                      : "es"}{" "}
+                    affected
+                  </Badge>
+                </div>
+
+                {traceResult.summary.releasedBatches > 0 && (
+                  <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>
+                      {traceResult.summary.releasedBatches} of
+                      these batches have already been{" "}
+                      <strong>released</strong>. If this lot is
+                      recalled, those finished-good batches are
+                      directly affected.
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {traceResult.affectedBatches.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <GitBranch className="mb-3 h-8 w-8 text-muted-foreground" />
+                  <h3 className="font-semibold">
+                    No batches have consumed this lot
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    This lot hasn&apos;t been used in production yet.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left">
+                        <th className="px-3 py-2 font-medium">
+                          Batch
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          Product
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          Consumed
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          Status
+                        </th>
+                        <th className="px-3 py-2 font-medium">
+                          QC Decision
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {traceResult.affectedBatches.map((batch) => (
+                        <tr
+                          key={batch.id}
+                          className="border-b last:border-0"
+                        >
+                          <td className="px-3 py-2 font-medium">
+                            {batch.batchNumber}
+
+                            <div className="text-xs font-normal text-muted-foreground">
+                              {batch.formulaName} v
+                              {batch.formulaVersion}
+                            </div>
+                          </td>
+
+                          <td className="px-3 py-2">
+                            {batch.product.name}
+
+                            {batch.productVariant && (
+                              <div className="text-xs text-muted-foreground">
+                                {batch.productVariant.name}
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="px-3 py-2">
+                            {Number(
+                              batch.quantityConsumed
+                            ).toLocaleString()}{" "}
+                            <Badge variant="secondary">
+                              {batch.unit}
+                            </Badge>
+                          </td>
+
+                          <td className="px-3 py-2">
+                            <Badge
+                              variant="outline"
+                              className={
+                                batchStatusClasses[batch.status] ??
+                                ""
+                              }
+                            >
+                              {batch.status}
+                            </Badge>
+                          </td>
+
+                          <td className="px-3 py-2">
+                            {batch.qcDecision ? (
+                              <Badge
+                                variant="outline"
+                                className={
+                                  qcDecisionClasses[
+                                    batch.qcDecision
+                                  ] ?? ""
+                                }
+                              >
+                                {batch.qcDecision}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">
+                                —
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

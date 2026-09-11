@@ -412,7 +412,8 @@ export const ModelName = {
   PurchaseOrder: 'PurchaseOrder',
   PurchaseOrderItem: 'PurchaseOrderItem',
   ProductionBatch: 'ProductionBatch',
-  MaterialConsumption: 'MaterialConsumption'
+  MaterialConsumption: 'MaterialConsumption',
+  QualityControl: 'QualityControl'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -428,7 +429,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "supplier" | "rawMaterial" | "rawMaterialLot" | "product" | "productVariant" | "formula" | "formulaVersion" | "formulaIngredient" | "inventoryTransaction" | "purchase" | "purchaseItem" | "purchaseOrder" | "purchaseOrderItem" | "productionBatch" | "materialConsumption"
+    modelProps: "user" | "supplier" | "rawMaterial" | "rawMaterialLot" | "product" | "productVariant" | "formula" | "formulaVersion" | "formulaIngredient" | "inventoryTransaction" | "purchase" | "purchaseItem" | "purchaseOrder" | "purchaseOrderItem" | "productionBatch" | "materialConsumption" | "qualityControl"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1616,6 +1617,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    QualityControl: {
+      payload: Prisma.$QualityControlPayload<ExtArgs>
+      fields: Prisma.QualityControlFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.QualityControlFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QualityControlPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.QualityControlFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QualityControlPayload>
+        }
+        findFirst: {
+          args: Prisma.QualityControlFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QualityControlPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.QualityControlFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QualityControlPayload>
+        }
+        findMany: {
+          args: Prisma.QualityControlFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QualityControlPayload>[]
+        }
+        create: {
+          args: Prisma.QualityControlCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QualityControlPayload>
+        }
+        createMany: {
+          args: Prisma.QualityControlCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.QualityControlCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QualityControlPayload>[]
+        }
+        delete: {
+          args: Prisma.QualityControlDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QualityControlPayload>
+        }
+        update: {
+          args: Prisma.QualityControlUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QualityControlPayload>
+        }
+        deleteMany: {
+          args: Prisma.QualityControlDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.QualityControlUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.QualityControlUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QualityControlPayload>[]
+        }
+        upsert: {
+          args: Prisma.QualityControlUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$QualityControlPayload>
+        }
+        aggregate: {
+          args: Prisma.QualityControlAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateQualityControl>
+        }
+        groupBy: {
+          args: Prisma.QualityControlGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.QualityControlGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.QualityControlCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.QualityControlCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1894,6 +1969,7 @@ export const ProductionBatchScalarFieldEnum = {
   plannedAt: 'plannedAt',
   startedAt: 'startedAt',
   completedAt: 'completedAt',
+  releasedAt: 'releasedAt',
   notes: 'notes',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -1915,6 +1991,51 @@ export const MaterialConsumptionScalarFieldEnum = {
 } as const
 
 export type MaterialConsumptionScalarFieldEnum = (typeof MaterialConsumptionScalarFieldEnum)[keyof typeof MaterialConsumptionScalarFieldEnum]
+
+
+export const QualityControlScalarFieldEnum = {
+  id: 'id',
+  productionBatchId: 'productionBatchId',
+  maturationResult: 'maturationResult',
+  maturationValue: 'maturationValue',
+  maturationNotes: 'maturationNotes',
+  maturationCheckedBy: 'maturationCheckedBy',
+  maturationCheckedAt: 'maturationCheckedAt',
+  stabilityResult: 'stabilityResult',
+  stabilityValue: 'stabilityValue',
+  stabilityNotes: 'stabilityNotes',
+  stabilityCheckedBy: 'stabilityCheckedBy',
+  stabilityCheckedAt: 'stabilityCheckedAt',
+  clarityResult: 'clarityResult',
+  clarityValue: 'clarityValue',
+  clarityNotes: 'clarityNotes',
+  clarityCheckedBy: 'clarityCheckedBy',
+  clarityCheckedAt: 'clarityCheckedAt',
+  colourResult: 'colourResult',
+  colourValue: 'colourValue',
+  colourNotes: 'colourNotes',
+  colourCheckedBy: 'colourCheckedBy',
+  colourCheckedAt: 'colourCheckedAt',
+  odourResult: 'odourResult',
+  odourValue: 'odourValue',
+  odourNotes: 'odourNotes',
+  odourCheckedBy: 'odourCheckedBy',
+  odourCheckedAt: 'odourCheckedAt',
+  regulatoryReviewResult: 'regulatoryReviewResult',
+  regulatoryReviewNotes: 'regulatoryReviewNotes',
+  regulatoryReviewedBy: 'regulatoryReviewedBy',
+  regulatoryReviewedAt: 'regulatoryReviewedAt',
+  decision: 'decision',
+  decisionNotes: 'decisionNotes',
+  decidedBy: 'decidedBy',
+  decidedAt: 'decidedAt',
+  releasedBy: 'releasedBy',
+  releasedAt: 'releasedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type QualityControlScalarFieldEnum = (typeof QualityControlScalarFieldEnum)[keyof typeof QualityControlScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -2165,6 +2286,34 @@ export type ListEnumProductionBatchStatusFieldRefInput<$PrismaModel> = FieldRefI
 
 
 /**
+ * Reference to a field of type 'QCCheckResult'
+ */
+export type EnumQCCheckResultFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QCCheckResult'>
+    
+
+
+/**
+ * Reference to a field of type 'QCCheckResult[]'
+ */
+export type ListEnumQCCheckResultFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QCCheckResult[]'>
+    
+
+
+/**
+ * Reference to a field of type 'QCDecision'
+ */
+export type EnumQCDecisionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QCDecision'>
+    
+
+
+/**
+ * Reference to a field of type 'QCDecision[]'
+ */
+export type ListEnumQCDecisionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QCDecision[]'>
+    
+
+
+/**
  * Reference to a field of type 'Float'
  */
 export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
@@ -2344,6 +2493,7 @@ export type GlobalOmitConfig = {
   purchaseOrderItem?: Prisma.PurchaseOrderItemOmit
   productionBatch?: Prisma.ProductionBatchOmit
   materialConsumption?: Prisma.MaterialConsumptionOmit
+  qualityControl?: Prisma.QualityControlOmit
 }
 
 /* Types for Logging */

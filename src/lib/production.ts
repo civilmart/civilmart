@@ -188,3 +188,201 @@ export async function calculateBatchRequirements(batchId: string) {
     requirements,
   };
 }
+
+// ============================================================
+// AUTOMATIC MATERIAL CONSUMPTION
+//
+// This is the single place that decides which raw-material lots
+// get consumed for a batch. It always picks lots automatically
+// (oldest expiry first, then oldest received first — FEFO), so
+// nobody ever needs to pick a lot or a quantity by hand.
+//
+// It is called from the batch status-update route whenever a
+// batch moves into IN_PROGRESS. It is intentionally safe to call
+// more than once for the same batch: if everything the formula
+// needs has already been consumed, it just reports that and does
+// nothing further.
+// ============================================================
+
+export type ConsumptionShortage = {
+  rawMaterialId: string;
+  rawMaterialName: string;
+  required: number;
+  unit: string;
+  available: number;
+};
+
+export type ConsumedItem = {
+  rawMaterialId: string;
+  rawMaterialName: string;
+  ingredientUnit: InventoryUnit;
+  quantity: number;
+  lotId: string;
+  lotNumber: string;
+  lotUnit: InventoryUnit;
+};
+
+export type ConsumeBatchMaterialsResult =
+  | { status: "consumed"; consumed: ConsumedItem[] }
+  | { status: "shortage"; shortages: ConsumptionShortage[] }
+  | { status: "already_consumed" };
+
+export async function consumeBatchMaterials(
+  batchId: string
+): Promise<ConsumeBatchMaterialsResult> {
+  const batch = await prisma.productionBatch.findUnique({
+    where: { id: batchId },
+  });
+
+  if (!batch) {
+    throw new Error("Production batch not found.");
+  }
+
+  const requirements = await calculateBatchRequirements(batchId);
+
+  const shortages: ConsumptionShortage[] = [];
+  const consumptionPlan: ConsumedItem[] = [];
+
+  for (const requirement of requirements.requirements) {
+    if (requirement.remainingQuantity <= 0.000001) {
+      continue;
+    }
+
+    const rawMaterial = await prisma.rawMaterial.findUnique({
+      where: {
+        id: requirement.rawMaterialId,
+      },
+    });
+
+    if (!rawMaterial) {
+      throw new Error(
+        `Raw material ${requirement.rawMaterialName} no longer exists.`
+      );
+    }
+
+    const lots = await prisma.rawMaterialLot.findMany({
+      where: {
+        rawMaterialId: requirement.rawMaterialId,
+      },
+      orderBy: [
+        { expiryDate: "asc" },
+        { receivedAt: "asc" },
+      ],
+    });
+
+    let remaining = requirement.remainingQuantity;
+    let totalAvailable = 0;
+
+    for (const lot of lots) {
+      const availableInLot = await getLotAvailableQuantity(lot.id);
+
+      if (availableInLot <= 0) {
+        continue;
+      }
+
+      let availableInIngredientUnit: number;
+
+      try {
+        availableInIngredientUnit = convertQuantity(
+          availableInLot,
+          lot.unit as InventoryUnit,
+          requirement.requiredUnit
+        );
+      } catch {
+        continue;
+      }
+
+      totalAvailable += availableInIngredientUnit;
+
+      if (remaining <= 0.000001) {
+        break;
+      }
+
+      const consumeInIngredientUnit = Math.min(
+        remaining,
+        availableInIngredientUnit
+      );
+
+      const consumeInLotUnit = convertQuantity(
+        consumeInIngredientUnit,
+        requirement.requiredUnit,
+        lot.unit as InventoryUnit
+      );
+
+      consumptionPlan.push({
+        rawMaterialId: requirement.rawMaterialId,
+        rawMaterialName: requirement.rawMaterialName,
+        ingredientUnit: requirement.requiredUnit,
+        quantity: consumeInLotUnit,
+        lotId: lot.id,
+        lotNumber: lot.lotNumber,
+        lotUnit: lot.unit as InventoryUnit,
+      });
+
+      remaining -= consumeInIngredientUnit;
+    }
+
+    if (remaining > 0.000001) {
+      shortages.push({
+        rawMaterialId: requirement.rawMaterialId,
+        rawMaterialName: requirement.rawMaterialName,
+        required: requirement.remainingQuantity,
+        unit: requirement.requiredUnit,
+        available: totalAvailable,
+      });
+    }
+  }
+
+  if (shortages.length > 0) {
+    return { status: "shortage", shortages };
+  }
+
+  if (consumptionPlan.length === 0) {
+    return { status: "already_consumed" };
+  }
+
+  await prisma.$transaction(
+    async (tx) => {
+      for (const item of consumptionPlan) {
+        const unitType =
+          item.lotUnit === "G" || item.lotUnit === "KG"
+            ? "WEIGHT"
+            : item.lotUnit === "ML" || item.lotUnit === "L"
+              ? "VOLUME"
+              : "PIECE";
+
+        await tx.materialConsumption.create({
+          data: {
+            productionBatchId: batchId,
+            rawMaterialId: item.rawMaterialId,
+            lotId: item.lotId,
+            quantity: item.quantity,
+            unitType,
+            unit: item.lotUnit,
+            notes: `Automatic formula consumption from lot ${item.lotNumber}`,
+          },
+        });
+
+        await tx.inventoryTransaction.create({
+          data: {
+            rawMaterialId: item.rawMaterialId,
+            lotId: item.lotId,
+            transactionType: "CONSUMPTION",
+            quantity: item.quantity,
+            unitType,
+            unit: item.lotUnit,
+            referenceType: "PRODUCTION_BATCH",
+            referenceId: batchId,
+            notes: `Automatic production consumption for batch ${batch.batchNumber}`,
+          },
+        });
+      }
+    },
+    {
+      maxWait: 30000,
+      timeout: 30000,
+    }
+  );
+
+  return { status: "consumed", consumed: consumptionPlan };
+}

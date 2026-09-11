@@ -150,7 +150,6 @@ export default function ProductionPage() {
   const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
 
   const [materialRequirements, setMaterialRequirements] = useState<MaterialRequirement[]>([]);
-  const [consumingMaterials, setConsumingMaterials] = useState(false);
 
   const [lots, setLots] = useState<Lot[]>([]);
   const [batches, setBatches] = useState<ProductionBatch[]>([]);
@@ -431,6 +430,26 @@ export default function ProductionPage() {
       const data = await response.json();
 
       if (!response.ok) {
+        if (data.shortages?.length) {
+          const shortageText = data.shortages
+            .map(
+              (item: {
+                rawMaterialName: string;
+                required: number;
+                available: number;
+                unit: string;
+              }) =>
+                `${item.rawMaterialName}: need ${item.required.toFixed(
+                  2
+                )} ${item.unit}, available ${item.available.toFixed(
+                  2
+                )} ${item.unit}`
+            )
+            .join("\n");
+
+          throw new Error(`${data.error}\n\n${shortageText}`);
+        }
+
         throw new Error(
           data.error || "Failed to update production batch."
         );
@@ -438,6 +457,7 @@ export default function ProductionPage() {
 
       setProducedQuantity("");
       await loadData();
+      await loadMaterialRequirements(batch.id);
 
       const refreshed = (
         Array.isArray(data) ? data : null
@@ -453,6 +473,12 @@ export default function ProductionPage() {
         ).find((item: ProductionBatch) => item.id === batch.id);
 
         setSelectedBatch(latestBatch ?? data);
+      }
+
+      if (status === "IN_PROGRESS") {
+        alert(
+          "Production started. Required materials were consumed automatically from available lots."
+        );
       }
     } catch (error) {
       alert(
@@ -478,71 +504,6 @@ export default function ProductionPage() {
     } catch (error) {
       console.error("Failed to load material requirements:", error);
       setMaterialRequirements([]);
-    }
-  };
-
-
-
-  const consumeRequiredMaterials = async (batchId: string) => {
-    setConsumingMaterials(true);
-
-    try {
-      const response = await fetch(
-        `/api/production/batches/${batchId}/consume-all`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (data.shortages?.length) {
-          const shortageText = data.shortages
-            .map(
-              (item: {
-                rawMaterialName: string;
-                required: number;
-                available: number;
-                unit: string;
-              }) =>
-                `${item.rawMaterialName}: need ${item.required.toFixed(
-                  2
-                )} ${item.unit}, available ${item.available.toFixed(
-                  2
-                )} ${item.unit}`
-            )
-            .join("\n");
-
-          throw new Error(
-            `${data.error}\n\n${shortageText}`
-          );
-        }
-
-        throw new Error(
-          data.error || "Failed to consume materials."
-        );
-      }
-
-      await loadData();
-
-      await loadMaterialRequirements(batchId);
-
-      alert(
-        data.message ||
-          "Required materials consumed successfully."
-      );
-    } catch (error) {
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Failed to consume materials."
-      );
-    } finally {
-      setConsumingMaterials(false);
     }
   };
 
@@ -985,38 +946,17 @@ export default function ProductionPage() {
               )}
 
             <div className="space-y-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h3 className="font-semibold">
-                    Material Requirements
-                  </h3>
+              <div>
+                <h3 className="font-semibold">
+                  Material Requirements
+                </h3>
 
-                  <p className="text-sm text-muted-foreground">
-                    Materials are calculated automatically from the selected
-                    formula and production quantity.
-                  </p>
-                </div>
-
-                {selectedBatch.status !== "COMPLETED" &&
-                  selectedBatch.status !== "CANCELLED" && (
-                    <Button
-                      onClick={() =>
-                        consumeRequiredMaterials(selectedBatch.id)
-                      }
-                      disabled={
-                        consumingMaterials ||
-                        materialRequirements.length === 0
-                      }
-                    >
-                      {consumingMaterials && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-
-                      {consumingMaterials
-                        ? "Consuming Materials..."
-                        : "Consume Required Materials"}
-                    </Button>
-                  )}
+                <p className="text-sm text-muted-foreground">
+                  Materials are calculated automatically from the selected
+                  formula and production quantity, and are consumed
+                  automatically from available lots (nearest expiry first)
+                  when production starts.
+                </p>
               </div>
 
   {materialRequirements.length === 0 ? (

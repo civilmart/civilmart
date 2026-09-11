@@ -15,7 +15,11 @@ export async function GET() {
         materialConsumptions: {
           include: {
             rawMaterial: true,
-            lot: true,
+            lot: {
+              include: {
+                supplier: true,
+              },
+            },
           },
         },
       },
