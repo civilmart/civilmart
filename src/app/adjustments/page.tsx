@@ -1,0 +1,487 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Plus, Search } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+
+type RawMaterial = {
+  id: string;
+  code: string;
+  name: string;
+  unitType: "WEIGHT" | "VOLUME" | "PIECE";
+};
+
+type Lot = {
+  id: string;
+  lotNumber: string;
+  receivedQty: number | string;
+  unit: "G" | "KG" | "ML" | "L" | "PIECE";
+  receivedAt: string;
+  expiryDate: string | null;
+  rawMaterialId: string;
+};
+
+export default function AdjustmentsPage() {
+  const [materials, setMaterials] = useState<RawMaterial[]>([]);
+  const [lots, setLots] = useState<Lot[]>([]);
+
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const [rawMaterialId, setRawMaterialId] = useState("");
+  const [lotId, setLotId] = useState("");
+
+  const [adjustmentType, setAdjustmentType] = useState<
+    "ADJUSTMENT_IN" | "ADJUSTMENT_OUT"
+  >("ADJUSTMENT_IN");
+
+  const [quantity, setQuantity] = useState("");
+  const [unit, setUnit] = useState("");
+  const [reason, setReason] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const loadMaterials = async () => {
+    try {
+      const response = await fetch("/api/raw-materials");
+      const result = await response.json();
+
+      if (result.success) {
+        setMaterials(result.data);
+      }
+    } catch (error) {
+      console.error("Failed to load raw materials:", error);
+    }
+  };
+
+  const loadLots = async () => {
+    try {
+      const response = await fetch("/api/lots");
+      const result = await response.json();
+
+      if (result.success) {
+        setLots(result.data);
+      }
+    } catch (error) {
+      console.error("Failed to load lots:", error);
+    }
+  };
+
+  useEffect(() => {
+    loadMaterials();
+    loadLots();
+  }, []);
+
+  const selectedMaterial = materials.find(
+    (material) => material.id === rawMaterialId
+  );
+
+  const selectedLot = lots.find((lot) => lot.id === lotId);
+
+  const materialLots = lots.filter(
+    (lot) => lot.rawMaterialId === rawMaterialId
+  );
+
+  const resetForm = () => {
+    setRawMaterialId("");
+    setLotId("");
+    setAdjustmentType("ADJUSTMENT_IN");
+    setQuantity("");
+    setUnit("");
+    setReason("");
+    setNotes("");
+  };
+
+  const handleMaterialChange = (value: string) => {
+    setRawMaterialId(value);
+    setLotId("");
+    setUnit("");
+    setQuantity("");
+  };
+
+  const handleLotChange = (value: string) => {
+    const lot = lots.find((item) => item.id === value);
+
+    setLotId(value);
+    setUnit(lot?.unit ?? "");
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (
+      !rawMaterialId ||
+      !lotId ||
+      !adjustmentType ||
+      !quantity ||
+      !unit ||
+      !reason.trim()
+    ) {
+      alert("Please fill in all required fields.");
+      return;
+    }
+
+    const numericQuantity = Number(quantity);
+
+    if (!Number.isFinite(numericQuantity) || numericQuantity <= 0) {
+      alert("Quantity must be greater than zero.");
+      return;
+    }
+
+    if (!selectedLot) {
+      alert("Please select a valid lot.");
+      return;
+    }
+
+    if (selectedLot.unit !== unit) {
+      alert(`Unit must match the selected lot unit (${selectedLot.unit}).`);
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      const response = await fetch("/api/adjustments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          rawMaterialId,
+          lotId,
+          adjustmentType,
+          quantity: numericQuantity,
+          unit,
+          reason,
+          notes,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        alert(result.error || "Failed to create adjustment.");
+        return;
+      }
+
+      alert("Inventory adjustment created successfully.");
+
+      await loadLots();
+
+      resetForm();
+      setOpen(false);
+    } catch (error) {
+      console.error("Failed to create adjustment:", error);
+      alert("Failed to create adjustment.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filteredMaterials = materials.filter((material) => {
+    const query = search.toLowerCase().trim();
+
+    return (
+      material.name.toLowerCase().includes(query) ||
+      material.code.toLowerCase().includes(query)
+    );
+  });
+
+  return (
+    <div className="space-y-6 p-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Inventory Adjustments
+          </h1>
+
+          <p className="text-muted-foreground">
+            Manage stock corrections and inventory adjustments by lot.
+          </p>
+        </div>
+
+        <Dialog
+          open={open}
+          onOpenChange={(value) => {
+            setOpen(value);
+
+            if (!value) {
+              resetForm();
+            }
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              New Adjustment
+            </Button>
+          </DialogTrigger>
+
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Create Inventory Adjustment</DialogTitle>
+            </DialogHeader>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-2">
+                <Label>Raw Material *</Label>
+
+                <Select
+                  value={rawMaterialId}
+                  onValueChange={handleMaterialChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select raw material" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    {materials.map((material) => (
+                      <SelectItem key={material.id} value={material.id}>
+                        {material.code} — {material.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Lot *</Label>
+
+                <Select
+                  value={lotId}
+                  onValueChange={handleLotChange}
+                  disabled={!rawMaterialId || materialLots.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        !rawMaterialId
+                          ? "Select raw material first"
+                          : materialLots.length === 0
+                            ? "No lots available"
+                            : "Select lot"
+                      }
+                    />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    {materialLots.map((lot) => (
+                      <SelectItem key={lot.id} value={lot.id}>
+                        {lot.lotNumber} — {lot.receivedQty} {lot.unit}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {rawMaterialId && materialLots.length === 0 && (
+                  <p className="text-sm text-destructive">
+                    This raw material has no lot. Create a lot before making
+                    an adjustment.
+                  </p>
+                )}
+              </div>
+
+              {selectedLot && (
+                <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                  <div className="font-medium">
+                    Selected Lot: {selectedLot.lotNumber}
+                  </div>
+
+                  <div className="mt-1 text-muted-foreground">
+                    Received: {selectedLot.receivedQty} {selectedLot.unit}
+                  </div>
+
+                  {selectedLot.expiryDate && (
+                    <div className="text-muted-foreground">
+                      Expiry:{" "}
+                      {new Date(selectedLot.expiryDate).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label>Adjustment Type *</Label>
+
+                <Select
+                  value={adjustmentType}
+                  onValueChange={(value) =>
+                    setAdjustmentType(
+                      value as "ADJUSTMENT_IN" | "ADJUSTMENT_OUT"
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    <SelectItem value="ADJUSTMENT_IN">
+                      Stock Increase
+                    </SelectItem>
+
+                    <SelectItem value="ADJUSTMENT_OUT">
+                      Stock Decrease
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Quantity *</Label>
+
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.0001"
+                    value={quantity}
+                    onChange={(event) => setQuantity(event.target.value)}
+                    placeholder="0"
+                    disabled={!selectedLot}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Unit *</Label>
+
+                  <Input
+                    value={unit}
+                    readOnly
+                    placeholder="Select lot first"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Reason *</Label>
+
+                <Input
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                  placeholder="e.g. Physical stock count correction"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Notes</Label>
+
+                <Textarea
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  placeholder="Additional information..."
+                  rows={3}
+                />
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={saving || !selectedLot}
+              >
+                {saving ? "Saving..." : "Create Adjustment"}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Raw Materials</CardTitle>
+        </CardHeader>
+
+        <CardContent>
+          <div className="relative mb-4 max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
+            <Input
+              placeholder="Search raw materials..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left">
+                  <th className="px-4 py-3">Code</th>
+                  <th className="px-4 py-3">Raw Material</th>
+                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredMaterials.map((material) => (
+                  <tr key={material.id} className="border-b">
+                    <td className="px-4 py-3 font-medium">
+                      {material.code}
+                    </td>
+
+                    <td className="px-4 py-3">{material.name}</td>
+
+                    <td className="px-4 py-3">{material.unitType}</td>
+
+                    <td className="px-4 py-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setRawMaterialId(material.id);
+                          setLotId("");
+                          setUnit("");
+                          setQuantity("");
+                          setOpen(true);
+                        }}
+                      >
+                        Adjust Stock
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+
+                {filteredMaterials.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="px-4 py-8 text-center text-muted-foreground"
+                    >
+                      No raw materials found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

@@ -1,5 +1,5 @@
 "use client";
-
+import Link from "next/link";
 import {
   BarChart3,
   Beaker,
@@ -23,6 +23,7 @@ const menuSections = [
       {
         name: "Dashboard",
         icon: LayoutDashboard,
+        href: "/",
       },
     ],
   },
@@ -32,14 +33,22 @@ const menuSections = [
       {
         name: "Raw Materials",
         icon: FlaskConical,
+        href: "/raw-materials",
+      },
+      {
+        name: "Inventory",
+        icon: Boxes,
+        href: "/inventory",
       },
       {
         name: "Lots",
         icon: Boxes,
+        href: "/lots",
       },
       {
         name: "Adjustments",
         icon: Package,
+        href: "/adjustments",
       },
     ],
   },
@@ -49,14 +58,17 @@ const menuSections = [
       {
         name: "Suppliers",
         icon: Truck,
+        href: "/suppliers",
       },
       {
         name: "Purchases",
         icon: ShoppingCart,
+        href: "/purchases",
       },
       {
         name: "Purchase Orders",
         icon: FileText,
+        href: "/purchase-orders",
       },
     ],
   },
@@ -66,14 +78,17 @@ const menuSections = [
       {
         name: "Formulas",
         icon: Beaker,
+        href: "/formulas",
       },
       {
         name: "Production",
         icon: Factory,
+        href: "/production",
       },
       {
         name: "Batches",
         icon: Package,
+        href: "/batches",
       },
     ],
   },
@@ -83,6 +98,7 @@ const menuSections = [
       {
         name: "Quality Control",
         icon: ClipboardCheck,
+        href: "/qc",
       },
     ],
   },
@@ -92,14 +108,17 @@ const menuSections = [
       {
         name: "Reports",
         icon: BarChart3,
+        href: "/reports",
       },
       {
         name: "Users",
         icon: Users,
+        href: "/users",
       },
       {
         name: "Settings",
         icon: Settings,
+        href: "/settings",
       },
     ],
   },
@@ -132,13 +151,14 @@ export function Sidebar() {
                   const Icon = item.icon;
 
                   return (
-                    <button
+                    <Link
                       key={item.name}
+                      href={item.href}
                       className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     >
                       <Icon className="h-4 w-4" />
                       <span>{item.name}</span>
-                    </button>
+                    </Link>
                   );
                 })}
               </div>
