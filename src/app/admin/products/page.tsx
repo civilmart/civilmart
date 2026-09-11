@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { RefObject } from "react";
 import {
   Package,
   Pencil,
@@ -395,6 +396,52 @@ export default function ProductsPage() {
     );
   }
 
+  const [imageUploading, setImageUploading] = useState(false);
+  const mainImageInput = useRef<HTMLInputElement>(null);
+  const secondaryImageInput = useRef<HTMLInputElement>(null);
+
+  function uploadFile(
+    input: RefObject<HTMLInputElement | null>,
+    onUrl: (url: string) => void
+  ) {
+    const file = input.current?.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    setImageUploading(true);
+
+    fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    })
+      .then(async (response) => {
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Upload failed.");
+        }
+
+        return data.url as string;
+      })
+      .then((url) => onUrl(url))
+      .catch((error) => {
+        console.error(error);
+        alert(error.message || "Upload failed.");
+      })
+      .finally(() => {
+        setImageUploading(false);
+
+        if (input.current) {
+          input.current.value = "";
+        }
+      });
+  }
+
   const previewSize = "h-16 w-16";
 
   return (
@@ -532,10 +579,43 @@ export default function ProductsPage() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label>Primary Image URL (1280x1280)</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label>
+                    Primary Image URL (1280x1280)
+                  </Label>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={imageUploading}
+                    onClick={() =>
+                      mainImageInput.current?.click()
+                    }
+                  >
+                    <Plus className="mr-1 h-3 w-3" />
+                    {imageUploading
+                      ? "Uploading..."
+                      : "Upload Image"}
+                  </Button>
+
+                  <input
+                    ref={mainImageInput}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={() =>
+                      uploadFile(
+                        mainImageInput,
+                        (url) =>
+                          updateFormField("imageUrl", url)
+                      )
+                    }
+                  />
+                </div>
 
                 <Input
-                  placeholder="https://..."
+                  placeholder="https://res.cloudinary.com/..."
                   value={form.imageUrl}
                   onChange={(e) =>
                     updateFormField("imageUrl", e.target.value)
@@ -553,10 +633,43 @@ export default function ProductsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Secondary Image URL (1280x1280)</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label>
+                    Secondary Image URL (1280x1280)
+                  </Label>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={imageUploading}
+                    onClick={() =>
+                      secondaryImageInput.current?.click()
+                    }
+                  >
+                    <Plus className="mr-1 h-3 w-3" />
+                    {imageUploading
+                      ? "Uploading..."
+                      : "Upload Image"}
+                  </Button>
+
+                  <input
+                    ref={secondaryImageInput}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={() =>
+                      uploadFile(
+                        secondaryImageInput,
+                        (url) =>
+                          updateFormField("imageUrl2", url)
+                      )
+                    }
+                  />
+                </div>
 
                 <Input
-                  placeholder="https://..."
+                  placeholder="https://res.cloudinary.com/..."
                   value={form.imageUrl2}
                   onChange={(e) =>
                     updateFormField("imageUrl2", e.target.value)
