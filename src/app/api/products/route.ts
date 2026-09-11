@@ -35,6 +35,12 @@ export async function POST(request: NextRequest) {
       code,
       name,
       description,
+      status,
+      imageUrl,
+      imageUrl2,
+      price,
+      category,
+      isFeatured,
       variants,
     } = body;
 
@@ -48,6 +54,18 @@ export async function POST(request: NextRequest) {
     if (!name?.trim()) {
       return NextResponse.json(
         { error: "Product name is required" },
+        { status: 400 }
+      );
+    }
+
+    const productPrice =
+      price === undefined || price === null || price === ""
+        ? null
+        : Number(price);
+
+    if (productPrice !== null && Number.isNaN(productPrice)) {
+      return NextResponse.json(
+        { error: "Invalid price" },
         { status: 400 }
       );
     }
@@ -103,6 +121,20 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const variantPrice =
+        variant.price === undefined || variant.price === null || variant.price === ""
+          ? null
+          : Number(variant.price);
+
+      if (variantPrice !== null && Number.isNaN(variantPrice)) {
+        return NextResponse.json(
+          {
+            error: `Invalid price for variant ${variant.name}`,
+          },
+          { status: 400 }
+        );
+      }
+
       if (variant.sizeUnit !== "ML" && variant.sizeUnit !== "L") {
         return NextResponse.json(
           {
@@ -112,11 +144,18 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const stockQuantity = Number.isFinite(Number(variant.stockQuantity))
+        ? Math.max(0, Math.floor(Number(variant.stockQuantity)))
+        : 0;
+
       preparedVariants.push({
         sku: variant.sku.trim(),
         name: variant.name.trim(),
         sizeValue,
         sizeUnit: variant.sizeUnit,
+        price: variantPrice !== null ? String(variantPrice) : null,
+        imageUrl: variant.imageUrl?.trim() || null,
+        stockQuantity,
         status: "ACTIVE" as const,
       });
     }
@@ -152,6 +191,11 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         description: description?.trim() || null,
         status: "ACTIVE",
+        imageUrl: imageUrl?.trim() || null,
+        imageUrl2: imageUrl2?.trim() || null,
+        price: productPrice !== null ? String(productPrice) : null,
+        category: category?.trim() || null,
+        isFeatured: Boolean(isFeatured),
 
         variants: {
           create: preparedVariants,

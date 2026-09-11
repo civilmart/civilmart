@@ -120,6 +120,11 @@ const menuSections: MenuSection[] = [
     title: "STORE",
     items: [
       {
+        name: "Products",
+        icon: Package,
+        href: "/admin/products",
+      },
+      {
         name: "Orders",
         icon: ClipboardList,
         href: "/admin/orders",
