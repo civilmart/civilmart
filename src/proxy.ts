@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
+import { isAdminRole, isStaffRole } from "@/lib/roles";
 
-const publicPaths = ["/login", "/api/auth/login", "/api/auth/logout", "/api/auth/me", "/api/setup/admin"];
-const adminOnlyPaths = ["/users", "/settings", "/api/users"];
+const publicApiPrefixes = [
+  "/api/store",
+  "/api/auth",
+  "/api/setup",
+];
 
-function isPublicPath(pathname: string): boolean {
-  return publicPaths.some(
+const adminOnlyPaths = ["/admin/users", "/admin/settings", "/api/users"];
+
+function isPublicApi(pathname: string): boolean {
+  return publicApiPrefixes.some(
     (p) => pathname === p || pathname.startsWith(p + "/")
   );
 }
@@ -17,6 +23,10 @@ function isAdminPath(pathname: string): boolean {
   );
 }
 
+function redirectToLogin(request: NextRequest): NextResponse {
+  return NextResponse.redirect(new URL("/admin/login", request.url));
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -24,13 +34,23 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (isPublicPath(pathname)) {
+  // All storefront pages and the admin login page are public.
+  if (!pathname.startsWith("/admin") && !pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
+
+  if (pathname === "/admin/login") {
+    return NextResponse.next();
+  }
+
+  // Public API endpoints (storefront, customer auth, setup).
+  if (pathname.startsWith("/api/") && isPublicApi(pathname)) {
     return NextResponse.next();
   }
 
   const token = request.cookies.get(SESSION_COOKIE)?.value;
 
-  if (!token) {
+  if (!token || pathname === "/admin/login") {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json(
         { success: false, error: "Not authenticated" },
@@ -38,7 +58,7 @@ export async function proxy(request: NextRequest) {
       );
     }
 
-    return NextResponse.redirect(new URL("/login", request.url));
+    return redirectToLogin(request);
   }
 
   const payload = await verifySessionToken(token);
@@ -53,14 +73,13 @@ export async function proxy(request: NextRequest) {
       );
     }
 
-    return NextResponse.redirect(new URL("/login", request.url));
+    return redirectToLogin(request);
   }
 
-  if (pathname === "/login") {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
+  // Normal end-users / visitors cannot enter the admin interface.
+  if (!isStaffRole(payload.role)) {
+    request.cookies.delete(SESSION_COOKIE);
 
-  if (isAdminPath(pathname) && payload.role !== "ADMIN") {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json(
         { success: false, error: "Admin access required" },
@@ -68,7 +87,19 @@ export async function proxy(request: NextRequest) {
       );
     }
 
-    return NextResponse.redirect(new URL("/", request.url));
+    return redirectToLogin(request);
+  }
+
+  // Only admins and super admins can manage users / settings.
+  if (isAdminPath(pathname) && !isAdminRole(payload.role)) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { success: false, error: "Admin access required" },
+        { status: 403 }
+      );
+    }
+
+    return NextResponse.redirect(new URL("/admin", request.url));
   }
 
   return NextResponse.next();

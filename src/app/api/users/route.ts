@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserOrThrow, hashPassword } from "@/lib/auth";
+import { isAdminRole } from "@/lib/roles";
 
 export async function GET() {
   try {
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
   try {
     const currentUser = await getSessionUserOrThrow();
 
-    if (currentUser.role !== "ADMIN") {
+    if (!isAdminRole(currentUser.role)) {
       return NextResponse.json(
         { success: false, error: "Only admins can create users" },
         { status: 403 }
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     const validRoles = [
+      "SUPERADMIN",
       "ADMIN",
       "MANAGER",
       "STOREKEEPER",
@@ -68,12 +70,20 @@ export async function POST(request: NextRequest) {
       "QC",
       "PURCHASE",
       "VIEWER",
+      "USER",
     ];
 
     if (role && !validRoles.includes(role)) {
       return NextResponse.json(
         { success: false, error: `Invalid role. Must be one of: ${validRoles.join(", ")}` },
         { status: 400 }
+      );
+    }
+
+    if (role === "SUPERADMIN" && currentUser.role !== "SUPERADMIN") {
+      return NextResponse.json(
+        { success: false, error: "Only a super admin can grant the super admin role" },
+        { status: 403 }
       );
     }
 

@@ -102,3 +102,28 @@ export type MaterialConsumption = Prisma.MaterialConsumptionModel
  * 
  */
 export type QualityControl = Prisma.QualityControlModel
+/**
+ * Model Customer
+ * 
+ */
+export type Customer = Prisma.CustomerModel
+/**
+ * Model CustomerWishlistItem
+ * 
+ */
+export type CustomerWishlistItem = Prisma.CustomerWishlistItemModel
+/**
+ * Model CustomerOrder
+ * 
+ */
+export type CustomerOrder = Prisma.CustomerOrderModel
+/**
+ * Model CustomerOrderItem
+ * 
+ */
+export type CustomerOrderItem = Prisma.CustomerOrderItemModel
+/**
+ * Model CustomerOrderStatusEvent
+ * 
+ */
+export type CustomerOrderStatusEvent = Prisma.CustomerOrderStatusEventModel

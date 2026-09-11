@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserOrThrow, hashPassword } from "@/lib/auth";
+import { isAdminRole } from "@/lib/roles";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -58,9 +59,25 @@ export async function PATCH(
     const { id } = await context.params;
     const body = await request.json();
 
-    if (currentUser.role !== "ADMIN" && currentUser.id !== id) {
+    if (!isAdminRole(currentUser.role) && currentUser.id !== id) {
       return NextResponse.json(
         { success: false, error: "Can only edit your own profile" },
+        { status: 403 }
+      );
+    }
+
+    const target = await prisma.user.findUnique({ where: { id } });
+
+    if (!target) {
+      return NextResponse.json(
+        { success: false, error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    if (target.role === "SUPERADMIN" && currentUser.role !== "SUPERADMIN") {
+      return NextResponse.json(
+        { success: false, error: "Only a super admin can manage super admins" },
         { status: 403 }
       );
     }
@@ -72,8 +89,16 @@ export async function PATCH(
     if (name !== undefined) data.name = name.trim();
     if (email !== undefined) data.email = email?.trim()?.toLowerCase() || null;
 
-    if (currentUser.role === "ADMIN") {
-      if (role !== undefined) data.role = role;
+    if (isAdminRole(currentUser.role)) {
+      if (role !== undefined) {
+        if (role === "SUPERADMIN" && currentUser.role !== "SUPERADMIN") {
+          return NextResponse.json(
+            { success: false, error: "Only a super admin can grant the super admin role" },
+            { status: 403 }
+          );
+        }
+        data.role = role;
+      }
       if (isActive !== undefined) data.isActive = isActive;
     }
 
@@ -117,7 +142,7 @@ export async function DELETE(
   try {
     const currentUser = await getSessionUserOrThrow();
 
-    if (currentUser.role !== "ADMIN") {
+    if (!isAdminRole(currentUser.role)) {
       return NextResponse.json(
         { success: false, error: "Only admins can delete users" },
         { status: 403 }
@@ -130,6 +155,15 @@ export async function DELETE(
       return NextResponse.json(
         { success: false, error: "Cannot delete your own account" },
         { status: 400 }
+      );
+    }
+
+    const target = await prisma.user.findUnique({ where: { id } });
+
+    if (target?.role === "SUPERADMIN" && currentUser.role !== "SUPERADMIN") {
+      return NextResponse.json(
+        { success: false, error: "Only a super admin can delete super admins" },
+        { status: 403 }
       );
     }
 

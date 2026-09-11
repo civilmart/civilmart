@@ -41,6 +41,7 @@ type User = {
 };
 
 const roles = [
+  "SUPERADMIN",
   "ADMIN",
   "MANAGER",
   "STOREKEEPER",
@@ -48,9 +49,11 @@ const roles = [
   "QC",
   "PURCHASE",
   "VIEWER",
+  "USER",
 ] as const;
 
 const roleLabels: Record<string, string> = {
+  SUPERADMIN: "Super Admin",
   ADMIN: "Admin",
   MANAGER: "Manager",
   STOREKEEPER: "Storekeeper",
@@ -58,6 +61,7 @@ const roleLabels: Record<string, string> = {
   QC: "Quality Control",
   PURCHASE: "Purchase",
   VIEWER: "Viewer",
+  USER: "Customer / Visitor",
 };
 
 type FormState = {

@@ -522,14 +522,6 @@ export type FormulaVersionUncheckedUpdateManyWithoutFormulaNestedInput = {
   deleteMany?: Prisma.FormulaVersionScalarWhereInput | Prisma.FormulaVersionScalarWhereInput[]
 }
 
-export type IntFieldUpdateOperationsInput = {
-  set?: number
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
 export type FormulaVersionCreateNestedOneWithoutIngredientsInput = {
   create?: Prisma.XOR<Prisma.FormulaVersionCreateWithoutIngredientsInput, Prisma.FormulaVersionUncheckedCreateWithoutIngredientsInput>
   connectOrCreate?: Prisma.FormulaVersionCreateOrConnectWithoutIngredientsInput

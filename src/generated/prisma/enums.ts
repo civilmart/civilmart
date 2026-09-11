@@ -10,13 +10,15 @@
 */
 
 export const UserRole = {
-  ADMIN: 'ADMIN',
-  MANAGER: 'MANAGER',
-  STOREKEEPER: 'STOREKEEPER',
-  PRODUCTION: 'PRODUCTION',
-  QC: 'QC',
+  USER: 'USER',
+  VIEWER: 'VIEWER',
   PURCHASE: 'PURCHASE',
-  VIEWER: 'VIEWER'
+  QC: 'QC',
+  PRODUCTION: 'PRODUCTION',
+  STOREKEEPER: 'STOREKEEPER',
+  MANAGER: 'MANAGER',
+  ADMIN: 'ADMIN',
+  SUPERADMIN: 'SUPERADMIN'
 } as const
 
 export type UserRole = (typeof UserRole)[keyof typeof UserRole]
@@ -155,3 +157,15 @@ export const QCDecision = {
 } as const
 
 export type QCDecision = (typeof QCDecision)[keyof typeof QCDecision]
+
+
+export const CustomerOrderStatus = {
+  PLACED: 'PLACED',
+  CONFIRMED: 'CONFIRMED',
+  PROCESSING: 'PROCESSING',
+  SHIPPED: 'SHIPPED',
+  DELIVERED: 'DELIVERED',
+  CANCELLED: 'CANCELLED'
+} as const
+
+export type CustomerOrderStatus = (typeof CustomerOrderStatus)[keyof typeof CustomerOrderStatus]

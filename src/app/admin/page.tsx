@@ -11,6 +11,7 @@ import {
   Loader2,
   PackageX,
   RefreshCw,
+  ShoppingBag,
   ShoppingCart,
   Truck,
 } from "lucide-react";
@@ -21,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type ActivityItem = {
   id: string;
-  type: "PURCHASE" | "PRODUCTION";
+  type: "PURCHASE" | "PRODUCTION" | "ORDER";
   title: string;
   detail: string;
   amount: number | null;
@@ -65,6 +66,22 @@ type DashboardData = {
   expiryAlerts: AlertItem[];
   batchStatusCounts: Record<string, number>;
   totalBatches: number;
+  storeOrderStats: {
+    total: number;
+    open: number;
+    new: number;
+    delivered: number;
+    cancelled: number;
+  };
+  recentOrders: {
+    id: string;
+    orderNumber: string;
+    customerName: string;
+    status: string;
+    total: number;
+    itemCount: number;
+    createdAt: string;
+  }[];
   activity: ActivityItem[];
 };
 
@@ -147,6 +164,12 @@ export default function Home() {
           value: formatNumber(data.stats.qcPending),
           description: "Awaiting quality control",
           icon: ClipboardCheck,
+        },
+        {
+          title: "Store Orders",
+          value: formatNumber(data.storeOrderStats.open),
+          description: `${data.storeOrderStats.new} new · ${data.storeOrderStats.delivered} delivered`,
+          icon: ShoppingBag,
         },
       ]
     : [];
@@ -243,7 +266,7 @@ export default function Home() {
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                       <CardTitle>Expiry Alerts</CardTitle>
-                      <Link href="/lots" className="text-xs text-muted-foreground underline">
+                      <Link href="/admin/lots" className="text-xs text-muted-foreground underline">
                         View lots
                       </Link>
                     </CardHeader>
@@ -301,7 +324,7 @@ export default function Home() {
                     <CardHeader className="flex flex-row items-center justify-between">
                       <CardTitle>Stock Alerts</CardTitle>
                       <Link
-                        href="/recommendations"
+                        href="/admin/recommendations"
                         className="text-xs text-muted-foreground underline"
                       >
                         View recommendations
@@ -355,7 +378,7 @@ export default function Home() {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Recent Activity</CardTitle>
                   <Link
-                    href="/purchases"
+                    href="/admin/purchases"
                     className="text-xs text-muted-foreground underline"
                   >
                     View purchases
@@ -380,11 +403,15 @@ export default function Home() {
                             className={`mt-0.5 rounded-md p-1.5 ${
                               item.type === "PURCHASE"
                                 ? "bg-blue-50 text-blue-700"
-                                : "bg-purple-50 text-purple-700"
+                                : item.type === "ORDER"
+                                  ? "bg-amber-50 text-amber-700"
+                                  : "bg-purple-50 text-purple-700"
                             }`}
                           >
                             {item.type === "PURCHASE" ? (
                               <ShoppingCart className="h-3.5 w-3.5" />
+                            ) : item.type === "ORDER" ? (
+                              <ShoppingBag className="h-3.5 w-3.5" />
                             ) : (
                               <Factory className="h-3.5 w-3.5" />
                             )}
@@ -420,7 +447,7 @@ export default function Home() {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Production Overview</CardTitle>
                   <Link
-                    href="/production"
+                    href="/admin/production"
                     className="text-xs text-muted-foreground underline"
                   >
                     View production
@@ -480,6 +507,73 @@ export default function Home() {
                 </CardContent>
               </Card>
             </div>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Recent Store Orders</CardTitle>
+                <Link
+                  href="/admin/orders"
+                  className="text-xs text-muted-foreground underline"
+                >
+                  Manage orders
+                </Link>
+              </CardHeader>
+
+              <CardContent>
+                {data.recentOrders.length === 0 ? (
+                  <div className="flex min-h-40 items-center justify-center">
+                    <p className="text-sm text-muted-foreground">
+                      No storefront orders yet.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {data.recentOrders.map((order) => (
+                      <div
+                        key={order.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
+                      >
+                        <div>
+                          <span className="font-medium">
+                            {order.orderNumber}
+                          </span>
+                          <div className="text-xs text-muted-foreground">
+                            {order.customerName} · {order.itemCount} item
+                            {order.itemCount === 1 ? "" : "s"}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className={
+                              order.status === "CANCELLED"
+                                ? "border-red-200 bg-red-50 text-red-700"
+                                : order.status === "DELIVERED"
+                                  ? "border-green-200 bg-green-50 text-green-700"
+                                  : order.status === "PLACED"
+                                    ? "border-blue-200 bg-blue-50 text-blue-700"
+                                    : "border-amber-200 bg-amber-50 text-amber-700"
+                            }
+                          >
+                            {order.status.toLowerCase()}
+                          </Badge>
+                          <span className="font-semibold">
+                            {formatCurrency(order.total)}
+                          </span>
+                          <Link
+                            href={`/admin/orders?id=${order.id}`}
+                            className="text-xs font-medium text-muted-foreground underline"
+                          >
+                            Open
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </>
       )}

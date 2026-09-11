@@ -40,7 +40,7 @@ export default function SettingsPage() {
     fetch("/api/auth/me")
       .then((r) => {
         if (!r.ok) {
-          router.push("/login");
+          router.push("/admin/login");
           return null;
         }
         return r.json();

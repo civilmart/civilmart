@@ -17,6 +17,8 @@ export async function GET() {
       expiryLots,
       recentPurchases,
       recentBatches,
+      orderCounts,
+      recentOrders,
     ] = await Promise.all([
       prisma.rawMaterial.count({ where: { isActive: true } }),
       prisma.supplier.count({ where: { isActive: true } }),
@@ -61,6 +63,15 @@ export async function GET() {
         },
         orderBy: { createdAt: "desc" },
         take: 8,
+      }),
+      prisma.customerOrder.groupBy({
+        by: ["status"],
+        _count: { _all: true },
+      }),
+      prisma.customerOrder.findMany({
+        include: { items: true },
+        orderBy: { createdAt: "desc" },
+        take: 6,
       }),
     ]);
 
@@ -156,6 +167,23 @@ export async function GET() {
       statusCounts[group.status] = group._count._all;
     }
 
+    const orderStatusCounts: Record<string, number> = {};
+    for (const group of orderCounts) {
+      orderStatusCounts[group.status] = group._count._all;
+    }
+
+    const totalOrders = orderCounts.reduce(
+      (sum, group) => sum + group._count._all,
+      0
+    );
+    const openOrders =
+      totalOrders -
+      (orderStatusCounts["DELIVERED"] ?? 0) -
+      (orderStatusCounts["CANCELLED"] ?? 0);
+    const newOrders =
+      (orderStatusCounts["PLACED"] ?? 0) +
+      (orderStatusCounts["CONFIRMED"] ?? 0);
+
     const activity = [
       ...recentPurchases.map((purchase) => ({
         id: purchase.id,
@@ -172,6 +200,14 @@ export async function GET() {
         detail: batch.product.name,
         amount: null,
         date: batch.createdAt.toISOString(),
+      })),
+      ...recentOrders.map((order) => ({
+        id: order.id,
+        type: "ORDER",
+        title: `Order ${order.orderNumber}`,
+        detail: `${order.customerName} · ${order.status === "CANCELLED" ? "cancelled" : order.status.toLowerCase()}`,
+        amount: Number(order.total),
+        date: order.createdAt.toISOString(),
       })),
     ]
       .sort(
@@ -207,6 +243,26 @@ export async function GET() {
           (sum, group) => sum + group._count._all,
           0
         ),
+        orderStatusCounts,
+        storeOrderStats: {
+          total: totalOrders,
+          open: openOrders,
+          new: newOrders,
+          delivered: orderStatusCounts["DELIVERED"] ?? 0,
+          cancelled: orderStatusCounts["CANCELLED"] ?? 0,
+        },
+        recentOrders: recentOrders.map((order) => ({
+          id: order.id,
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          status: order.status,
+          total: Number(order.total),
+          itemCount: order.items.reduce(
+            (sum, item) => sum + item.quantity,
+            0
+          ),
+          createdAt: order.createdAt,
+        })),
         activity,
       },
     });

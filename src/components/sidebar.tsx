@@ -21,6 +21,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { isAdminRole } from "@/lib/roles";
 
 type NavItem = {
   name: string;
@@ -41,7 +42,7 @@ const menuSections: MenuSection[] = [
       {
         name: "Dashboard",
         icon: LayoutDashboard,
-        href: "/",
+        href: "/admin",
       },
     ],
   },
@@ -51,22 +52,22 @@ const menuSections: MenuSection[] = [
       {
         name: "Raw Materials",
         icon: FlaskConical,
-        href: "/raw-materials",
+        href: "/admin/raw-materials",
       },
       {
         name: "Inventory",
         icon: Boxes,
-        href: "/inventory",
+        href: "/admin/inventory",
       },
       {
         name: "Lots",
         icon: Boxes,
-        href: "/lots",
+        href: "/admin/lots",
       },
       {
         name: "Adjustments",
         icon: Package,
-        href: "/adjustments",
+        href: "/admin/adjustments",
       },
     ],
   },
@@ -76,22 +77,22 @@ const menuSections: MenuSection[] = [
       {
         name: "Suppliers",
         icon: Truck,
-        href: "/suppliers",
+        href: "/admin/suppliers",
       },
       {
         name: "Purchases",
         icon: ShoppingCart,
-        href: "/purchases",
+        href: "/admin/purchases",
       },
       {
         name: "Purchase Orders",
         icon: FileText,
-        href: "/purchase-orders",
+        href: "/admin/purchase-orders",
       },
       {
         name: "Recommendations",
         icon: Sparkles,
-        href: "/recommendations",
+        href: "/admin/recommendations",
       },
     ],
   },
@@ -101,17 +102,27 @@ const menuSections: MenuSection[] = [
       {
         name: "Formulas",
         icon: Beaker,
-        href: "/formulas",
+        href: "/admin/formulas",
       },
       {
         name: "Production",
         icon: Factory,
-        href: "/production",
+        href: "/admin/production",
       },
       {
         name: "Batches",
         icon: Package,
-        href: "/batches",
+        href: "/admin/batches",
+      },
+    ],
+  },
+  {
+    title: "STORE",
+    items: [
+      {
+        name: "Orders",
+        icon: ClipboardList,
+        href: "/admin/orders",
       },
     ],
   },
@@ -121,12 +132,12 @@ const menuSections: MenuSection[] = [
       {
         name: "Quality Control",
         icon: ClipboardCheck,
-        href: "/qc",
+        href: "/admin/qc",
       },
       {
         name: "QC Records",
         icon: ClipboardList,
-        href: "/qc-records",
+        href: "/admin/qc-records",
       },
     ],
   },
@@ -136,19 +147,19 @@ const menuSections: MenuSection[] = [
       {
         name: "Reports",
         icon: BarChart3,
-        href: "/reports",
+        href: "/admin/reports",
         adminOnly: false,
       },
       {
         name: "Users",
         icon: Users,
-        href: "/users",
+        href: "/admin/users",
         adminOnly: true,
       },
       {
         name: "Settings",
         icon: Settings,
-        href: "/settings",
+        href: "/admin/settings",
         adminOnly: true,
       },
     ],
@@ -168,7 +179,7 @@ export function Sidebar() {
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
-    if (pathname === "/login") return;
+    if (pathname === "/admin/login") return;
 
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
@@ -181,13 +192,13 @@ export function Sidebar() {
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     setUser(null);
-    router.push("/login");
+    router.push("/admin/login");
     router.refresh();
   }
 
-  if (pathname === "/login") return null;
+  if (pathname === "/admin/login") return null;
 
-  const isAdmin = user?.role === "ADMIN";
+  const isAdmin = user ? isAdminRole(user.role) : false;
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r bg-background">
