@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { formatMoney } from "@/lib/money";
 import {
   AlertTriangle,
   Boxes,
@@ -115,13 +116,7 @@ export default function Home() {
     }).format(value);
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
+  const formatCurrency = (value: number) => formatMoney(value);
 
   const statCards = data
     ? [

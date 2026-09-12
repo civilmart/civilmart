@@ -2,14 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
-import {
-  Package,
-  Pencil,
-  Plus,
-  Search,
-  Star,
-  Trash2,
-} from "lucide-react";
+import { Package, Pencil, Plus, Search, Star, Trash2 } from "lucide-react";
+import { formatMoney } from "@/lib/money";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -501,7 +495,7 @@ export default function ProductsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Price (PKR)</Label>
+                <Label>Price</Label>
 
                 <Input
                   type="number"
@@ -775,7 +769,7 @@ export default function ProductsPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Price (PKR)</Label>
+                      <Label>Price</Label>
 
                       <Input
                         type="number"
@@ -900,7 +894,7 @@ export default function ProductsPage() {
                       <p className="mt-1 text-sm text-muted-foreground">
                         {product.category ?? "No category"} ·{" "}
                         {product.price !== null
-                          ? `PKR ${product.price}`
+                          ? formatMoney(product.price)
                           : "No price"}
                       </p>
 
@@ -974,7 +968,7 @@ export default function ProductsPage() {
                               Price:{" "}
                               <span className="font-medium text-foreground">
                                 {variant.price !== null
-                                  ? `PKR ${variant.price}`
+                                  ? formatMoney(variant.price)
                                   : "—"}
                               </span>
                             </p>

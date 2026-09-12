@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/auth";
 import { getCustomerUser, generateOrderNumber } from "@/lib/customer";
 import { serializeOrder } from "@/lib/store-order";
+import { getSiteSettings } from "@/lib/site-settings";
+import { computeShipping } from "@/lib/money";
 
 type LineItem = {
   variantId: string;
@@ -12,7 +14,7 @@ type LineItem = {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { customer, items, shipping = 0, useLoggedIn = false } = body;
+    const { customer, items, useLoggedIn = false } = body;
 
     if (!Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -163,7 +165,17 @@ export async function POST(request: NextRequest) {
       (sum, i) => sum + i.unitPrice * i.quantity,
       0
     );
-    const total = subtotal + Number(shipping);
+
+    // Shipping is computed server-side from the site settings so visitors
+    // can never tamper with it.
+    const settings = await getSiteSettings();
+    const shipping = computeShipping(
+      subtotal,
+      settings.shippingFee,
+      settings.freeShippingThreshold
+    );
+
+    const total = subtotal + shipping;
     let orderNumber = "";
     let attempts = 0;
 

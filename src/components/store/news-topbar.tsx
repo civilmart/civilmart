@@ -1,14 +1,17 @@
-const MESSAGES = [
+const DEFAULT_MESSAGES = [
   "Welcome to NaranScents",
   "ENJOY 5% OFF ON YOUR FIRST PURCHASE",
   "Cash on Delivery — pay when your order arrives",
   "Free delivery on orders over Rs 2,000",
 ];
 
-export function NewsTopbar() {
+export function NewsTopbar({ messages }: { messages?: string[] }) {
+  const list =
+    messages && messages.length > 0 ? messages : DEFAULT_MESSAGES;
+
   const row = (
     <div className="flex shrink-0 items-center">
-      {MESSAGES.map((message) => (
+      {list.map((message) => (
         <span
           key={message}
           className="flex items-center whitespace-nowrap px-8 text-[13px] font-semibold uppercase tracking-[0.08em]"

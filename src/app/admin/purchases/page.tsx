@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Plus, RefreshCw, Search, Trash2 } from "lucide-react";
+import { formatMoney } from "@/lib/money";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -490,7 +491,7 @@ export default function PurchasesPage() {
                               <div className="flex-1">
                                 <Label>Item Total</Label>
                                 <div className="mt-2 rounded-md border px-3 py-2 text-sm font-medium">
-                                  PKR {itemTotal.toFixed(2)}
+                                  {formatMoney(itemTotal)}
                                 </div>
                               </div>
 
@@ -526,7 +527,7 @@ export default function PurchasesPage() {
                       <div className="flex justify-between">
                         <span>Subtotal</span>
                         <span className="font-medium">
-                          PKR {subtotal.toFixed(2)}
+                          {formatMoney(subtotal)}
                         </span>
                       </div>
 
@@ -561,7 +562,7 @@ export default function PurchasesPage() {
                       <div className="border-t pt-4">
                         <div className="flex justify-between text-lg font-bold">
                           <span>Total</span>
-                          <span>PKR {totalAmount.toFixed(2)}</span>
+                          <span>{formatMoney(totalAmount)}</span>
                         </div>
                       </div>
                     </CardContent>
@@ -655,8 +656,7 @@ export default function PurchasesPage() {
                       </td>
 
                       <td className="p-3 font-medium">
-                        PKR{" "}
-                        {Number(purchase.totalAmount).toFixed(2)}
+                        {formatMoney(Number(purchase.totalAmount))}
                       </td>
 
                       <td className="p-3">

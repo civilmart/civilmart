@@ -776,3 +776,16 @@ model CustomerOrderStatusEvent {
   @@index([orderId])
   @@map("customer_order_status_events")
 }
+
+// ============================================================
+// SITE SETTINGS
+// ============================================================
+
+model SiteSetting {
+  key       String @id
+  value     String
+
+  updatedAt DateTime @updatedAt
+
+  @@map("site_settings")
+}

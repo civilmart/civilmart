@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, Search, ShoppingBag, User, X } from "lucide-react";
+import { Menu, Phone, Search, ShoppingBag, User, X } from "lucide-react";
 import { useCart } from "@/context/cart-context";
 
 const NAV_LINKS = [
@@ -12,11 +12,33 @@ const NAV_LINKS = [
   { name: "Track Order", href: "/track" },
 ];
 
-export function StoreHeader() {
+const DEFAULT_SITE_NAME = "NaranScents";
+
+function splitBrand(siteName: string): {
+  head: string;
+  tail: string;
+} {
+  const match = siteName.match(/^(.*?)(Scents.*)?$/);
+
+  return {
+    head: match?.[1] || siteName,
+    tail: match?.[2] || "",
+  };
+}
+
+export function StoreHeader({
+  siteName,
+  helpline,
+}: {
+  siteName?: string;
+  helpline?: string;
+}) {
   const router = useRouter();
   const { count } = useCart();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+
+  const brand = splitBrand(siteName || DEFAULT_SITE_NAME);
 
   function submitSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -38,7 +60,10 @@ export function StoreHeader() {
 
         <Link href="/" className="shrink-0">
           <span className="text-lg font-bold tracking-tight">
-            Naran<span className="text-amber-600">Scents</span>
+            {brand.head}
+            {brand.tail && (
+              <span className="text-amber-600">{brand.tail}</span>
+            )}
           </span>
         </Link>
 
@@ -55,6 +80,20 @@ export function StoreHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
+          {helpline && (
+            <a
+              href={
+                helpline.includes("+") || helpline.includes("0")
+                  ? `tel:${helpline.replace(/[\s-]/g, "")}`
+                  : "#"
+              }
+              className="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-amber-300 hover:text-amber-700 md:flex"
+              title="Order by phone"
+            >
+              <Phone className="h-3.5 w-3.5 text-amber-600" />
+              {helpline}
+            </a>
+          )}
           <form
             onSubmit={submitSearch}
             className="hidden items-center rounded-full border bg-slate-50 px-3 md:flex"

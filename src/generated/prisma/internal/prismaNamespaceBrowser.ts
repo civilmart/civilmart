@@ -72,7 +72,8 @@ export const ModelName = {
   CustomerWishlistItem: 'CustomerWishlistItem',
   CustomerOrder: 'CustomerOrder',
   CustomerOrderItem: 'CustomerOrderItem',
-  CustomerOrderStatusEvent: 'CustomerOrderStatusEvent'
+  CustomerOrderStatusEvent: 'CustomerOrderStatusEvent',
+  SiteSetting: 'SiteSetting'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -484,6 +485,15 @@ export const CustomerOrderStatusEventScalarFieldEnum = {
 } as const
 
 export type CustomerOrderStatusEventScalarFieldEnum = (typeof CustomerOrderStatusEventScalarFieldEnum)[keyof typeof CustomerOrderStatusEventScalarFieldEnum]
+
+
+export const SiteSettingScalarFieldEnum = {
+  key: 'key',
+  value: 'value',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SiteSettingScalarFieldEnum = (typeof SiteSettingScalarFieldEnum)[keyof typeof SiteSettingScalarFieldEnum]
 
 
 export const SortOrder = {

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCart } from "@/context/cart-context";
 import { formatPrice, placeholderImage } from "@/lib/store-front";
+import { computeShipping } from "@/lib/money";
 
 type Customer = {
   id: string;
@@ -50,10 +51,30 @@ export default function CheckoutPage() {
   const [error, setError] = useState("");
   const [placing, setPlacing] = useState(false);
   const [placedOrder, setPlacedOrder] = useState<PlacedOrder | null>(null);
+  const [shippingConfig, setShippingConfig] = useState({
+    fee: 0,
+    freeThreshold: 0,
+  });
 
   const empty = items.length === 0;
 
   useEffect(() => {
+    fetch("/api/store/settings")
+      .then(async (r) => {
+        if (!r.ok) return null;
+        const data = await r.json();
+        return data.success ? data.data : null;
+      })
+      .then((settings) => {
+        if (settings) {
+          setShippingConfig({
+            fee: Number(settings.shippingFee) || 0,
+            freeThreshold: Number(settings.freeShippingThreshold) || 0,
+          });
+        }
+      })
+      .catch(() => {});
+
     fetch("/api/store/customers")
       .then(async (r) => {
         if (!r.ok) return null;
@@ -74,7 +95,11 @@ export default function CheckoutPage() {
       .finally(() => setCheckingAuth(false));
   }, []);
 
-  const shipping = 0;
+  const shipping = computeShipping(
+    subtotal,
+    shippingConfig.fee,
+    shippingConfig.freeThreshold
+  );
   const total = subtotal + shipping;
 
   const canPlace = useMemo(() => {
@@ -472,11 +497,25 @@ export default function CheckoutPage() {
                   {shipping === 0 ? "Free" : formatPrice(shipping)}
                 </dd>
               </div>
+              {shippingConfig.freeThreshold > 0 && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Free delivery over</dt>
+                  <dd className="font-medium">
+                    {formatPrice(shippingConfig.freeThreshold)}
+                  </dd>
+                </div>
+              )}
               <div className="flex justify-between border-t pt-2 text-base font-bold">
                 <dt>Total</dt>
                 <dd>{formatPrice(total)}</dd>
               </div>
             </dl>
+
+            {shipping === 0 && shippingConfig.fee > 0 && (
+              <p className="mt-3 rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">
+                You qualify for free delivery.
+              </p>
+            )}
 
             <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
               Pay in cash when your order arrives.

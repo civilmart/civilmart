@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, Loader2, Sparkles } from "lucide-react";
 import { Carousel } from "@/components/store/carousel";
 import { ProductCard } from "@/components/store/product-card";
 import { PromoBanners } from "@/components/store/promo-banners";
 import { type StoreProduct } from "@/lib/store-front";
+import { type HeroSlide, type SiteSettings } from "@/lib/site-settings";
 
-const HERO_SLIDES = [
+const FALLBACK_HERO_SLIDES = [
   {
     title: "Fragrances for every occasion",
     subtitle: "Find a scent that fits your personality and your budget.",
@@ -39,27 +41,39 @@ export default function StoreHomePage() {
   const [featured, setFeatured] = useState<StoreProduct[]>([]);
   const [latest, setLatest] = useState<StoreProduct[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const [featuredRes, latestRes, categoriesRes] = await Promise.all([
-          fetch("/api/store/products?featured=true&limit=8"),
-          fetch("/api/store/products?limit=8"),
-          fetch("/api/store/categories"),
-        ]);
+        const [featuredRes, latestRes, categoriesRes, settingsRes] =
+          await Promise.all([
+            fetch("/api/store/products?featured=true&limit=8"),
+            fetch("/api/store/products?limit=8"),
+            fetch("/api/store/categories"),
+            fetch("/api/store/settings"),
+          ]);
 
-        const [featuredData, latestData, categoriesData] =
+        const [featuredData, latestData, categoriesData, settingsData] =
           await Promise.all([
             featuredRes.json(),
             latestRes.json(),
             categoriesRes.json(),
+            settingsRes.json(),
           ]);
 
         if (featuredData.success) setFeatured(featuredData.data);
         if (latestData.success) setLatest(latestData.data);
         if (categoriesData.success) setCategories(categoriesData.data);
+        if (settingsData.success) {
+          const settings = settingsData.data as SiteSettings;
+          setHeroSlides(
+            settings.heroSlides.filter(
+              (slide) => slide.active && slide.imageUrl
+            )
+          );
+        }
       } catch (error) {
         console.error("Failed to load storefront:", error);
       } finally {
@@ -76,28 +90,70 @@ export default function StoreHomePage() {
       <Carousel
         autoAdvanceMs={6000}
         className="overflow-hidden rounded-2xl"
-        slides={HERO_SLIDES.map((slide) => (
-          <div
-            key={slide.title}
-            className={`flex min-h-[320px] items-center bg-gradient-to-br ${slide.bg} px-6 py-10 sm:min-h-[380px] sm:px-12`}
-          >
-            <div className="max-w-lg">
-              <h2 className={`text-3xl font-bold leading-tight sm:text-4xl ${slide.accent}`}>
-                {slide.title}
-              </h2>
-              <p className="mt-3 text-sm text-slate-600 sm:text-base">
-                {slide.subtitle}
-              </p>
-              <Link
-                href={slide.href}
-                className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-900 px-6 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
-              >
-                {slide.cta}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-        ))}
+        slides={
+          heroSlides.length > 0
+            ? heroSlides.map((slide, index) => (
+                <div
+                  key={slide.id}
+                  className="relative flex min-h-[320px] items-center px-6 py-10 sm:min-h-[380px] sm:px-12"
+                >
+                  <Image
+                    src={slide.imageUrl}
+                    alt={slide.heading || "Promotional banner"}
+                    fill
+                    priority={index === 0}
+                    sizes="100vw"
+                    className="object-cover"
+                  />
+
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-black/10" />
+
+                  <div className="relative max-w-lg">
+                    <h2 className="text-3xl font-bold leading-tight text-white drop-shadow-md sm:text-4xl">
+                      {slide.heading}
+                    </h2>
+
+                    {slide.subheading && (
+                      <p className="mt-3 text-sm text-white/90 sm:text-base">
+                        {slide.subheading}
+                      </p>
+                    )}
+
+                    {slide.cta && slide.href && (
+                      <Link
+                        href={slide.href}
+                        className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-medium text-slate-900 shadow-sm transition hover:bg-slate-100"
+                      >
+                        {slide.cta}
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              ))
+            : FALLBACK_HERO_SLIDES.map((slide) => (
+                <div
+                  key={slide.title}
+                  className={`flex min-h-[320px] items-center bg-gradient-to-br ${slide.bg} px-6 py-10 sm:min-h-[380px] sm:px-12`}
+                >
+                  <div className="max-w-lg">
+                    <h2 className={`text-3xl font-bold leading-tight sm:text-4xl ${slide.accent}`}>
+                      {slide.title}
+                    </h2>
+                    <p className="mt-3 text-sm text-slate-600 sm:text-base">
+                      {slide.subtitle}
+                    </p>
+                    <Link
+                      href={slide.href}
+                      className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-900 px-6 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
+                    >
+                      {slide.cta}
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                </div>
+              ))
+        }
       />
 
       {/* Categories */}

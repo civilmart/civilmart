@@ -1,9 +1,7 @@
-export const CURRENCY = "Rs";
+import { formatMoney } from "@/lib/money";
 
 export function formatPrice(value: number): string {
-  return `${CURRENCY} ${new Intl.NumberFormat("en-PK", {
-    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
-  }).format(value)}`;
+  return formatMoney(value);
 }
 
 export type StoreVariant = {

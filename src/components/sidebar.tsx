@@ -147,6 +147,16 @@ const menuSections: MenuSection[] = [
     ],
   },
   {
+    title: "SITE SETTINGS",
+    items: [
+      {
+        name: "Site Settings",
+        icon: Settings,
+        href: "/admin/site-settings",
+      },
+    ],
+  },
+  {
     title: "SYSTEM",
     items: [
       {
@@ -162,7 +172,7 @@ const menuSections: MenuSection[] = [
         adminOnly: true,
       },
       {
-        name: "Settings",
+        name: "Account Settings",
         icon: Settings,
         href: "/admin/settings",
         adminOnly: true,

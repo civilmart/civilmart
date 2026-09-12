@@ -151,3 +151,8 @@ export type CustomerOrderItem = Prisma.CustomerOrderItemModel
  * 
  */
 export type CustomerOrderStatusEvent = Prisma.CustomerOrderStatusEventModel
+/**
+ * Model SiteSetting
+ * 
+ */
+export type SiteSetting = Prisma.SiteSettingModel

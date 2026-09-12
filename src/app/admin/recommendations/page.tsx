@@ -9,6 +9,7 @@ import {
   TrendingDown,
   Clock,
 } from "lucide-react";
+import { formatMoney } from "@/lib/money";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -68,13 +69,7 @@ export default function RecommendationsPage() {
     loadRecommendations();
   }, []);
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
+  const formatCurrency = (value: number) => formatMoney(value);
 
   const formatNumber = (value: number) => {
     return new Intl.NumberFormat("en-US", {

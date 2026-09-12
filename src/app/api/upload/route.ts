@@ -2,8 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { getSessionUserOrThrow } from "@/lib/auth";
 
-const UPLOAD_FOLDER = "naranscents";
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+const UPLOAD_PRESETS: Record<
+  string,
+  { folder: string; transformation: string }
+> = {
+  product: {
+    folder: "naranscents",
+    transformation: "w_1280,h_1280,c_fill,q_auto,f_auto",
+  },
+  hero: {
+    folder: "naranscents/hero",
+    transformation: "w_1920,h_720,c_fill,q_auto,f_auto",
+  },
+};
 
 function getCloudinaryConfig() {
   const raw = process.env.CLOUDINARY_URL;
@@ -38,6 +51,9 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get("file");
+    const purpose = String(formData.get("purpose") || "product");
+
+    const preset = UPLOAD_PRESETS[purpose] ?? UPLOAD_PRESETS.product;
 
     if (!file || typeof file === "string") {
       return NextResponse.json(
@@ -69,10 +85,10 @@ export async function POST(request: NextRequest) {
 
     // Signed params: sorted alphabetically, then hashed with the API secret.
     const params: Record<string, string> = {
-      folder: UPLOAD_FOLDER,
+      folder: preset.folder,
       public_id: publicId,
       timestamp: String(timestamp),
-      transformation: "w_1280,h_1280,c_fill,q_auto,f_auto",
+      transformation: preset.transformation,
     };
 
     const sortedKeys = Object.keys(params).sort();
@@ -93,7 +109,7 @@ export async function POST(request: NextRequest) {
     body.append("api_key", cloud.apiKey);
     body.append("timestamp", String(timestamp));
     body.append("signature", signature);
-    body.append("folder", UPLOAD_FOLDER);
+    body.append("folder", preset.folder);
     body.append("public_id", publicId);
     body.append("transformation", params.transformation);
 
