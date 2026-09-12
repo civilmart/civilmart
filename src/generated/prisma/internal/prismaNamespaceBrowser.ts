@@ -69,7 +69,8 @@ export const ModelName = {
   Invoice: 'Invoice',
   InvoiceItem: 'InvoiceItem',
   InvoicePayment: 'InvoicePayment',
-  SiteSetting: 'SiteSetting'
+  SiteSetting: 'SiteSetting',
+  AdPlacement: 'AdPlacement'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -140,6 +141,7 @@ export type CategoryScalarFieldEnum = (typeof CategoryScalarFieldEnum)[keyof typ
 export const ProductScalarFieldEnum = {
   id: 'id',
   code: 'code',
+  barcode: 'barcode',
   name: 'name',
   brand: 'brand',
   description: 'description',
@@ -166,6 +168,7 @@ export type ProductScalarFieldEnum = (typeof ProductScalarFieldEnum)[keyof typeo
 export const ProductVariantScalarFieldEnum = {
   id: 'id',
   productId: 'productId',
+  barcode: 'barcode',
   sku: 'sku',
   name: 'name',
   sizeValue: 'sizeValue',
@@ -397,6 +400,22 @@ export const SiteSettingScalarFieldEnum = {
 } as const
 
 export type SiteSettingScalarFieldEnum = (typeof SiteSettingScalarFieldEnum)[keyof typeof SiteSettingScalarFieldEnum]
+
+
+export const AdPlacementScalarFieldEnum = {
+  id: 'id',
+  slot: 'slot',
+  title: 'title',
+  subtitle: 'subtitle',
+  imageUrl: 'imageUrl',
+  href: 'href',
+  active: 'active',
+  sortOrder: 'sortOrder',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AdPlacementScalarFieldEnum = (typeof AdPlacementScalarFieldEnum)[keyof typeof AdPlacementScalarFieldEnum]
 
 
 export const SortOrder = {

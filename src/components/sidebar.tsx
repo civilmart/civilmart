@@ -4,14 +4,16 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
   BarChart3,
+  Barcode,
   Boxes,
   ClipboardList,
   FileText,
   FolderTree,
   LayoutDashboard,
+  LayoutGrid,
   LogOut,
+  Megaphone,
   Package,
-  PackageSearch,
   Receipt,
   Settings,
   ShoppingCart,
@@ -39,9 +41,14 @@ const menuSections: MenuSection[] = [
     title: "",
     items: [
       {
-        name: "Dashboard",
-        icon: LayoutDashboard,
+        name: "Manage",
+        icon: LayoutGrid,
         href: "/admin",
+      },
+      {
+        name: "Overview",
+        icon: LayoutDashboard,
+        href: "/admin/dashboard",
       },
     ],
   },
@@ -52,6 +59,11 @@ const menuSections: MenuSection[] = [
         name: "Products",
         icon: Package,
         href: "/admin/products",
+      },
+      {
+        name: "Barcode Labels",
+        icon: Barcode,
+        href: "/admin/barcodes",
       },
       {
         name: "Categories",
@@ -109,7 +121,7 @@ const menuSections: MenuSection[] = [
         href: "/admin/orders",
       },
       {
-        name: "Invoices",
+        name: "Invoice / POS",
         icon: Receipt,
         href: "/admin/invoices",
       },
@@ -122,6 +134,11 @@ const menuSections: MenuSection[] = [
         name: "Reports",
         icon: BarChart3,
         href: "/admin/reports",
+      },
+      {
+        name: "Ads",
+        icon: Megaphone,
+        href: "/admin/ads",
       },
       {
         name: "Site Settings",

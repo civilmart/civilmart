@@ -43,3 +43,5 @@ next-env.d.ts
 node_modules/
 dist/
 .env
+.tmp-dev.log
+.tmp-dev.err.log

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ProductUnit } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserOrThrow } from "@/lib/auth";
 import {
@@ -19,19 +20,58 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const category = url.searchParams.get("category");
     const q = url.searchParams.get("q");
+    const barcode = url.searchParams.get("barcode")?.trim();
+    const labelsOnly = url.searchParams.get("labelsOnly") === "true";
+
+    const where: Prisma.ProductWhereInput = {
+      ...(category ? { category: { name: category } } : {}),
+      ...(barcode
+        ? {
+            OR: [
+              { barcode },
+              { variants: { some: { barcode } } },
+            ],
+          }
+        : {}),
+      ...(q
+        ? {
+            OR: [
+              { name: { contains: q, mode: "insensitive" } },
+              { code: { contains: q, mode: "insensitive" } },
+              { barcode: { contains: q, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    };
+
+    if (labelsOnly) {
+      const labels = await prisma.product.findMany({
+        where,
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          barcode: true,
+          price: true,
+          imageUrl: true,
+        },
+        orderBy: { name: "asc" },
+      });
+
+      return NextResponse.json(
+        labels.map((label) => ({
+          id: label.id,
+          code: label.code,
+          name: label.name,
+          barcode: label.barcode,
+          price: label.price !== null ? Number(label.price) : null,
+          imageUrl: label.imageUrl,
+        }))
+      );
+    }
 
     const products = await prisma.product.findMany({
-      where: {
-        ...(category ? { category: { name: category } } : {}),
-        ...(q
-          ? {
-              OR: [
-                { name: { contains: q, mode: "insensitive" } },
-                { code: { contains: q, mode: "insensitive" } },
-              ],
-            }
-          : {}),
-      },
+      where,
       include: productInclude,
       orderBy: { name: "asc" },
     });
@@ -70,6 +110,7 @@ export async function POST(request: NextRequest) {
       reorderLevel,
       trades,
       stockQuantity,
+      barcode,
       variants,
     } = body;
 
@@ -128,6 +169,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const productBarcode = barcode?.trim() || null;
+
+    if (productBarcode) {
+      const barcodeOwner = await prisma.product.findUnique({
+        where: { barcode: productBarcode },
+        select: { id: true },
+      });
+
+      if (barcodeOwner) {
+        return NextResponse.json(
+          { error: `Barcode already in use: ${productBarcode}` },
+          { status: 409 }
+        );
+      }
+    }
+
     const preparedVariants: Array<{
       sku: string;
       name: string;
@@ -136,6 +193,7 @@ export async function POST(request: NextRequest) {
       price: string | null;
       imageUrl: string | null;
       status: "ACTIVE";
+      barcode: string | null;
     }> = [];
 
     if (Array.isArray(variants)) {
@@ -172,6 +230,22 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        const variantBarcode = variant.barcode?.trim() || null;
+
+        if (variantBarcode) {
+          const barcodeOwner = await prisma.productVariant.findUnique({
+            where: { barcode: variantBarcode },
+            select: { id: true },
+          });
+
+          if (barcodeOwner) {
+            return NextResponse.json(
+              { error: `Barcode already in use: ${variantBarcode}` },
+              { status: 409 }
+            );
+          }
+        }
+
         preparedVariants.push({
           sku: variant.sku.trim(),
           name: variant.name.trim(),
@@ -180,6 +254,7 @@ export async function POST(request: NextRequest) {
           price: variantPrice !== null ? String(variantPrice) : null,
           imageUrl: variant.imageUrl?.trim() || null,
           status: "ACTIVE",
+          barcode: variantBarcode,
         });
       }
     }
@@ -221,6 +296,7 @@ export async function POST(request: NextRequest) {
           ? trades.map((t) => String(t).trim()).filter(Boolean)
           : [],
         stockQuantity: toNumberOrZero(stockQuantity),
+        barcode: productBarcode,
         variants: preparedVariants.length
           ? { createMany: { data: preparedVariants } }
           : undefined,

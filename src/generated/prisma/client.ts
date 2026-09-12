@@ -136,3 +136,8 @@ export type InvoicePayment = Prisma.InvoicePaymentModel
  * 
  */
 export type SiteSetting = Prisma.SiteSettingModel
+/**
+ * Model AdPlacement
+ * 
+ */
+export type AdPlacement = Prisma.AdPlacementModel

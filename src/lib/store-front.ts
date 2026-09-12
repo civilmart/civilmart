@@ -142,9 +142,16 @@ export type BrandCount = {
   count: number;
 };
 
+export type SubcategoryCount = {
+  group: string;
+  name: string;
+  count: number;
+};
+
 export type CatalogueFilters = {
   groups: CatalogueGroup[];
   brands: BrandCount[];
+  subcategories: SubcategoryCount[];
 };
 
 export type ProductPageResult = {

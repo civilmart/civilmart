@@ -22,6 +22,7 @@ import {
   ProductCard,
   ProductCardSkeleton,
 } from "@/components/store/product-card";
+import { StoreAdBanners } from "@/components/store/ad-banners";
 import {
   Sheet,
   SheetContent,
@@ -53,6 +54,8 @@ function ProductsPageInner() {
 
   const search = searchParams.get("search") ?? "";
   const category = searchParams.get("category");
+  const group = searchParams.get("group")?.trim() ?? null;
+  const subcategory = searchParams.get("subcategory")?.trim() ?? null;
   const brandsKey = searchParams.getAll("brand").filter(Boolean).join("\u0000");
   const brands = brandsKey ? brandsKey.split("\u0000") : [];
   const priceMin = searchParams.get("priceMin") ?? "";
@@ -62,6 +65,8 @@ function ProductsPageInner() {
   const page = Math.max(1, Number(searchParams.get("page") ?? 1) || 1);
 
   const activeFilterCount =
+    (group ? 1 : 0) +
+    (subcategory ? 1 : 0) +
     (category ? 1 : 0) +
     brands.length +
     (priceMin || priceMax ? 1 : 0) +
@@ -71,6 +76,24 @@ function ProductsPageInner() {
     filters?.groups
       .flatMap((g) => g.categories)
       .find((c) => c.name === category)?.name ?? category;
+
+  const scopedGroups = useMemo(
+    () =>
+      group
+        ? (filters?.groups ?? []).filter((g) => g.name === group)
+        : (filters?.groups ?? []),
+    [filters, group]
+  );
+
+  const groupSubcategories = useMemo(
+    () =>
+      group
+        ? (filters?.subcategories ?? []).filter((s) => s.group === group)
+        : (filters?.subcategories ?? []),
+    [filters, group]
+  );
+
+  const showSubcategoryChips = group !== null && groupSubcategories.length > 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -108,6 +131,8 @@ function ProductsPageInner() {
       params.set("pageSize", String(DEFAULT_PAGE_SIZE));
       if (search) params.set("search", search);
       if (category) params.set("category", category);
+      if (group) params.set("group", group);
+      if (subcategory) params.set("subcategory", subcategory);
       brands.forEach((brand) => params.append("brand", brand));
       if (priceMin) params.set("priceMin", priceMin);
       if (priceMax) params.set("priceMax", priceMax);
@@ -137,7 +162,7 @@ function ProductsPageInner() {
     return () => {
       cancelled = true;
     };
-  }, [search, category, brandsKey, priceMin, priceMax, inStockOnly, sort, page]);
+  }, [search, category, group, subcategory, brandsKey, priceMin, priceMax, inStockOnly, sort, page]);
 
   const filterState: CatalogFilterState = useMemo(
     () => ({
@@ -195,6 +220,8 @@ function ProductsPageInner() {
   function clearAll() {
     commit({
       search: null,
+      group: null,
+      subcategory: null,
       category: null,
       brand: null,
       priceMin: null,
@@ -250,26 +277,47 @@ function ProductsPageInner() {
 
   return (
     <div className="space-y-5">
-      <nav className="flex items-center gap-1 text-xs text-muted-foreground">
+      <nav className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
         <Link href="/" className="transition hover:text-amber-700">
           Home
         </Link>
         <ChevronRight className="h-3 w-3" />
-        <span className="font-medium text-slate-900">All products</span>
-        {category && (
+        {group ? (
           <>
+            <Link href="/products" className="transition hover:text-amber-700">
+              All products
+            </Link>
+            <ChevronRight className="h-3 w-3" />
+            <span className="font-medium text-slate-900">{group}</span>
+            {category && (
+              <>
+                <ChevronRight className="h-3 w-3" />
+                <span className="font-medium text-slate-900">
+                  {selectedCategoryLabel ?? category}
+                </span>
+              </>
+            )}
+          </>
+        ) : category ? (
+          <>
+            <span className="font-medium text-slate-900">All products</span>
             <ChevronRight className="h-3 w-3" />
             <span className="font-medium text-slate-900">
               {selectedCategoryLabel ?? category}
             </span>
           </>
+        ) : (
+          <span className="font-medium text-slate-900">All products</span>
         )}
       </nav>
 
       <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {category ? (selectedCategoryLabel ?? "Category") : "All products"}
+            {category
+              ? (selectedCategoryLabel ?? "Category")
+              : (group ??
+                "All products")}
             {search && (
               <span className="ml-2 text-base font-medium text-muted-foreground">
                 for “{search}”
@@ -326,11 +374,83 @@ function ProductsPageInner() {
         </div>
       </div>
 
+      {group && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Main category
+            </span>
+            <select
+              value={group}
+              onChange={(e) =>
+                commit({
+                  group: e.target.value,
+                  category: null,
+                  subcategory: null,
+                  page: String(page),
+                })
+              }
+              className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium outline-none focus:border-amber-400"
+              aria-label="Switch main category"
+            >
+              {(filters?.groups ?? []).map((g) => (
+                <option key={g.name} value={g.name}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+            <Link
+              href="/products"
+              className="ml-auto text-xs font-semibold text-amber-700 hover:underline"
+            >
+              All categories
+            </Link>
+          </div>
+
+          {showSubcategoryChips && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <button
+                type="button"
+                onClick={() => commit({ subcategory: null, page: String(page) })}
+                className={cn(
+                  "shrink-0 rounded-sm border px-3 py-1.5 text-sm font-medium transition",
+                  !subcategory
+                    ? "border-amber-500 bg-amber-500 font-bold text-slate-950"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-amber-400 hover:bg-amber-50"
+                )}
+              >
+                All {group}
+              </button>
+              {groupSubcategories.map((s) => (
+                <button
+                  key={`${s.group}-${s.name}`}
+                  type="button"
+                  onClick={() =>
+                    commit({ subcategory: s.name, page: String(page) })
+                  }
+                  className={cn(
+                    "shrink-0 rounded-sm border px-3 py-1.5 text-sm font-medium transition",
+                    subcategory === s.name
+                      ? "border-amber-500 bg-amber-500 font-bold text-slate-950"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-amber-400 hover:bg-amber-50"
+                  )}
+                >
+                  {s.name}
+                  <span className="ml-1 text-xs text-slate-400">{s.count}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <StoreAdBanners slot="PRODUCTS_BANNER" variant="strip" />
+
       <div className="flex items-start gap-6">
         <aside className="hidden w-64 shrink-0 lg:block">
           <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-lg border border-slate-200 bg-white p-4">
             <CatalogFilterPanel
-              groups={filters?.groups ?? []}
+              groups={scopedGroups}
               brands={filters?.brands ?? []}
               active={filterState}
               activeCount={activeFilterCount}
@@ -431,7 +551,7 @@ function ProductsPageInner() {
           </SheetHeader>
           <div className="px-4 pb-6">
             <CatalogFilterPanel
-              groups={filters?.groups ?? []}
+              groups={scopedGroups}
               brands={filters?.brands ?? []}
               active={filterState}
               activeCount={activeFilterCount}

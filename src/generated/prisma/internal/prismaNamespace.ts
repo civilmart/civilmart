@@ -415,7 +415,8 @@ export const ModelName = {
   Invoice: 'Invoice',
   InvoiceItem: 'InvoiceItem',
   InvoicePayment: 'InvoicePayment',
-  SiteSetting: 'SiteSetting'
+  SiteSetting: 'SiteSetting',
+  AdPlacement: 'AdPlacement'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -431,7 +432,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "supplier" | "category" | "product" | "productVariant" | "inventoryTransaction" | "purchase" | "purchaseItem" | "purchaseOrder" | "purchaseOrderItem" | "customer" | "customerWishlistItem" | "customerOrder" | "customerOrderItem" | "customerOrderStatusEvent" | "invoice" | "invoiceItem" | "invoicePayment" | "siteSetting"
+    modelProps: "user" | "supplier" | "category" | "product" | "productVariant" | "inventoryTransaction" | "purchase" | "purchaseItem" | "purchaseOrder" | "purchaseOrderItem" | "customer" | "customerWishlistItem" | "customerOrder" | "customerOrderItem" | "customerOrderStatusEvent" | "invoice" | "invoiceItem" | "invoicePayment" | "siteSetting" | "adPlacement"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1841,6 +1842,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    AdPlacement: {
+      payload: Prisma.$AdPlacementPayload<ExtArgs>
+      fields: Prisma.AdPlacementFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AdPlacementFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdPlacementPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AdPlacementFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdPlacementPayload>
+        }
+        findFirst: {
+          args: Prisma.AdPlacementFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdPlacementPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AdPlacementFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdPlacementPayload>
+        }
+        findMany: {
+          args: Prisma.AdPlacementFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdPlacementPayload>[]
+        }
+        create: {
+          args: Prisma.AdPlacementCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdPlacementPayload>
+        }
+        createMany: {
+          args: Prisma.AdPlacementCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AdPlacementCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdPlacementPayload>[]
+        }
+        delete: {
+          args: Prisma.AdPlacementDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdPlacementPayload>
+        }
+        update: {
+          args: Prisma.AdPlacementUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdPlacementPayload>
+        }
+        deleteMany: {
+          args: Prisma.AdPlacementDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AdPlacementUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AdPlacementUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdPlacementPayload>[]
+        }
+        upsert: {
+          args: Prisma.AdPlacementUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdPlacementPayload>
+        }
+        aggregate: {
+          args: Prisma.AdPlacementAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAdPlacement>
+        }
+        groupBy: {
+          args: Prisma.AdPlacementGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AdPlacementGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AdPlacementCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AdPlacementCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1932,6 +2007,7 @@ export type CategoryScalarFieldEnum = (typeof CategoryScalarFieldEnum)[keyof typ
 export const ProductScalarFieldEnum = {
   id: 'id',
   code: 'code',
+  barcode: 'barcode',
   name: 'name',
   brand: 'brand',
   description: 'description',
@@ -1958,6 +2034,7 @@ export type ProductScalarFieldEnum = (typeof ProductScalarFieldEnum)[keyof typeo
 export const ProductVariantScalarFieldEnum = {
   id: 'id',
   productId: 'productId',
+  barcode: 'barcode',
   sku: 'sku',
   name: 'name',
   sizeValue: 'sizeValue',
@@ -2191,6 +2268,22 @@ export const SiteSettingScalarFieldEnum = {
 export type SiteSettingScalarFieldEnum = (typeof SiteSettingScalarFieldEnum)[keyof typeof SiteSettingScalarFieldEnum]
 
 
+export const AdPlacementScalarFieldEnum = {
+  id: 'id',
+  slot: 'slot',
+  title: 'title',
+  subtitle: 'subtitle',
+  imageUrl: 'imageUrl',
+  href: 'href',
+  active: 'active',
+  sortOrder: 'sortOrder',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AdPlacementScalarFieldEnum = (typeof AdPlacementScalarFieldEnum)[keyof typeof AdPlacementScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -2395,6 +2488,20 @@ export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'In
 export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
     
 
+
+/**
+ * Reference to a field of type 'Float'
+ */
+export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
+    
+
+
+/**
+ * Reference to a field of type 'Float[]'
+ */
+export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
+    
+
 /**
  * Batch Payload for updateMany & deleteMany & createMany
  */
@@ -2565,6 +2672,7 @@ export type GlobalOmitConfig = {
   invoiceItem?: Prisma.InvoiceItemOmit
   invoicePayment?: Prisma.InvoicePaymentOmit
   siteSetting?: Prisma.SiteSettingOmit
+  adPlacement?: Prisma.AdPlacementOmit
 }
 
 /* Types for Logging */

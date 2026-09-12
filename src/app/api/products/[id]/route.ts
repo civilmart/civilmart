@@ -36,6 +36,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     return NextResponse.json({
       id: product.id,
       code: product.code,
+      barcode: product.barcode,
       name: product.name,
       brand: product.brand,
       description: product.description,
@@ -61,6 +62,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       variants: product.variants.map((v) => ({
         id: v.id,
         sku: v.sku,
+        barcode: v.barcode,
         name: v.name,
         sizeValue: Number(v.sizeValue),
         sizeUnit: v.sizeUnit,
@@ -113,6 +115,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       reorderLevel,
       trades,
       stockQuantity,
+      barcode,
       variants,
     } = body;
 
@@ -136,6 +139,28 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }
 
       data.code = String(code).trim();
+    }
+
+    if (barcode !== undefined) {
+      const trimmed = String(barcode).trim();
+
+      if (trimmed) {
+        const owner = await prisma.product.findUnique({
+          where: { barcode: trimmed },
+          select: { id: true },
+        });
+
+        if (owner && owner.id !== id) {
+          return NextResponse.json(
+            { error: `Barcode already in use: ${trimmed}` },
+            { status: 409 }
+          );
+        }
+
+        data.barcode = trimmed;
+      } else {
+        data.barcode = null;
+      }
     }
 
     if (name !== undefined) {
@@ -285,6 +310,19 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
           seenSkus.add(sku);
 
+          const variantBarcode = v.barcode?.trim() || null;
+
+          if (variantBarcode) {
+            const barcodeOwner = await tx.productVariant.findUnique({
+              where: { barcode: variantBarcode },
+              select: { id: true },
+            });
+
+            if (barcodeOwner && barcodeOwner.id !== v.id) {
+              throw new Error(`Barcode already in use: ${variantBarcode}`);
+            }
+          }
+
           const variantData = {
             sku,
             name,
@@ -292,6 +330,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             sizeUnit: v.sizeUnit || data.unit || "PIECE",
             price: variantPrice !== null ? String(variantPrice) : null,
             imageUrl: v.imageUrl?.trim() || null,
+            barcode: variantBarcode,
           };
 
           if (v.id && existingVariantIds.has(v.id)) {
@@ -332,6 +371,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return NextResponse.json({
       id: updatedProduct.id,
       code: updatedProduct.code,
+      barcode: updatedProduct.barcode,
       name: updatedProduct.name,
       brand: updatedProduct.brand,
       description: updatedProduct.description,
@@ -362,6 +402,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       variants: updatedProduct.variants.map((v) => ({
         id: v.id,
         sku: v.sku,
+        barcode: v.barcode,
         name: v.name,
         sizeValue: Number(v.sizeValue),
         sizeUnit: v.sizeUnit,
@@ -373,7 +414,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const message =
       error instanceof Error ? error.message : "Failed to update product";
 
-    if (/SKU|variant|Invalid|required|Duplicate|ledger/i.test(message)) {
+    if (/SKU|variant|Invalid|required|Duplicate|ledger|barcode/i.test(message)) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 

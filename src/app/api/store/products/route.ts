@@ -30,6 +30,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("search")?.trim();
     const category = searchParams.get("category")?.trim();
+    const group = searchParams.get("group")?.trim();
+    const subcategory = searchParams.get("subcategory")?.trim();
     const featuredOnly = searchParams.get("featured") === "true";
     const inStockOnly = searchParams.get("inStock") === "true";
     const brands = searchParams.getAll("brand").map((b) => b.trim()).filter(Boolean);
@@ -42,9 +44,15 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseNumber(searchParams.get("page")) ?? 1);
     const pageSize = Math.min(Math.max(1, parseNumber(searchParams.get("pageSize")) ?? 24), 48);
 
+    const categoryFilter: { name?: string; group?: string } = {};
+
+    if (category) categoryFilter.name = category;
+    if (group) categoryFilter.group = group;
+
     const where = {
       status: "ACTIVE" as const,
-      ...(category ? { category: { name: category } } : {}),
+      ...(Object.keys(categoryFilter).length > 0 ? { category: categoryFilter } : {}),
+      ...(subcategory ? { subcategory } : {}),
       ...(featuredOnly ? { isFeatured: true } : {}),
       ...(brands.length > 0 ? { brand: { in: brands } } : {}),
       ...(inStockOnly ? { stockQuantity: { gt: 0 } } : {}),

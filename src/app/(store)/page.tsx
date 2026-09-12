@@ -7,14 +7,17 @@ import {
   ArrowRight,
   ArrowUpRight,
   Boxes,
+  LayoutGrid,
   Loader2,
   ShieldCheck,
   Truck,
 } from "lucide-react";
 import { Carousel } from "@/components/store/carousel";
 import { ProductCard } from "@/components/store/product-card";
+import { StoreAdBanners } from "@/components/store/ad-banners";
 import { type StoreProduct } from "@/lib/store-front";
 import { type HeroSlide, type SiteSettings } from "@/lib/site-settings";
+import { type StoreHomeData } from "@/app/api/store/home/route";
 
 const FALLBACK_HERO_SLIDES = [
   {
@@ -43,32 +46,32 @@ const FALLBACK_HERO_SLIDES = [
 export default function StoreHomePage() {
   const [featured, setFeatured] = useState<StoreProduct[]>([]);
   const [latest, setLatest] = useState<StoreProduct[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [homeData, setHomeData] = useState<StoreHomeData | null>(null);
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const [featuredRes, latestRes, categoriesRes, settingsRes] =
+        const [featuredRes, latestRes, homeRes, settingsRes] =
           await Promise.all([
             fetch("/api/store/products?featured=true&limit=8"),
             fetch("/api/store/products?limit=8"),
-            fetch("/api/store/categories"),
+            fetch("/api/store/home"),
             fetch("/api/store/settings"),
           ]);
 
-        const [featuredData, latestData, categoriesData, settingsData] =
+        const [featuredData, latestData, homeDataRes, settingsData] =
           await Promise.all([
             featuredRes.json(),
             latestRes.json(),
-            categoriesRes.json(),
+            homeRes.json(),
             settingsRes.json(),
           ]);
 
         if (featuredData.success) setFeatured(featuredData.data);
         if (latestData.success) setLatest(latestData.data);
-        if (categoriesData.success) setCategories(categoriesData.data);
+        if (homeDataRes.success) setHomeData(homeDataRes.data);
         if (settingsData.success) {
           const settings = settingsData.data as SiteSettings;
           setHeroSlides(
@@ -169,34 +172,43 @@ export default function StoreHomePage() {
         }
       />
 
-      {/* Categories */}
-      {categories.length > 0 && (
-        <section>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-bold tracking-tight">
-              Shop by category
-            </h2>
-            <Link
-              href="/products"
-              className="flex items-center gap-1 text-sm font-semibold text-amber-700"
-            >
-              View all <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+      {/* Main categories */}
+      <section>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <LayoutGrid className="h-5 w-5 text-amber-600" />
+            <div>
+              <h2 className="text-lg font-bold tracking-tight">
+                What are you looking for?
+              </h2>
+              {!loading && homeData && (
+                <p className="text-xs text-muted-foreground">
+                  {homeData.productCount} products across{" "}
+                  {homeData.mainCategories.length} categories
+                </p>
+              )}
+            </div>
           </div>
 
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            {categories.map((category) => (
-              <Link
-                key={category}
-                href={`/products?category=${encodeURIComponent(category)}`}
-                className="shrink-0 rounded-md border bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-amber-400 hover:bg-amber-50 hover:text-amber-900"
-              >
-                {category}
-              </Link>
-            ))}
+          <Link
+            href="/products"
+            className="flex items-center gap-1 text-sm font-semibold text-amber-700"
+          >
+            View all <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        {loading ? (
+          <div className="flex h-48 items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        </section>
-      )}
+        ) : (
+          <MainCategoryGrid tiles={homeData?.mainCategories ?? []} />
+        )}
+      </section>
+
+      {/* Home banners */}
+      <StoreAdBanners slot="HOME_BANNER" />
 
       {/* Featured */}
       <section>
@@ -225,6 +237,52 @@ export default function StoreHomePage() {
 
         <ProductShelf loading={loading} products={latest} />
       </section>
+    </div>
+  );
+}
+
+function MainCategoryGrid({ tiles }: { tiles: StoreHomeData["mainCategories"] }) {
+  if (tiles.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+        Categories are being set up.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+      {tiles.map((tile) => (
+        <Link
+          key={tile.key}
+          href={tile.href}
+          className="group relative flex h-32 flex-col justify-end overflow-hidden rounded-xl border bg-slate-900 p-4 transition hover:shadow-md sm:h-36"
+        >
+          {tile.imageUrl ? (
+            <Image
+              src={tile.imageUrl}
+              alt={tile.name}
+              fill
+              sizes="(max-width: 640px) 50vw, 25vw"
+              className="object-cover transition duration-300 group-hover:scale-105"
+            />
+          ) : null}
+
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent" />
+
+          <div className="relative">
+            <p className="text-sm font-bold leading-tight text-white sm:text-base">
+              {tile.name}
+            </p>
+            <p className="mt-0.5 text-xs text-slate-300">
+              {tile.productCount} {tile.productCount === 1 ? "item" : "items"}
+              <span className="mx-1.5 text-slate-400">·</span>
+              Browse
+              <ArrowUpRight className="ml-1 inline h-3 w-3 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </p>
+          </div>
+        </Link>
+      ))}
     </div>
   );
 }

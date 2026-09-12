@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { Package, PackageX, Pencil, Plus, Search, Star, Trash2 } from "lucide-react";
+import { Package, PackageX, Pencil, Plus, Search, Star, Trash2, Wand2 } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import { PRODUCT_UNITS } from "@/lib/catalog";
 
@@ -27,6 +27,7 @@ type Category = {
 type ProductVariant = {
   id: string | null;
   sku: string;
+  barcode: string | null;
   name: string;
   sizeValue: number;
   sizeUnit: string;
@@ -38,6 +39,7 @@ type ProductVariant = {
 type Product = {
   id: string;
   code: string;
+  barcode: string | null;
   name: string;
   brand: string | null;
   description: string | null;
@@ -60,6 +62,7 @@ type Product = {
 type VariantForm = {
   id: string | null;
   sku: string;
+  barcode: string;
   name: string;
   sizeValue: string;
   sizeUnit: string;
@@ -70,6 +73,7 @@ type VariantForm = {
 type ProductFormState = {
   id: string | null;
   code: string;
+  barcode: string;
   name: string;
   brand: string;
   description: string;
@@ -92,6 +96,7 @@ type ProductFormState = {
 const emptyVariant: VariantForm = {
   id: null,
   sku: "",
+  barcode: "",
   name: "",
   sizeValue: "",
   sizeUnit: "UNIT",
@@ -102,6 +107,7 @@ const emptyVariant: VariantForm = {
 const emptyForm: ProductFormState = {
   id: null,
   code: "",
+  barcode: "",
   name: "",
   brand: "",
   description: "",
@@ -121,6 +127,35 @@ const emptyForm: ProductFormState = {
   variants: [],
 };
 
+function ProductImage({
+  src,
+  className,
+}: {
+  src: string | null;
+  className: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  if (!src || failed) {
+    return (
+      <div
+        className={`flex items-center justify-center bg-muted text-muted-foreground ${className}`}
+      >
+        <Package className="h-1/3 w-1/3" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt=""
+      className={`rounded-md border object-cover ${className}`}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -133,7 +168,7 @@ export default function ProductsPage() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const loadProducts = async () => {
+  async function loadProducts() {
     try {
       const response = await fetch("/api/products");
       const data = await response.json();
@@ -148,24 +183,46 @@ export default function ProductsPage() {
       console.error("Failed to load products:", error);
       alert("Failed to load products.");
     }
-  };
-
-  const loadCategories = async () => {
-    try {
-      const response = await fetch("/api/categories");
-      const data = await response.json();
-
-      if (response.ok) {
-        setCategories(Array.isArray(data) ? data : []);
-      }
-    } catch (error) {
-      console.error("Failed to load categories:", error);
-    }
-  };
+  }
 
   useEffect(() => {
-    loadProducts();
-    loadCategories();
+    let cancelled = false;
+
+    async function init() {
+      try {
+        const [productsResponse, categoriesResponse] = await Promise.all([
+          fetch("/api/products"),
+          fetch("/api/categories"),
+        ]);
+
+        if (cancelled) return;
+
+        const productsData = await productsResponse.json();
+        const categoriesData = await categoriesResponse.json();
+
+        if (cancelled) return;
+
+        if (productsResponse.ok) {
+          setProducts(
+            Array.isArray(productsData) ? productsData : productsData.data ?? []
+          );
+        }
+
+        if (categoriesResponse.ok) {
+          setCategories(
+            Array.isArray(categoriesData) ? categoriesData : []
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load products:", error);
+      }
+    }
+
+    init();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function startCreate() {
@@ -177,6 +234,7 @@ export default function ProductsPage() {
     setForm({
       id: product.id,
       code: product.code,
+      barcode: product.barcode ?? "",
       name: product.name,
       brand: product.brand ?? "",
       description: product.description ?? "",
@@ -205,6 +263,7 @@ export default function ProductsPage() {
       variants: product.variants.map((variant) => ({
         id: variant.id,
         sku: variant.sku,
+        barcode: variant.barcode ?? "",
         name: variant.name,
         sizeValue: String(variant.sizeValue),
         sizeUnit: variant.sizeUnit,
@@ -260,6 +319,31 @@ export default function ProductsPage() {
     }));
   }
 
+  function generateBarcode() {
+    const code = form.barcode.trim();
+    if (code) {
+      if (!confirm("Replace the current barcode with a new one?")) return;
+    }
+
+    const candidate = `CM${String(Math.floor(100000000 + Math.random() * 899999999))}`;
+    updateFormField("barcode", candidate);
+  }
+
+  function generateVariantBarcode(index: number) {
+    setForm((current) => {
+      const productBarcode = current.barcode.trim() || `CM${Date.now()}`;
+
+      return {
+        ...current,
+        variants: current.variants.map((v, i) =>
+          i === index
+            ? { ...v, barcode: `${productBarcode}-V${index + 1}-${String(Math.floor(1000 + Math.random() * 8999))}` }
+            : v
+        ),
+      };
+    });
+  }
+
   const filteredProducts = useMemo(() => {
     const term = search.toLowerCase().trim();
 
@@ -270,6 +354,7 @@ export default function ProductsPage() {
     return products.filter((product) => {
       const productMatch =
         product.code.toLowerCase().includes(term) ||
+        (product.barcode ?? "").toLowerCase().includes(term) ||
         product.name.toLowerCase().includes(term) ||
         (product.brand ?? "").toLowerCase().includes(term) ||
         (product.category?.name ?? "").toLowerCase().includes(term);
@@ -277,6 +362,7 @@ export default function ProductsPage() {
       const variantMatch = product.variants.some(
         (variant) =>
           variant.sku.toLowerCase().includes(term) ||
+          (variant.barcode ?? "").toLowerCase().includes(term) ||
           variant.name.toLowerCase().includes(term)
       );
 
@@ -334,6 +420,7 @@ export default function ProductsPage() {
     try {
       const payload = {
         code: form.code.trim(),
+        barcode: form.barcode.trim() || null,
         name: form.name.trim(),
         brand: form.brand.trim() || null,
         description: form.description.trim() || null,
@@ -356,6 +443,7 @@ export default function ProductsPage() {
         variants: form.variants.map((variant) => ({
           id: variant.id,
           sku: variant.sku.trim(),
+          barcode: variant.barcode.trim() || null,
           name: variant.name.trim(),
           sizeValue: variant.sizeValue,
           sizeUnit: variant.sizeUnit,
@@ -428,35 +516,6 @@ export default function ProductsPage() {
     } finally {
       setDeletingId(null);
     }
-  }
-
-  function ProductImage({
-    src,
-    className,
-  }: {
-    src: string | null;
-    className: string;
-  }) {
-    const [failed, setFailed] = useState(false);
-
-    if (!src || failed) {
-      return (
-        <div
-          className={`flex items-center justify-center bg-muted text-muted-foreground ${className}`}
-        >
-          <Package className="h-1/3 w-1/3" />
-        </div>
-      );
-    }
-
-    return (
-      <img
-        src={src}
-        alt=""
-        className={`rounded-md border object-cover ${className}`}
-        onError={() => setFailed(true)}
-      />
-    );
   }
 
   const [imageUploading, setImageUploading] = useState(false);
@@ -541,6 +600,32 @@ export default function ProductsPage() {
                   value={form.code}
                   onChange={(e) => updateFormField("code", e.target.value)}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Barcode</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={generateBarcode}
+                    title="Generate a barcode automatically"
+                  >
+                    <Wand2 className="mr-1 h-3 w-3" />
+                    Generate
+                  </Button>
+                </div>
+                <Input
+                  placeholder="CM000000001 (scan barcode at checkout)"
+                  value={form.barcode}
+                  onChange={(e) => updateFormField("barcode", e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Print this code on the item label. Scanning it at the{" "}
+                  <span className="font-medium">Invoice (POS)</span> screen adds
+                  it to a bill instantly.
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -872,12 +957,31 @@ export default function ProductsPage() {
                     </div>
 
                     <div className="space-y-2 md:col-span-5">
-                      <Label>Variant Image URL</Label>
-                      <Input
-                        placeholder="https://... (optional)"
-                        value={variant.imageUrl}
-                        onChange={(e) => updateVariant(index, "imageUrl", e.target.value)}
-                      />
+                      <div className="flex items-center justify-between gap-2">
+                        <Label>Variant Image URL</Label>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => generateVariantBarcode(index)}
+                          title="Generate a barcode for this variant"
+                        >
+                          <Wand2 className="mr-1 h-3 w-3" />
+                          Barcode
+                        </Button>
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <Input
+                          placeholder="https://... (optional)"
+                          value={variant.imageUrl}
+                          onChange={(e) => updateVariant(index, "imageUrl", e.target.value)}
+                        />
+                        <Input
+                          placeholder="Barcode (optional)"
+                          value={variant.barcode}
+                          onChange={(e) => updateVariant(index, "barcode", e.target.value)}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -929,6 +1033,7 @@ export default function ProductsPage() {
                       <div className="flex flex-wrap items-center gap-3">
                         <h2 className="text-lg font-semibold">{product.name}</h2>
                         <Badge>{product.code}</Badge>
+                        {product.barcode && <Badge variant="outline">{product.barcode}</Badge>}
                         {product.brand && <Badge variant="secondary">{product.brand}</Badge>}
                         <Badge variant="secondary">{product.status}</Badge>
                         {product.isFeatured && (
@@ -1024,6 +1129,15 @@ export default function ProductsPage() {
                               <p className="mt-1 text-sm text-muted-foreground">
                                 SKU:{" "}
                                 <span className="font-medium text-foreground">{variant.sku}</span>
+                                {variant.barcode && (
+                                  <>
+                                    {" "}
+                                    · Barcode{" "}
+                                    <span className="font-medium text-foreground">
+                                      {variant.barcode}
+                                    </span>
+                                  </>
+                                )}
                               </p>
                               <p className="text-sm text-muted-foreground">
                                 Size:{" "}
