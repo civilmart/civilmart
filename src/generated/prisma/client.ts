@@ -52,15 +52,10 @@ export type User = Prisma.UserModel
  */
 export type Supplier = Prisma.SupplierModel
 /**
- * Model RawMaterial
+ * Model Category
  * 
  */
-export type RawMaterial = Prisma.RawMaterialModel
-/**
- * Model RawMaterialLot
- * 
- */
-export type RawMaterialLot = Prisma.RawMaterialLotModel
+export type Category = Prisma.CategoryModel
 /**
  * Model Product
  * 
@@ -71,21 +66,6 @@ export type Product = Prisma.ProductModel
  * 
  */
 export type ProductVariant = Prisma.ProductVariantModel
-/**
- * Model Formula
- * 
- */
-export type Formula = Prisma.FormulaModel
-/**
- * Model FormulaVersion
- * 
- */
-export type FormulaVersion = Prisma.FormulaVersionModel
-/**
- * Model FormulaIngredient
- * 
- */
-export type FormulaIngredient = Prisma.FormulaIngredientModel
 /**
  * Model InventoryTransaction
  * 
@@ -112,21 +92,6 @@ export type PurchaseOrder = Prisma.PurchaseOrderModel
  */
 export type PurchaseOrderItem = Prisma.PurchaseOrderItemModel
 /**
- * Model ProductionBatch
- * 
- */
-export type ProductionBatch = Prisma.ProductionBatchModel
-/**
- * Model MaterialConsumption
- * 
- */
-export type MaterialConsumption = Prisma.MaterialConsumptionModel
-/**
- * Model QualityControl
- * 
- */
-export type QualityControl = Prisma.QualityControlModel
-/**
  * Model Customer
  * 
  */
@@ -151,6 +116,21 @@ export type CustomerOrderItem = Prisma.CustomerOrderItemModel
  * 
  */
 export type CustomerOrderStatusEvent = Prisma.CustomerOrderStatusEventModel
+/**
+ * Model Invoice
+ * 
+ */
+export type Invoice = Prisma.InvoiceModel
+/**
+ * Model InvoiceItem
+ * 
+ */
+export type InvoiceItem = Prisma.InvoiceItemModel
+/**
+ * Model InvoicePayment
+ * 
+ */
+export type InvoicePayment = Prisma.InvoicePaymentModel
 /**
  * Model SiteSetting
  * 

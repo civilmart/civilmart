@@ -53,26 +53,22 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   User: 'User',
   Supplier: 'Supplier',
-  RawMaterial: 'RawMaterial',
-  RawMaterialLot: 'RawMaterialLot',
+  Category: 'Category',
   Product: 'Product',
   ProductVariant: 'ProductVariant',
-  Formula: 'Formula',
-  FormulaVersion: 'FormulaVersion',
-  FormulaIngredient: 'FormulaIngredient',
   InventoryTransaction: 'InventoryTransaction',
   Purchase: 'Purchase',
   PurchaseItem: 'PurchaseItem',
   PurchaseOrder: 'PurchaseOrder',
   PurchaseOrderItem: 'PurchaseOrderItem',
-  ProductionBatch: 'ProductionBatch',
-  MaterialConsumption: 'MaterialConsumption',
-  QualityControl: 'QualityControl',
   Customer: 'Customer',
   CustomerWishlistItem: 'CustomerWishlistItem',
   CustomerOrder: 'CustomerOrder',
   CustomerOrderItem: 'CustomerOrderItem',
   CustomerOrderStatusEvent: 'CustomerOrderStatusEvent',
+  Invoice: 'Invoice',
+  InvoiceItem: 'InvoiceItem',
+  InvoicePayment: 'InvoicePayment',
   SiteSetting: 'SiteSetting'
 } as const
 
@@ -126,56 +122,32 @@ export const SupplierScalarFieldEnum = {
 export type SupplierScalarFieldEnum = (typeof SupplierScalarFieldEnum)[keyof typeof SupplierScalarFieldEnum]
 
 
-export const RawMaterialScalarFieldEnum = {
+export const CategoryScalarFieldEnum = {
   id: 'id',
-  code: 'code',
   name: 'name',
-  materialType: 'materialType',
-  unitType: 'unitType',
-  density: 'density',
-  densityUnit: 'densityUnit',
-  minimumStock: 'minimumStock',
-  reorderLevel: 'reorderLevel',
+  slug: 'slug',
+  description: 'description',
+  imageUrl: 'imageUrl',
   isActive: 'isActive',
-  notes: 'notes',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
-export type RawMaterialScalarFieldEnum = (typeof RawMaterialScalarFieldEnum)[keyof typeof RawMaterialScalarFieldEnum]
-
-
-export const RawMaterialLotScalarFieldEnum = {
-  id: 'id',
-  rawMaterialId: 'rawMaterialId',
-  supplierId: 'supplierId',
-  lotNumber: 'lotNumber',
-  receivedAt: 'receivedAt',
-  expiryDate: 'expiryDate',
-  receivedQty: 'receivedQty',
-  unitType: 'unitType',
-  unit: 'unit',
-  costPerUnit: 'costPerUnit',
-  totalCost: 'totalCost',
-  notes: 'notes',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type RawMaterialLotScalarFieldEnum = (typeof RawMaterialLotScalarFieldEnum)[keyof typeof RawMaterialLotScalarFieldEnum]
+export type CategoryScalarFieldEnum = (typeof CategoryScalarFieldEnum)[keyof typeof CategoryScalarFieldEnum]
 
 
 export const ProductScalarFieldEnum = {
   id: 'id',
   code: 'code',
   name: 'name',
+  brand: 'brand',
   description: 'description',
   status: 'status',
   imageUrl: 'imageUrl',
   imageUrl2: 'imageUrl2',
   price: 'price',
   isFeatured: 'isFeatured',
-  category: 'category',
+  categoryId: 'categoryId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -201,59 +173,12 @@ export const ProductVariantScalarFieldEnum = {
 export type ProductVariantScalarFieldEnum = (typeof ProductVariantScalarFieldEnum)[keyof typeof ProductVariantScalarFieldEnum]
 
 
-export const FormulaScalarFieldEnum = {
-  id: 'id',
-  productId: 'productId',
-  code: 'code',
-  name: 'name',
-  description: 'description',
-  status: 'status',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type FormulaScalarFieldEnum = (typeof FormulaScalarFieldEnum)[keyof typeof FormulaScalarFieldEnum]
-
-
-export const FormulaVersionScalarFieldEnum = {
-  id: 'id',
-  formulaId: 'formulaId',
-  version: 'version',
-  status: 'status',
-  notes: 'notes',
-  batchSize: 'batchSize',
-  batchUnit: 'batchUnit',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type FormulaVersionScalarFieldEnum = (typeof FormulaVersionScalarFieldEnum)[keyof typeof FormulaVersionScalarFieldEnum]
-
-
-export const FormulaIngredientScalarFieldEnum = {
-  id: 'id',
-  formulaVersionId: 'formulaVersionId',
-  rawMaterialId: 'rawMaterialId',
-  quantity: 'quantity',
-  unitType: 'unitType',
-  unit: 'unit',
-  percentage: 'percentage',
-  notes: 'notes',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt',
-  rawMaterialLotId: 'rawMaterialLotId'
-} as const
-
-export type FormulaIngredientScalarFieldEnum = (typeof FormulaIngredientScalarFieldEnum)[keyof typeof FormulaIngredientScalarFieldEnum]
-
-
 export const InventoryTransactionScalarFieldEnum = {
   id: 'id',
-  rawMaterialId: 'rawMaterialId',
-  lotId: 'lotId',
+  variantId: 'variantId',
+  productId: 'productId',
   transactionType: 'transactionType',
   quantity: 'quantity',
-  unitType: 'unitType',
   unit: 'unit',
   referenceType: 'referenceType',
   referenceId: 'referenceId',
@@ -286,10 +211,9 @@ export type PurchaseScalarFieldEnum = (typeof PurchaseScalarFieldEnum)[keyof typ
 export const PurchaseItemScalarFieldEnum = {
   id: 'id',
   purchaseId: 'purchaseId',
-  rawMaterialId: 'rawMaterialId',
-  lotId: 'lotId',
+  productId: 'productId',
+  variantId: 'variantId',
   quantity: 'quantity',
-  unitType: 'unitType',
   unit: 'unit',
   costPerUnit: 'costPerUnit',
   totalCost: 'totalCost',
@@ -317,98 +241,16 @@ export type PurchaseOrderScalarFieldEnum = (typeof PurchaseOrderScalarFieldEnum)
 export const PurchaseOrderItemScalarFieldEnum = {
   id: 'id',
   purchaseOrderId: 'purchaseOrderId',
-  rawMaterialId: 'rawMaterialId',
+  productId: 'productId',
+  variantId: 'variantId',
   quantity: 'quantity',
   receivedQuantity: 'receivedQuantity',
-  unitType: 'unitType',
   unit: 'unit',
   estimatedCostPerUnit: 'estimatedCostPerUnit',
   notes: 'notes'
 } as const
 
 export type PurchaseOrderItemScalarFieldEnum = (typeof PurchaseOrderItemScalarFieldEnum)[keyof typeof PurchaseOrderItemScalarFieldEnum]
-
-
-export const ProductionBatchScalarFieldEnum = {
-  id: 'id',
-  batchNumber: 'batchNumber',
-  productId: 'productId',
-  productVariantId: 'productVariantId',
-  formulaId: 'formulaId',
-  formulaVersionId: 'formulaVersionId',
-  plannedQuantity: 'plannedQuantity',
-  producedQuantity: 'producedQuantity',
-  status: 'status',
-  plannedAt: 'plannedAt',
-  startedAt: 'startedAt',
-  completedAt: 'completedAt',
-  releasedAt: 'releasedAt',
-  notes: 'notes',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type ProductionBatchScalarFieldEnum = (typeof ProductionBatchScalarFieldEnum)[keyof typeof ProductionBatchScalarFieldEnum]
-
-
-export const MaterialConsumptionScalarFieldEnum = {
-  id: 'id',
-  productionBatchId: 'productionBatchId',
-  rawMaterialId: 'rawMaterialId',
-  lotId: 'lotId',
-  quantity: 'quantity',
-  unitType: 'unitType',
-  unit: 'unit',
-  notes: 'notes',
-  createdAt: 'createdAt'
-} as const
-
-export type MaterialConsumptionScalarFieldEnum = (typeof MaterialConsumptionScalarFieldEnum)[keyof typeof MaterialConsumptionScalarFieldEnum]
-
-
-export const QualityControlScalarFieldEnum = {
-  id: 'id',
-  productionBatchId: 'productionBatchId',
-  maturationResult: 'maturationResult',
-  maturationValue: 'maturationValue',
-  maturationNotes: 'maturationNotes',
-  maturationCheckedBy: 'maturationCheckedBy',
-  maturationCheckedAt: 'maturationCheckedAt',
-  stabilityResult: 'stabilityResult',
-  stabilityValue: 'stabilityValue',
-  stabilityNotes: 'stabilityNotes',
-  stabilityCheckedBy: 'stabilityCheckedBy',
-  stabilityCheckedAt: 'stabilityCheckedAt',
-  clarityResult: 'clarityResult',
-  clarityValue: 'clarityValue',
-  clarityNotes: 'clarityNotes',
-  clarityCheckedBy: 'clarityCheckedBy',
-  clarityCheckedAt: 'clarityCheckedAt',
-  colourResult: 'colourResult',
-  colourValue: 'colourValue',
-  colourNotes: 'colourNotes',
-  colourCheckedBy: 'colourCheckedBy',
-  colourCheckedAt: 'colourCheckedAt',
-  odourResult: 'odourResult',
-  odourValue: 'odourValue',
-  odourNotes: 'odourNotes',
-  odourCheckedBy: 'odourCheckedBy',
-  odourCheckedAt: 'odourCheckedAt',
-  regulatoryReviewResult: 'regulatoryReviewResult',
-  regulatoryReviewNotes: 'regulatoryReviewNotes',
-  regulatoryReviewedBy: 'regulatoryReviewedBy',
-  regulatoryReviewedAt: 'regulatoryReviewedAt',
-  decision: 'decision',
-  decisionNotes: 'decisionNotes',
-  decidedBy: 'decidedBy',
-  decidedAt: 'decidedAt',
-  releasedBy: 'releasedBy',
-  releasedAt: 'releasedAt',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type QualityControlScalarFieldEnum = (typeof QualityControlScalarFieldEnum)[keyof typeof QualityControlScalarFieldEnum]
 
 
 export const CustomerScalarFieldEnum = {
@@ -485,6 +327,59 @@ export const CustomerOrderStatusEventScalarFieldEnum = {
 } as const
 
 export type CustomerOrderStatusEventScalarFieldEnum = (typeof CustomerOrderStatusEventScalarFieldEnum)[keyof typeof CustomerOrderStatusEventScalarFieldEnum]
+
+
+export const InvoiceScalarFieldEnum = {
+  id: 'id',
+  invoiceNo: 'invoiceNo',
+  customerId: 'customerId',
+  orderId: 'orderId',
+  createdById: 'createdById',
+  invoiceDate: 'invoiceDate',
+  dueDate: 'dueDate',
+  subtotal: 'subtotal',
+  tax: 'tax',
+  discount: 'discount',
+  totalAmount: 'totalAmount',
+  paidAmount: 'paidAmount',
+  paymentStatus: 'paymentStatus',
+  paymentMethod: 'paymentMethod',
+  notes: 'notes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type InvoiceScalarFieldEnum = (typeof InvoiceScalarFieldEnum)[keyof typeof InvoiceScalarFieldEnum]
+
+
+export const InvoiceItemScalarFieldEnum = {
+  id: 'id',
+  invoiceId: 'invoiceId',
+  productId: 'productId',
+  variantId: 'variantId',
+  description: 'description',
+  sku: 'sku',
+  quantity: 'quantity',
+  unit: 'unit',
+  unitPrice: 'unitPrice',
+  totalPrice: 'totalPrice'
+} as const
+
+export type InvoiceItemScalarFieldEnum = (typeof InvoiceItemScalarFieldEnum)[keyof typeof InvoiceItemScalarFieldEnum]
+
+
+export const InvoicePaymentScalarFieldEnum = {
+  id: 'id',
+  invoiceId: 'invoiceId',
+  amount: 'amount',
+  method: 'method',
+  reference: 'reference',
+  paidAt: 'paidAt',
+  notes: 'notes',
+  createdById: 'createdById'
+} as const
+
+export type InvoicePaymentScalarFieldEnum = (typeof InvoicePaymentScalarFieldEnum)[keyof typeof InvoicePaymentScalarFieldEnum]
 
 
 export const SiteSettingScalarFieldEnum = {

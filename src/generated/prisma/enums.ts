@@ -13,8 +13,7 @@ export const UserRole = {
   USER: 'USER',
   VIEWER: 'VIEWER',
   PURCHASE: 'PURCHASE',
-  QC: 'QC',
-  PRODUCTION: 'PRODUCTION',
+  SALES: 'SALES',
   STOREKEEPER: 'STOREKEEPER',
   MANAGER: 'MANAGER',
   ADMIN: 'ADMIN',
@@ -24,80 +23,41 @@ export const UserRole = {
 export type UserRole = (typeof UserRole)[keyof typeof UserRole]
 
 
-export const PurchaseStatus = {
-  DRAFT: 'DRAFT',
-  RECEIVED: 'RECEIVED',
-  CANCELLED: 'CANCELLED'
-} as const
-
-export type PurchaseStatus = (typeof PurchaseStatus)[keyof typeof PurchaseStatus]
-
-
-export const UnitType = {
-  WEIGHT: 'WEIGHT',
-  VOLUME: 'VOLUME',
-  PIECE: 'PIECE'
-} as const
-
-export type UnitType = (typeof UnitType)[keyof typeof UnitType]
-
-
-export const InventoryUnit = {
-  G: 'G',
-  KG: 'KG',
-  ML: 'ML',
-  L: 'L',
-  PIECE: 'PIECE'
-} as const
-
-export type InventoryUnit = (typeof InventoryUnit)[keyof typeof InventoryUnit]
-
-
-export const FormulaStatus = {
-  DRAFT: 'DRAFT',
+export const ProductStatus = {
   ACTIVE: 'ACTIVE',
-  ARCHIVED: 'ARCHIVED'
+  INACTIVE: 'INACTIVE',
+  DISCONTINUED: 'DISCONTINUED'
 } as const
 
-export type FormulaStatus = (typeof FormulaStatus)[keyof typeof FormulaStatus]
+export type ProductStatus = (typeof ProductStatus)[keyof typeof ProductStatus]
 
 
-export const WeightUnit = {
-  G: 'G',
-  KG: 'KG'
+export const ProductUnit = {
+  BAG: 'BAG',
+  BOX: 'BOX',
+  CARTON: 'CARTON',
+  PACK: 'PACK',
+  PIECE: 'PIECE',
+  ROLL: 'ROLL',
+  SHEET: 'SHEET',
+  KG: 'KG',
+  TON: 'TON',
+  LITER: 'LITER',
+  METER: 'METER',
+  FOOT: 'FOOT',
+  ML: 'ML'
 } as const
 
-export type WeightUnit = (typeof WeightUnit)[keyof typeof WeightUnit]
-
-
-export const VolumeUnit = {
-  ML: 'ML',
-  L: 'L'
-} as const
-
-export type VolumeUnit = (typeof VolumeUnit)[keyof typeof VolumeUnit]
-
-
-export const MaterialType = {
-  FRAGRANCE: 'FRAGRANCE',
-  ESSENTIAL_OIL: 'ESSENTIAL_OIL',
-  CHEMICAL: 'CHEMICAL',
-  ALCOHOL: 'ALCOHOL',
-  FIXATIVE: 'FIXATIVE',
-  COLOR: 'COLOR',
-  PACKAGING: 'PACKAGING',
-  OTHER: 'OTHER'
-} as const
-
-export type MaterialType = (typeof MaterialType)[keyof typeof MaterialType]
+export type ProductUnit = (typeof ProductUnit)[keyof typeof ProductUnit]
 
 
 export const InventoryTransactionType = {
   PURCHASE: 'PURCHASE',
-  CONSUMPTION: 'CONSUMPTION',
+  PURCHASE_RETURN: 'PURCHASE_RETURN',
+  SALE: 'SALE',
+  SALE_RETURN: 'SALE_RETURN',
   ADJUSTMENT_IN: 'ADJUSTMENT_IN',
   ADJUSTMENT_OUT: 'ADJUSTMENT_OUT',
-  RETURN: 'RETURN',
   TRANSFER_IN: 'TRANSFER_IN',
   TRANSFER_OUT: 'TRANSFER_OUT',
   OPENING_BALANCE: 'OPENING_BALANCE',
@@ -107,13 +67,13 @@ export const InventoryTransactionType = {
 export type InventoryTransactionType = (typeof InventoryTransactionType)[keyof typeof InventoryTransactionType]
 
 
-export const ProductStatus = {
-  ACTIVE: 'ACTIVE',
-  INACTIVE: 'INACTIVE',
-  DISCONTINUED: 'DISCONTINUED'
+export const PurchaseStatus = {
+  DRAFT: 'DRAFT',
+  RECEIVED: 'RECEIVED',
+  CANCELLED: 'CANCELLED'
 } as const
 
-export type ProductStatus = (typeof ProductStatus)[keyof typeof ProductStatus]
+export type PurchaseStatus = (typeof PurchaseStatus)[keyof typeof PurchaseStatus]
 
 
 export const PurchaseOrderStatus = {
@@ -128,37 +88,6 @@ export const PurchaseOrderStatus = {
 export type PurchaseOrderStatus = (typeof PurchaseOrderStatus)[keyof typeof PurchaseOrderStatus]
 
 
-export const ProductionBatchStatus = {
-  DRAFT: 'DRAFT',
-  PLANNED: 'PLANNED',
-  IN_PROGRESS: 'IN_PROGRESS',
-  COMPLETED: 'COMPLETED',
-  RELEASED: 'RELEASED',
-  CANCELLED: 'CANCELLED'
-} as const
-
-export type ProductionBatchStatus = (typeof ProductionBatchStatus)[keyof typeof ProductionBatchStatus]
-
-
-export const QCCheckResult = {
-  PENDING: 'PENDING',
-  PASS: 'PASS',
-  FAIL: 'FAIL'
-} as const
-
-export type QCCheckResult = (typeof QCCheckResult)[keyof typeof QCCheckResult]
-
-
-export const QCDecision = {
-  PENDING: 'PENDING',
-  APPROVED: 'APPROVED',
-  REJECTED: 'REJECTED',
-  ON_HOLD: 'ON_HOLD'
-} as const
-
-export type QCDecision = (typeof QCDecision)[keyof typeof QCDecision]
-
-
 export const CustomerOrderStatus = {
   PLACED: 'PLACED',
   CONFIRMED: 'CONFIRMED',
@@ -169,3 +98,13 @@ export const CustomerOrderStatus = {
 } as const
 
 export type CustomerOrderStatus = (typeof CustomerOrderStatus)[keyof typeof CustomerOrderStatus]
+
+
+export const PaymentStatus = {
+  UNPAID: 'UNPAID',
+  PARTIAL: 'PARTIAL',
+  PAID: 'PAID',
+  CANCELLED: 'CANCELLED'
+} as const
+
+export type PaymentStatus = (typeof PaymentStatus)[keyof typeof PaymentStatus]

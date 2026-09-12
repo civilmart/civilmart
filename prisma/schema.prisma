@@ -15,77 +15,53 @@ enum UserRole {
   USER
   VIEWER
   PURCHASE
-  QC
-  PRODUCTION
+  SALES
   STOREKEEPER
   MANAGER
   ADMIN
   SUPERADMIN
 }
 
-enum PurchaseStatus {
-  DRAFT
-  RECEIVED
-  CANCELLED
-}
-
-enum UnitType {
-  WEIGHT
-  VOLUME
-  PIECE
-}
-
-enum InventoryUnit {
-  G
-  KG
-  ML
-  L
-  PIECE
-}
-
-enum FormulaStatus {
-  DRAFT
+enum ProductStatus {
   ACTIVE
-  ARCHIVED
+  INACTIVE
+  DISCONTINUED
 }
 
-enum WeightUnit {
-  G
+// Common selling units for building materials.
+enum ProductUnit {
+  BAG
+  BOX
+  CARTON
+  PACK
+  PIECE
+  ROLL
+  SHEET
   KG
-}
-
-enum VolumeUnit {
+  TON
+  LITER
+  METER
+  FOOT
   ML
-  L
-}
-
-enum MaterialType {
-  FRAGRANCE
-  ESSENTIAL_OIL
-  CHEMICAL
-  ALCOHOL
-  FIXATIVE
-  COLOR
-  PACKAGING
-  OTHER
 }
 
 enum InventoryTransactionType {
   PURCHASE
-  CONSUMPTION
+  PURCHASE_RETURN
+  SALE
+  SALE_RETURN
   ADJUSTMENT_IN
   ADJUSTMENT_OUT
-  RETURN
   TRANSFER_IN
   TRANSFER_OUT
   OPENING_BALANCE
   CORRECTION
 }
 
-enum ProductStatus {
-  ACTIVE
-  INACTIVE
-  DISCONTINUED
+enum PurchaseStatus {
+  DRAFT
+  RECEIVED
+  CANCELLED
 }
 
 enum PurchaseOrderStatus {
@@ -97,34 +73,19 @@ enum PurchaseOrderStatus {
   CANCELLED
 }
 
-enum ProductionBatchStatus {
-  DRAFT
-  PLANNED
-  IN_PROGRESS
-  COMPLETED
-  RELEASED
-  CANCELLED
-}
-
-enum QCCheckResult {
-  PENDING
-  PASS
-  FAIL
-}
-
-enum QCDecision {
-  PENDING
-  APPROVED
-  REJECTED
-  ON_HOLD
-}
-
 enum CustomerOrderStatus {
   PLACED
   CONFIRMED
   PROCESSING
   SHIPPED
   DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
   CANCELLED
 }
 
@@ -148,6 +109,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   inventoryTransactions InventoryTransaction[]
+  invoices              Invoice[]
   customer              Customer?
 
   @@map("users")
@@ -170,7 +132,6 @@ model Supplier {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  rawMaterialLots RawMaterialLot[]
   purchases       Purchase[]
   purchaseOrders  PurchaseOrder[]
 
@@ -179,87 +140,24 @@ model Supplier {
 }
 
 // ============================================================
-// RAW MATERIALS
+// CATEGORIES
 // ============================================================
 
-model RawMaterial {
-  id           String       @id @default(cuid())
-  code         String       @unique
-  name         String
-  materialType MaterialType @default(OTHER)
-
-  // The physical measurement category of this material.
-  // Weight and volume are deliberately kept distinct.
-  unitType UnitType
-
-  // Density is optional and is only needed when converting
-  // between weight and volume.
-  density     Decimal? @db.Decimal(12, 6)
-  densityUnit String?
-
-  minimumStock Decimal? @db.Decimal(14, 4)
-  reorderLevel Decimal? @db.Decimal(14, 4)
-
-  isActive Boolean @default(true)
-  notes    String?
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  imageUrl    String?
+  isActive    Boolean  @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  lots                  RawMaterialLot[]
-  inventoryTransactions InventoryTransaction[]
-  purchaseItems         PurchaseItem[]
-  purchaseOrderItems    PurchaseOrderItem[]
-  formulaIngredients    FormulaIngredient[]
-  materialConsumptions  MaterialConsumption[]
+  products Product[]
 
   @@index([name])
-  @@index([materialType])
-  @@map("raw_materials")
-}
-
-// ============================================================
-// RAW MATERIAL LOTS
-// ============================================================
-
-model RawMaterialLot {
-  id String @id @default(cuid())
-
-  rawMaterialId String
-  supplierId    String?
-
-  lotNumber          String
-  receivedAt         DateTime            @default(now())
-  expiryDate         DateTime?
-  formulaIngredients FormulaIngredient[]
-
-  // Quantity received in the material's native unit.
-  receivedQty Decimal @db.Decimal(14, 4)
-
-  // Current balance is maintained through inventory transactions.
-  // This field is intentionally NOT the source of truth.
-  unitType UnitType
-  unit     InventoryUnit
-
-  costPerUnit Decimal? @db.Decimal(14, 4)
-  totalCost   Decimal? @db.Decimal(14, 2)
-
-  notes String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  rawMaterial RawMaterial @relation(fields: [rawMaterialId], references: [id])
-  supplier    Supplier?   @relation(fields: [supplierId], references: [id])
-
-  inventoryTransactions InventoryTransaction[]
-  purchaseItems         PurchaseItem[]
-  materialConsumptions  MaterialConsumption[]
-
-  @@unique([rawMaterialId, lotNumber])
-  @@index([lotNumber])
-  @@index([rawMaterialId])
-  @@map("raw_material_lots")
+  @@map("categories")
 }
 
 // ============================================================
@@ -270,31 +168,37 @@ model Product {
   id          String        @id @default(cuid())
   code        String        @unique
   name        String
+  brand       String?
   description String?
   status      ProductStatus @default(ACTIVE)
 
   // Storefront fields
-  imageUrl  String?
-  imageUrl2 String?
-  price     Decimal? @db.Decimal(14, 2)
+  imageUrl   String?
+  imageUrl2  String?
+  price      Decimal? @db.Decimal(14, 2)
   isFeatured Boolean  @default(false)
-  category  String?
+
+  categoryId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  variants          ProductVariant[]
-  formulas          Formula[]
-  productionBatches ProductionBatch[]
-  customerOrderItems CustomerOrderItem[]
-  wishlistItems     CustomerWishlistItem[]
+  category            Category?          @relation(fields: [categoryId], references: [id])
+  variants            ProductVariant[]
+  customerOrderItems  CustomerOrderItem[]
+  wishlistItems       CustomerWishlistItem[]
+  inventoryTransactions InventoryTransaction[]
+  purchaseItems       PurchaseItem[]
+  purchaseOrderItems  PurchaseOrderItem[]
+  invoiceItems        InvoiceItem[]
 
   @@index([name])
+  @@index([categoryId])
   @@map("products")
 }
 
 // ============================================================
-// PRODUCT VARIANTS / SKUs
+// PRODUCT VARIANTS / SKUs (pack sizes)
 // ============================================================
 
 model ProductVariant {
@@ -304,115 +208,46 @@ model ProductVariant {
   sku  String @unique
   name String
 
-  // Examples: 30ml, 50ml, 100ml
-  sizeValue Decimal    @db.Decimal(10, 2)
-  sizeUnit  VolumeUnit
+  // Examples: 50 kg, 1 Ton, 500 pcs, 25 m roll
+  sizeValue Decimal     @db.Decimal(10, 2)
+  sizeUnit  ProductUnit
 
   status ProductStatus @default(ACTIVE)
 
   // Storefront fields
-  price         Decimal? @db.Decimal(14, 2)
+  price         Decimal @db.Decimal(14, 2)
   imageUrl      String?
-  stockQuantity Int      @default(0)
+  stockQuantity Decimal @default(0) @db.Decimal(14, 4)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  product           Product           @relation(fields: [productId], references: [id])
-  productionBatches ProductionBatch[]
+  product            Product            @relation(fields: [productId], references: [id])
+  inventoryTransactions InventoryTransaction[]
   customerOrderItems CustomerOrderItem[]
+  purchaseItems      PurchaseItem[]
+  purchaseOrderItems PurchaseOrderItem[]
+  invoiceItems       InvoiceItem[]
 
   @@index([productId])
   @@map("product_variants")
 }
 
 // ============================================================
-// FORMULAS
-// ============================================================
-
-model Formula {
-  id          String        @id @default(cuid())
-  productId   String
-  code        String        @unique
-  name        String
-  description String?
-  status      FormulaStatus @default(DRAFT)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  product           Product           @relation(fields: [productId], references: [id])
-  versions          FormulaVersion[]
-  productionBatches ProductionBatch[]
-
-  @@index([productId])
-  @@index([status])
-  @@map("formulas")
-}
-
-model FormulaVersion {
-  id        String        @id @default(cuid())
-  formulaId String
-  version   Int
-  status    FormulaStatus @default(DRAFT)
-  notes     String?
-  batchSize Decimal      @db.Decimal(14, 4)
-  batchUnit InventoryUnit
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  formula           Formula             @relation(fields: [formulaId], references: [id], onDelete: Cascade)
-  ingredients       FormulaIngredient[]
-  productionBatches ProductionBatch[]
-
-  @@unique([formulaId, version])
-  @@index([formulaId])
-  @@index([status])
-  @@map("formula_versions")
-}
-
-model FormulaIngredient {
-  id               String @id @default(cuid())
-  formulaVersionId String
-  rawMaterialId    String
-
-  quantity Decimal       @db.Decimal(14, 4)
-  unitType UnitType
-  unit     InventoryUnit
-
-  percentage Decimal? @db.Decimal(7, 4)
-  notes      String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  formulaVersion   FormulaVersion  @relation(fields: [formulaVersionId], references: [id], onDelete: Cascade)
-  rawMaterial      RawMaterial     @relation(fields: [rawMaterialId], references: [id])
-  rawMaterialLot   RawMaterialLot? @relation(fields: [rawMaterialLotId], references: [id])
-  rawMaterialLotId String?
-
-  @@index([formulaVersionId])
-  @@index([rawMaterialId])
-  @@map("formula_ingredients")
-}
-
-// ============================================================
-// INVENTORY TRANSACTIONS
+// INVENTORY TRANSACTIONS (product ledger)
 // ============================================================
 
 model InventoryTransaction {
   id String @id @default(cuid())
 
-  rawMaterialId String?
-  lotId         String?
+  variantId String
+  productId String
 
   transactionType InventoryTransactionType
 
-  // Quantity in the raw material's native unit.
-  quantity Decimal       @db.Decimal(14, 4)
-  unitType UnitType
-  unit     InventoryUnit
+  // Quantity in the variant's selling unit.
+  quantity Decimal      @db.Decimal(14, 4)
+  unit     ProductUnit
 
   referenceType String?
   referenceId   String?
@@ -422,16 +257,20 @@ model InventoryTransaction {
   createdById String?
   createdAt   DateTime @default(now())
 
-  rawMaterial RawMaterial?    @relation(fields: [rawMaterialId], references: [id])
-  lot         RawMaterialLot? @relation(fields: [lotId], references: [id])
-  createdBy   User?           @relation(fields: [createdById], references: [id])
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+  product   Product        @relation(fields: [productId], references: [id])
+  createdBy User?          @relation(fields: [createdById], references: [id])
 
-  @@index([rawMaterialId])
-  @@index([lotId])
+  @@index([variantId])
+  @@index([productId])
   @@index([transactionType])
   @@index([createdAt])
   @@map("inventory_transactions")
 }
+
+// ============================================================
+// PURCHASES (goods received directly)
+// ============================================================
 
 model Purchase {
   id           String         @id @default(cuid())
@@ -453,28 +292,33 @@ model Purchase {
   @@index([supplierId])
   @@index([purchaseDate])
   @@index([status])
+  @@map("purchases")
 }
 
 model PurchaseItem {
-  id            String        @id @default(cuid())
+  id            String          @id @default(cuid())
   purchaseId    String
-  rawMaterialId String
-  lotId         String?
-  quantity      Decimal       @db.Decimal(14, 4)
-  unitType      UnitType
-  unit          InventoryUnit
-  costPerUnit   Decimal       @db.Decimal(14, 4)
-  totalCost     Decimal       @db.Decimal(14, 2)
+  productId     String
+  variantId     String?
+  quantity      Decimal         @db.Decimal(14, 4)
+  unit          ProductUnit
+  costPerUnit   Decimal         @db.Decimal(14, 4)
+  totalCost     Decimal         @db.Decimal(14, 2)
   notes         String?
 
-  purchase    Purchase        @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  rawMaterial RawMaterial     @relation(fields: [rawMaterialId], references: [id])
-  lot         RawMaterialLot? @relation(fields: [lotId], references: [id])
+  purchase Purchase      @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product   Product      @relation(fields: [productId], references: [id])
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
 
   @@index([purchaseId])
-  @@index([rawMaterialId])
-  @@index([lotId])
+  @@index([productId])
+  @@index([variantId])
+  @@map("purchase_items")
 }
+
+// ============================================================
+// PURCHASE ORDERS
+// ============================================================
 
 model PurchaseOrder {
   id           String              @id @default(cuid())
@@ -498,161 +342,24 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderItem {
-  id                   String        @id @default(cuid())
+  id                   String            @id @default(cuid())
   purchaseOrderId      String
-  rawMaterialId        String
-  quantity             Decimal       @db.Decimal(14, 4)
-  receivedQuantity     Decimal       @default(0) @db.Decimal(14, 4)
-  unitType             UnitType
-  unit                 InventoryUnit
-  estimatedCostPerUnit Decimal?      @db.Decimal(14, 4)
+  productId            String
+  variantId            String?
+  quantity             Decimal           @db.Decimal(14, 4)
+  receivedQuantity     Decimal           @default(0) @db.Decimal(14, 4)
+  unit                 ProductUnit
+  estimatedCostPerUnit Decimal?          @db.Decimal(14, 4)
   notes                String?
 
-  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  rawMaterial   RawMaterial   @relation(fields: [rawMaterialId], references: [id])
+  purchaseOrder PurchaseOrder    @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       Product          @relation(fields: [productId], references: [id])
+  variant       ProductVariant?  @relation(fields: [variantId], references: [id])
 
   @@index([purchaseOrderId])
-  @@index([rawMaterialId])
-  @@map("purchase_order_items")
-}
-
-model ProductionBatch {
-  id               String  @id @default(cuid())
-  batchNumber      String  @unique
-  productId        String
-  productVariantId String?
-  formulaId        String
-  formulaVersionId String
-
-  plannedQuantity  Decimal  @db.Decimal(14, 4)
-  producedQuantity Decimal? @db.Decimal(14, 4)
-
-  status ProductionBatchStatus @default(DRAFT)
-
-  plannedAt   DateTime?
-  startedAt   DateTime?
-  completedAt DateTime?
-  releasedAt  DateTime?
-
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  product        Product         @relation(fields: [productId], references: [id])
-  productVariant ProductVariant? @relation(fields: [productVariantId], references: [id])
-  formula        Formula         @relation(fields: [formulaId], references: [id])
-  formulaVersion FormulaVersion  @relation(fields: [formulaVersionId], references: [id])
-
-  materialConsumptions MaterialConsumption[]
-  qualityControl       QualityControl?
-
   @@index([productId])
-  @@index([formulaId])
-  @@index([formulaVersionId])
-  @@index([status])
-  @@index([createdAt])
-  @@map("production_batches")
-}
-
-model MaterialConsumption {
-  id                String  @id @default(cuid())
-  productionBatchId String
-  rawMaterialId     String
-  lotId             String?
-
-  quantity Decimal       @db.Decimal(14, 4)
-  unitType UnitType
-  unit     InventoryUnit
-
-  notes     String?
-  createdAt DateTime @default(now())
-
-  productionBatch ProductionBatch @relation(fields: [productionBatchId], references: [id], onDelete: Cascade)
-  rawMaterial     RawMaterial     @relation(fields: [rawMaterialId], references: [id])
-  lot             RawMaterialLot? @relation(fields: [lotId], references: [id])
-
-  @@index([productionBatchId])
-  @@index([rawMaterialId])
-  @@index([lotId])
-  @@map("material_consumptions")
-}
-
-// ============================================================
-// QUALITY CONTROL
-// ============================================================
-//
-// One QualityControl record per production batch. It is created
-// automatically the moment a batch's status becomes COMPLETED
-// (see the batch status-update route). Every check starts out
-// PENDING; a QC user fills in the result/value/notes as testing
-// happens. The overall `decision` can only move to APPROVED once
-// every check and the regulatory review have passed. Only after
-// APPROVED can the batch be released (see the /release route),
-// which stamps this record and flips the batch to RELEASED.
-// ============================================================
-
-model QualityControl {
-  id                String @id @default(cuid())
-  productionBatchId String @unique
-
-  // Maturation
-  maturationResult    QCCheckResult @default(PENDING)
-  maturationValue     String?
-  maturationNotes     String?
-  maturationCheckedBy String?
-  maturationCheckedAt DateTime?
-
-  // Stability
-  stabilityResult    QCCheckResult @default(PENDING)
-  stabilityValue     String?
-  stabilityNotes     String?
-  stabilityCheckedBy String?
-  stabilityCheckedAt DateTime?
-
-  // Clarity
-  clarityResult    QCCheckResult @default(PENDING)
-  clarityValue     String?
-  clarityNotes     String?
-  clarityCheckedBy String?
-  clarityCheckedAt DateTime?
-
-  // Colour
-  colourResult    QCCheckResult @default(PENDING)
-  colourValue     String?
-  colourNotes     String?
-  colourCheckedBy String?
-  colourCheckedAt DateTime?
-
-  // Odour
-  odourResult    QCCheckResult @default(PENDING)
-  odourValue     String?
-  odourNotes     String?
-  odourCheckedBy String?
-  odourCheckedAt DateTime?
-
-  // Regulatory review
-  regulatoryReviewResult QCCheckResult @default(PENDING)
-  regulatoryReviewNotes  String?
-  regulatoryReviewedBy   String?
-  regulatoryReviewedAt   DateTime?
-
-  // Overall QC decision
-  decision      QCDecision @default(PENDING)
-  decisionNotes String?
-  decidedBy     String?
-  decidedAt     DateTime?
-
-  // Final release
-  releasedBy String?
-  releasedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  productionBatch ProductionBatch @relation(fields: [productionBatchId], references: [id], onDelete: Cascade)
-
-  @@index([decision])
-  @@map("quality_controls")
+  @@index([variantId])
+  @@map("purchase_order_items")
 }
 
 // ============================================================
@@ -676,6 +383,7 @@ model Customer {
   user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   orders   CustomerOrder[]
   wishlist CustomerWishlistItem[]
+  invoices Invoice[]
 
   @@index([phone])
   @@index([email])
@@ -732,6 +440,7 @@ model CustomerOrder {
 
   items        CustomerOrderItem[]
   statusEvents CustomerOrderStatusEvent[]
+  invoices     Invoice[]
 
   @@index([customerId])
   @@index([status])
@@ -751,7 +460,7 @@ model CustomerOrderItem {
   variantName String?
   imageUrl    String?
 
-  quantity  Int @default(1)
+  quantity  Decimal @default(1) @db.Decimal(14, 4)
   unitPrice Decimal @db.Decimal(14, 2)
 
   order CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -775,6 +484,84 @@ model CustomerOrderStatusEvent {
 
   @@index([orderId])
   @@map("customer_order_status_events")
+}
+
+// ============================================================
+// INVOICES / BILLING
+// ============================================================
+
+model Invoice {
+  id           String        @id @default(cuid())
+  invoiceNo    String        @unique
+  customerId   String?
+  orderId      String?
+  createdById  String?
+
+  invoiceDate DateTime   @default(now())
+  dueDate     DateTime?
+  subtotal    Decimal    @db.Decimal(14, 2)
+  tax         Decimal    @default(0) @db.Decimal(14, 2)
+  discount    Decimal    @default(0) @db.Decimal(14, 2)
+  totalAmount Decimal    @db.Decimal(14, 2)
+  paidAmount  Decimal    @default(0) @db.Decimal(14, 2)
+  paymentStatus PaymentStatus @default(UNPAID)
+  paymentMethod String?
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  order    CustomerOrder? @relation(fields: [orderId], references: [id])
+  createdBy User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  items    InvoiceItem[]
+  payments InvoicePayment[]
+
+  @@index([customerId])
+  @@index([orderId])
+  @@index([invoiceDate])
+  @@index([paymentStatus])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String @id @default(cuid())
+  invoiceId   String
+  productId   String?
+  variantId   String?
+
+  description String
+  sku         String?
+  quantity    Decimal      @db.Decimal(14, 4)
+  unit        ProductUnit
+  unitPrice   Decimal      @db.Decimal(14, 4)
+  totalPrice  Decimal      @db.Decimal(14, 2)
+
+  invoice Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product Product?        @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@index([invoiceId])
+  @@index([productId])
+  @@index([variantId])
+  @@map("invoice_items")
+}
+
+model InvoicePayment {
+  id        String   @id @default(cuid())
+  invoiceId String
+  amount    Decimal  @db.Decimal(14, 2)
+  method    String?
+  reference String?
+  paidAt    DateTime @default(now())
+  notes     String?
+  createdById String?
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_payments")
 }
 
 // ============================================================
