@@ -1,37 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+const OUTGOING = new Set([
+  "SALE",
+  "PURCHASE_RETURN",
+  "TRANSFER_OUT",
+  "ADJUSTMENT_OUT",
+]);
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const rawMaterialId = searchParams.get("rawMaterialId");
-    const lotId = searchParams.get("lotId");
+    const productId = searchParams.get("productId");
 
-    if (!rawMaterialId && !lotId) {
+    if (!productId) {
       return NextResponse.json(
-        { success: false, error: "rawMaterialId or lotId is required" },
+        { success: false, error: "productId is required" },
         { status: 400 }
       );
     }
 
-    const where: Record<string, unknown> = {};
-
-    if (rawMaterialId) {
-      where.rawMaterialId = rawMaterialId;
-    }
-
-    if (lotId) {
-      where.lotId = lotId;
-    }
-
     const transactions = await prisma.inventoryTransaction.findMany({
-      where,
+      where: { productId },
       include: {
-        rawMaterial: {
-          select: { id: true, code: true, name: true, unitType: true },
+        product: {
+          select: { id: true, code: true, name: true, unit: true },
         },
-        lot: {
-          select: { id: true, lotNumber: true },
+        variant: {
+          select: { id: true, sku: true, name: true, sizeValue: true, sizeUnit: true },
+        },
+        createdBy: {
+          select: { id: true, name: true },
         },
       },
       orderBy: { createdAt: "asc" },
@@ -41,38 +40,32 @@ export async function GET(request: NextRequest) {
 
     const ledger = transactions.map((tx) => {
       const quantity = Number(tx.quantity);
-      const isIncoming = [
-        "PURCHASE",
-        "RETURN",
-        "TRANSFER_IN",
-        "OPENING_BALANCE",
-        "ADJUSTMENT_IN",
-        "CORRECTION",
-      ].includes(tx.transactionType);
+      const isIncoming = !OUTGOING.has(tx.transactionType);
 
-      if (isIncoming) {
-        runningBalance += quantity;
-      } else {
-        runningBalance -= quantity;
-      }
+      runningBalance += isIncoming ? quantity : -quantity;
 
       return {
         id: tx.id,
         transactionType: tx.transactionType,
         quantity,
+        isIncoming,
         unit: tx.unit,
-        unitType: tx.unitType,
+        variantId: tx.variantId,
+        variant: tx.variant,
         referenceType: tx.referenceType,
         referenceId: tx.referenceId,
         notes: tx.notes,
+        createdBy: tx.createdBy,
         createdAt: tx.createdAt.toISOString(),
-        lot: tx.lot,
-        rawMaterial: tx.rawMaterial,
         runningBalance,
       };
     });
 
-    return NextResponse.json({ success: true, data: ledger });
+    return NextResponse.json({
+      success: true,
+      product: transactions[0]?.product ?? null,
+      data: ledger,
+    });
   } catch (error) {
     console.error("Failed to fetch inventory ledger:", error);
 

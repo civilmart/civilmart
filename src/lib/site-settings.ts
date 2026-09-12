@@ -23,20 +23,20 @@ export type SiteSettings = {
 };
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
-  siteName: "NaranScents",
+  siteName: "Civil Mart",
   helpline: "",
   topbarMessages: [
-    "Welcome to NaranScents",
-    "ENJOY 5% OFF ON YOUR FIRST PURCHASE",
+    "Welcome to Civil Mart",
+    "Building materials, tools and hardware for every project",
     "Cash on Delivery — pay when your order arrives",
-    "Free delivery on orders over Rs 2,000",
+    "Bulk & contractor orders welcome",
   ],
-  footerText: "Fresh, long-lasting fragrances at honest prices.",
+  footerText: "Quality building materials and hardware for every project.",
   heroSlides: [],
   currency: "Rs",
   shippingFee: 0,
   freeShippingThreshold: 0,
-  codNote: "Order by phone on WhatsApp and pay on delivery.",
+  codNote: "Order online and pay in cash when your order arrives.",
 };
 
 export function parseJsonArray(

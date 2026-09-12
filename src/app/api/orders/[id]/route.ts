@@ -96,11 +96,31 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       // Restore stock for cancelled orders (stock is decremented at placement).
       if (status === "CANCELLED" && existing.status !== "CANCELLED") {
         for (const item of existing.items) {
-          if (!item.variantId) continue;
+          const product = await tx.product.findUnique({
+            where: { id: item.productId },
+            select: { stockQuantity: true },
+          });
 
-          await tx.productVariant.update({
-            where: { id: item.variantId },
-            data: { stockQuantity: { increment: item.quantity } },
+          await tx.product.update({
+            where: { id: item.productId },
+            data: {
+              stockQuantity: String(
+                Number(product?.stockQuantity ?? 0) + Number(item.quantity)
+              ),
+            },
+          });
+
+          await tx.inventoryTransaction.create({
+            data: {
+              productId: item.productId,
+              variantId: item.variantId,
+              transactionType: "SALE_RETURN",
+              quantity: item.quantity,
+              unit: item.unit,
+              referenceType: "CUSTOMER_ORDER",
+              referenceId: existing.id,
+              notes: "Stock restored — order cancelled",
+            },
           });
         }
       }

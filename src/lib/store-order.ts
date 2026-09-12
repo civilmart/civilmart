@@ -31,7 +31,8 @@ export function serializeOrder(order: CustomerOrderWithRelations) {
       productName: i.productName,
       variantName: i.variantName,
       imageUrl: i.imageUrl,
-      quantity: i.quantity,
+      quantity: Number(i.quantity),
+      unit: i.unit,
       unitPrice: Number(i.unitPrice),
     })),
     statusEvents: order.statusEvents.map((e) => ({

@@ -1,7 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 
-export const SESSION_COOKIE = "naranscents_session";
-export const CUSTOMER_COOKIE = "naranscents_customer";
+export const SESSION_COOKIE = "civilmart_session";
+export const CUSTOMER_COOKIE = "civilmart_customer";
 const SESSION_MAX_AGE_DAYS = 7;
 
 export type AuthPayload = {

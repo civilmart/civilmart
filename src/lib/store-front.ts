@@ -4,6 +4,40 @@ export function formatPrice(value: number): string {
   return formatMoney(value);
 }
 
+export const PRODUCT_UNIT_LABELS: Record<string, string> = {
+  BAG: "bag",
+  BOX: "box",
+  CARTON: "carton",
+  PACK: "pack",
+  PIECE: "piece",
+  ROLL: "roll",
+  SHEET: "sheet",
+  KG: "kg",
+  GRAM: "g",
+  TON: "ton",
+  LITER: "liter",
+  CFT: "cft",
+  CUBIC_METER: "cu m",
+  SFT: "sq ft",
+  METER: "m",
+  FOOT: "ft",
+  GALLON: "gallon",
+  SET: "set",
+  PAIR: "pair",
+  TUBE: "tube",
+  CAN: "can",
+  LENGTH: "length",
+  SLAB: "slab",
+  DRUM: "drum",
+  KIT: "kit",
+  BUCKET: "bucket",
+  ML: "ml",
+};
+
+export function unitLabel(unit: string): string {
+  return PRODUCT_UNIT_LABELS[unit] ?? unit.toLowerCase();
+}
+
 export type StoreVariant = {
   id: string;
   sku: string;
@@ -12,17 +46,20 @@ export type StoreVariant = {
   sizeUnit: string;
   price: number | null;
   imageUrl: string | null;
-  stockQuantity: number;
 };
 
 export type StoreProduct = {
   id: string;
   code: string;
   name: string;
+  brand: string | null;
   description: string | null;
+  unit: string;
+  stockQuantity: number;
   imageUrl: string | null;
   imageUrl2: string | null;
   category: string | null;
+  categorySlug: string | null;
   isFeatured: boolean;
   price: number | null;
   variants: StoreVariant[];
@@ -43,15 +80,23 @@ export function effectivePrice(product: StoreProduct): number | null {
 }
 
 export function isInStock(product: StoreProduct): boolean {
-  return product.variants.some((v) => v.stockQuantity > 0);
+  return product.stockQuantity > 0;
 }
 
 export function sizeLabel(variant: StoreVariant): string {
-  return `${Number.isInteger(variant.sizeValue) ? variant.sizeValue : variant.sizeValue.toFixed(2)} ${variant.sizeUnit.toLowerCase()}`;
+  return `${maybeInt(variant.sizeValue)} ${unitLabel(variant.sizeUnit)}`;
+}
+
+export function productUnitLabel(product: StoreProduct): string {
+  return unitLabel(product.unit);
 }
 
 export function maybeInt(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+export function formatQuantity(value: number): string {
+  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(4)));
 }
 
 export function placeholderImage(seed: string): string {
@@ -61,7 +106,7 @@ export function placeholderImage(seed: string): string {
     hash = seed.charCodeAt(i) + ((hash << 5) - hash);
   }
   const hue = hues[Math.abs(hash) % hues.length];
-  const letter = (seed.trim()[0] ?? "N").toUpperCase();
+  const letter = (seed.trim()[0] ?? "C").toUpperCase();
   const svg = `
   <svg xmlns="http://www.w3.org/2000/svg" width="600" height="600">
     <defs>

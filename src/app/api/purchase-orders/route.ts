@@ -1,25 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSessionUserOrThrow } from "@/lib/auth";
+import { isValidUnit } from "@/lib/catalog";
 
 type PreparedItem = {
-  rawMaterialId: string;
+  productId: string;
+  variantId: string | null;
   quantity: number;
-  unitType: "WEIGHT" | "VOLUME" | "PIECE";
-  unit: "G" | "KG" | "ML" | "L" | "PIECE";
+  unit: string;
   estimatedCostPerUnit: number | null;
   notes: string | null;
 };
 
-function isValidUnit(
-  unitType: "WEIGHT" | "VOLUME" | "PIECE",
-  unit: string
-) {
-  if (unitType === "WEIGHT") return unit === "G" || unit === "KG";
-  if (unitType === "VOLUME") return unit === "ML" || unit === "L";
-  return unit === "PIECE";
-}
-
-// GET - list purchase orders
 export async function GET() {
   try {
     const purchaseOrders = await prisma.purchaseOrder.findMany({
@@ -27,13 +19,12 @@ export async function GET() {
         supplier: true,
         items: {
           include: {
-            rawMaterial: true,
+            product: true,
+            variant: true,
           },
         },
       },
-      orderBy: {
-        orderDate: "desc",
-      },
+      orderBy: { orderDate: "desc" },
     });
 
     return NextResponse.json(purchaseOrders);
@@ -47,19 +38,13 @@ export async function GET() {
   }
 }
 
-// POST - create purchase order
 export async function POST(request: NextRequest) {
   try {
+    await getSessionUserOrThrow();
     const body = await request.json();
 
-    const {
-      poNumber,
-      supplierId,
-      orderDate,
-      expectedDate,
-      items,
-      notes,
-    } = body;
+    const { poNumber, supplierId, orderDate, expectedDate, items, notes } =
+      body;
 
     if (!poNumber?.trim()) {
       return NextResponse.json(
@@ -89,9 +74,16 @@ export async function POST(request: NextRequest) {
     const preparedItems: PreparedItem[] = [];
 
     for (const item of items) {
-      if (!item.rawMaterialId) {
+      if (!item.productId) {
         return NextResponse.json(
-          { error: "Each item requires a raw material" },
+          { error: "Each item requires a product" },
+          { status: 400 }
+        );
+      }
+
+      if (!item.unit || !isValidUnit(String(item.unit))) {
+        return NextResponse.json(
+          { error: `Invalid unit: ${item.unit}` },
           { status: 400 }
         );
       }
@@ -105,28 +97,30 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const rawMaterial = await prisma.rawMaterial.findUnique({
-        where: {
-          id: item.rawMaterialId,
-        },
+      const product = await prisma.product.findUnique({
+        where: { id: item.productId },
       });
 
-      if (!rawMaterial) {
+      if (!product) {
         return NextResponse.json(
-          { error: "Raw material not found" },
+          { error: "Product not found" },
           { status: 404 }
         );
       }
 
-      const unit = String(item.unit);
+      let variantIdResolved = item.variantId || null;
 
-      if (!isValidUnit(rawMaterial.unitType, unit)) {
-        return NextResponse.json(
-          {
-            error: `Invalid unit ${unit} for ${rawMaterial.name}`,
-          },
-          { status: 400 }
-        );
+      if (variantIdResolved) {
+        const variant = await prisma.productVariant.findUnique({
+          where: { id: variantIdResolved },
+        });
+
+        if (!variant || variant.productId !== product.id) {
+          return NextResponse.json(
+            { error: "Variant does not belong to the product" },
+            { status: 400 }
+          );
+        }
       }
 
       let estimatedCostPerUnit: number | null = null;
@@ -138,24 +132,19 @@ export async function POST(request: NextRequest) {
       ) {
         estimatedCostPerUnit = Number(item.estimatedCostPerUnit);
 
-        if (
-          !Number.isFinite(estimatedCostPerUnit) ||
-          estimatedCostPerUnit < 0
-        ) {
+        if (!Number.isFinite(estimatedCostPerUnit) || estimatedCostPerUnit < 0) {
           return NextResponse.json(
-            {
-              error: `Invalid estimated cost for ${rawMaterial.name}`,
-            },
+            { error: `Invalid estimated cost for ${product.name}` },
             { status: 400 }
           );
         }
       }
 
       preparedItems.push({
-        rawMaterialId: item.rawMaterialId,
+        productId: item.productId,
+        variantId: variantIdResolved,
         quantity,
-        unitType: rawMaterial.unitType,
-        unit: unit as PreparedItem["unit"],
+        unit: String(item.unit),
         estimatedCostPerUnit,
         notes: item.notes?.trim() || null,
       });
@@ -177,7 +166,8 @@ export async function POST(request: NextRequest) {
         supplier: true,
         items: {
           include: {
-            rawMaterial: true,
+            product: true,
+            variant: true,
           },
         },
       },

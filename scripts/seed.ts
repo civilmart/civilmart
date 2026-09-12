@@ -59,91 +59,109 @@ const SAMPLE_PRICES: Record<string, number> = {
   "GYPS-0001": 1200,
 };
 
+const slugify = (name: string) =>
+  name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
 async function main() {
   console.log("Seeding Civil Mart catalogue...");
 
-  // Categories
-  let seededCategories = 0;
-  for (const cat of catalogue.categories) {
-    await prisma.category.upsert({
-      where: { slug: cat.slug },
-      update: { name: cat.name, group: cat.group, isActive: true },
-      create: {
-        name: cat.name,
-        slug: cat.slug,
-        group: cat.group,
+  // Categories (bulk, non-destructive)
+  const existingSlugs = new Set(
+    (await prisma.category.findMany({ select: { slug: true } })).map(
+      (c) => c.slug
+    )
+  );
+  const newCategories = catalogue.categories.filter(
+    (c) => !existingSlugs.has(c.slug)
+  );
+  if (newCategories.length > 0) {
+    await prisma.category.createMany({
+      data: newCategories.map((c) => ({
+        name: c.name,
+        slug: c.slug,
+        group: c.group,
         isActive: true,
-      },
+      })),
+      skipDuplicates: true,
     });
-    seededCategories += 1;
   }
-  console.log(`Categories: ${seededCategories}`);
-
   const categoryBySlug = new Map(
     (
       await prisma.category.findMany({ select: { id: true, slug: true } })
     ).map((c) => [c.slug, c.id])
   );
+  console.log(`Categories: ${catalogue.categories.length}`);
 
-  // Products
-  let seeded = 0;
-  let priced = 0;
+  // Products (bulk create for missing, targeted update without clobbering prices)
+  const existingProducts = await prisma.product.findMany({
+    select: { id: true, code: true, price: true },
+  });
+  const byCode = new Map(existingProducts.map((p) => [p.code, p]));
+
+  const toCreate: CatalogueItem[] = [];
+  const toUpdate: CatalogueItem[] = [];
   for (const item of catalogue.items) {
-    const categoryId = categoryBySlug.get(
-      item.category.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
-    );
+    if (byCode.has(item.code)) toUpdate.push(item);
+    else toCreate.push(item);
+  }
 
+  const buildData = (item: CatalogueItem) => {
     const hasPrice = Object.prototype.hasOwnProperty.call(
       SAMPLE_PRICES,
       item.code
     );
     const price = hasPrice ? SAMPLE_PRICES[item.code] : null;
-    const baseStock = item.minimumStock ?? 0;
     const openingStock =
       !hasPrice || item.maximumStock == null
-        ? Math.max(baseStock, 0)
+        ? Math.max(item.minimumStock ?? 0, 0)
         : Math.max(item.maximumStock, 0);
 
-    await prisma.product.upsert({
-      where: { code: item.code },
-      update: {
-        name: item.name,
-        brand: item.brand,
-        unit: item.unit as never,
-        description: item.description,
-        status: "ACTIVE",
-        subcategory: item.subcategory,
-        minimumStock: item.minimumStock,
-        maximumStock: item.maximumStock,
-        reorderLevel: item.reorderLevel,
-        trades: item.trades,
-        categoryId: categoryId ?? null,
-        price,
-        isFeatured: hasPrice,
-        stockQuantity: openingStock,
-      },
-      create: {
-        code: item.code,
-        name: item.name,
-        brand: item.brand,
-        unit: item.unit as never,
-        description: item.description,
-        status: "ACTIVE",
-        subcategory: item.subcategory,
-        minimumStock: item.minimumStock,
-        maximumStock: item.maximumStock,
-        reorderLevel: item.reorderLevel,
-        trades: item.trades,
-        categoryId: categoryId ?? null,
-        price,
-        isFeatured: hasPrice,
-        stockQuantity: openingStock,
-      },
+    return {
+      code: item.code,
+      name: item.name,
+      brand: item.brand,
+      unit: item.unit as never,
+      description: item.description,
+      status: "ACTIVE" as const,
+      subcategory: item.subcategory,
+      minimumStock: item.minimumStock,
+      maximumStock: item.maximumStock,
+      reorderLevel: item.reorderLevel,
+      trades: item.trades,
+      categoryId: categoryBySlug.get(slugify(item.category)) ?? null,
+      price,
+      isFeatured: hasPrice,
+      stockQuantity: openingStock,
+    };
+  };
+
+  if (toCreate.length > 0) {
+    await prisma.product.createMany({
+      data: toCreate.map(buildData),
+      skipDuplicates: true,
     });
-    seeded += 1;
-    if (hasPrice) priced += 1;
+    console.log(`Created products: ${toCreate.length} (new)`);
   }
-  console.log(`Products: ${seeded} (${priced} with sample prices)`);
+
+  // For existing products, only fill in null prices / stock for the sample
+  // set without overwriting admin-set values.
+  const needPriceUpdate = toUpdate.filter(
+    (item) =>
+      Object.prototype.hasOwnProperty.call(SAMPLE_PRICES, item.code) &&
+      byCode.get(item.code)?.price == null
+  );
+  for (const item of needPriceUpdate) {
+    const price = SAMPLE_PRICES[item.code];
+    const openingStock =
+      item.maximumStock != null ? Math.max(item.maximumStock, 0) : 0;
+    await prisma.product.update({
+      where: { code: item.code },
+      data: { price, stockQuantity: openingStock, isFeatured: true },
+    });
+  }
+  console.log(
+    `Existing products: ${toUpdate.length} kept, ${needPriceUpdate.length} given sample prices`
+  );
 
   // Admin user (only when no staff users exist yet)
   const staffCount = await prisma.user.count();
@@ -164,7 +182,7 @@ async function main() {
   }
 
   // Demo storefront customer
-  const demoCustomer = await prisma.customer.upsert({
+  await prisma.customer.upsert({
     where: { username: "demo" },
     update: {},
     create: {
@@ -172,12 +190,12 @@ async function main() {
       name: "Demo Customer",
       email: "demo@example.com",
       phone: "03001234567",
-      address: "House 12, Street 4, Gulberg",
+      address: "House 12, Street 4, Gulberg III",
       city: "Lahore",
       passwordHash: hashPassword("demo123"),
     },
   });
-  console.log(`Demo customer ready: demo / demo123 (${demoCustomer.id})`);
+  console.log("Demo customer ready: demo / demo123");
 
   // Site settings defaults
   const settings: Record<string, string> = {

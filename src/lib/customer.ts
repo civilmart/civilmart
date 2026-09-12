@@ -90,5 +90,5 @@ export function generateOrderNumber(): string {
       Math.floor(Math.random() * ORDER_ALPHABET.length)
     );
   }
-  return `NS-${suffix}`;
+  return `CM-${suffix}`;
 }

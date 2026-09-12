@@ -1,108 +1,126 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+const OUTGOING = new Set([
+  "SALE",
+  "PURCHASE_RETURN",
+  "TRANSFER_OUT",
+  "ADJUSTMENT_OUT",
+]);
+
+export async function GET(request: NextRequest) {
   try {
-    const rawMaterials = await prisma.rawMaterial.findMany({
-      where: {
-        isActive: true,
-      },
-      orderBy: {
-        name: "asc",
-      },
-    });
+    const url = new URL(request.url);
+    const q = url.searchParams.get("q");
+    const categoryId = url.searchParams.get("categoryId");
+    const status = url.searchParams.get("status");
 
-    const transactions = await prisma.inventoryTransaction.findMany({
-      select: {
-        rawMaterialId: true,
-        transactionType: true,
-        quantity: true,
-        unitType: true,
-        unit: true,
-      },
-    });
+    const [products, transactions] = await Promise.all([
+      prisma.product.findMany({
+        where: {
+          status: "ACTIVE",
+          ...(q
+            ? {
+                OR: [
+                  { name: { contains: q, mode: "insensitive" } },
+                  { code: { contains: q, mode: "insensitive" } },
+                ],
+              }
+            : {}),
+          ...(categoryId ? { categoryId } : {}),
+        },
+        include: {
+          category: { select: { id: true, name: true } },
+        },
+        orderBy: { name: "asc" },
+      }),
+      prisma.inventoryTransaction.findMany({
+        select: {
+          productId: true,
+          transactionType: true,
+          quantity: true,
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+    ]);
 
-    const inventory = rawMaterials.map((material) => {
-      const materialTransactions = transactions.filter(
-        (transaction) => transaction.rawMaterialId === material.id
+    const ledger = new Map<string, Map<string, number>>();
+
+    for (const tx of transactions) {
+      if (!tx.productId) continue;
+
+      let productLedger = ledger.get(tx.productId);
+
+      if (!productLedger) {
+        productLedger = new Map();
+        ledger.set(tx.productId, productLedger);
+      }
+
+      productLedger.set(
+        tx.transactionType,
+        (productLedger.get(tx.transactionType) ?? 0) + Number(tx.quantity)
       );
+    }
+
+    const inventory = products.map((product) => {
+      const productLedger = ledger.get(product.id) ?? new Map<string, number>();
 
       let currentStock = 0;
       let totalPurchased = 0;
-      let totalConsumed = 0;
+      let totalSold = 0;
       let totalAdjustments = 0;
 
-      for (const transaction of materialTransactions) {
-        const quantity = Number(transaction.quantity);
+      for (const [type, quantity] of productLedger) {
+        const signed = OUTGOING.has(type) ? -quantity : quantity;
 
-        switch (transaction.transactionType) {
-          case "PURCHASE":
-          case "RETURN":
-          case "TRANSFER_IN":
-          case "OPENING_BALANCE":
-            currentStock += quantity;
+        currentStock += signed;
 
-            if (transaction.transactionType === "PURCHASE") {
-              totalPurchased += quantity;
-            }
-
-            break;
-
-          case "CONSUMPTION":
-          case "TRANSFER_OUT":
-          case "ADJUSTMENT_OUT":
-            currentStock -= quantity;
-
-            if (transaction.transactionType === "CONSUMPTION") {
-              totalConsumed += quantity;
-            }
-
-            if (transaction.transactionType === "ADJUSTMENT_OUT") {
-              totalAdjustments -= quantity;
-            }
-
-            break;
-
-          case "ADJUSTMENT_IN":
-            currentStock += quantity;
-            totalAdjustments += quantity;
-            break;
-
-          case "CORRECTION":
-            currentStock += quantity;
-            break;
-
-          default:
-            break;
+        if (type === "PURCHASE" || type === "PURCHASE_RETURN") {
+          totalPurchased += type === "PURCHASE" ? quantity : -quantity;
+        } else if (type === "SALE" || type === "SALE_RETURN") {
+          totalSold += type === "SALE" ? quantity : -quantity;
+        } else if (type === "ADJUSTMENT_IN" || type === "ADJUSTMENT_OUT") {
+          totalAdjustments += type === "ADJUSTMENT_IN" ? quantity : -quantity;
         }
       }
+
+      const minimumStock =
+        product.minimumStock !== null ? Number(product.minimumStock) : null;
+      const reorderLevel =
+        product.reorderLevel !== null ? Number(product.reorderLevel) : null;
 
       let stockStatus = "IN_STOCK";
 
       if (currentStock <= 0) {
         stockStatus = "OUT_OF_STOCK";
       } else if (
-        material.reorderLevel !== null &&
-        currentStock <= Number(material.reorderLevel)
+        reorderLevel !== null &&
+        currentStock <= reorderLevel
       ) {
         stockStatus = "LOW_STOCK";
       }
 
+      if (status && stockStatus !== status) {
+        return null;
+      }
+
       return {
-        id: material.id,
-        code: material.code,
-        name: material.name,
-        materialType: material.materialType,
-        unitType: material.unitType,
-        minimumStock: material.minimumStock
-          ? Number(material.minimumStock)
-          : null,
-        reorderLevel: material.reorderLevel
-          ? Number(material.reorderLevel)
-          : null,
+        id: product.id,
+        code: product.code,
+        name: product.name,
+        unit: product.unit,
+        brand: product.brand,
+        category: product.category?.name ?? null,
+        categoryId: product.categoryId,
+        minimumStock,
+        maximumStock:
+          product.maximumStock !== null
+            ? Number(product.maximumStock)
+            : null,
+        reorderLevel,
         currentStock,
         totalPurchased,
-        totalConsumed,
+        totalSold,
         totalAdjustments,
         stockStatus,
       };
@@ -110,16 +128,13 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      data: inventory,
+      data: inventory.filter((row): row is NonNullable<typeof row> => row !== null),
     });
   } catch (error) {
     console.error("Failed to fetch inventory:", error);
 
     return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch inventory",
-      },
+      { success: false, error: "Failed to fetch inventory" },
       { status: 500 }
     );
   }

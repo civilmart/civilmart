@@ -1,23 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserOrThrow } from "@/lib/auth";
+import {
+  isValidUnit,
+  VALID_PRODUCT_STATUSES,
+  toNumberOrNull,
+  toNumberOrZero,
+} from "@/lib/catalog";
+
+const productInclude = {
+  category: { select: { id: true, name: true, slug: true, group: true } },
+  variants: { orderBy: { sizeValue: "asc" } },
+} as const;
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-export async function GET(
-  _request: NextRequest,
-  context: RouteContext
-) {
+export async function GET(_request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
 
     const product = await prisma.product.findUnique({
       where: { id },
-      include: {
-        variants: { orderBy: { sizeValue: "asc" } },
-      },
+      include: productInclude,
     });
 
     if (!product) {
@@ -31,12 +37,24 @@ export async function GET(
       id: product.id,
       code: product.code,
       name: product.name,
+      brand: product.brand,
       description: product.description,
       status: product.status,
       imageUrl: product.imageUrl,
       imageUrl2: product.imageUrl2,
       price: product.price !== null ? Number(product.price) : null,
       isFeatured: product.isFeatured,
+      unit: product.unit,
+      subcategory: product.subcategory,
+      minimumStock:
+        product.minimumStock !== null ? Number(product.minimumStock) : null,
+      maximumStock:
+        product.maximumStock !== null ? Number(product.maximumStock) : null,
+      reorderLevel:
+        product.reorderLevel !== null ? Number(product.reorderLevel) : null,
+      trades: product.trades,
+      stockQuantity: Number(product.stockQuantity),
+      categoryId: product.categoryId,
       category: product.category,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
@@ -48,8 +66,6 @@ export async function GET(
         sizeUnit: v.sizeUnit,
         price: v.price !== null ? Number(v.price) : null,
         imageUrl: v.imageUrl,
-        stockQuantity: v.stockQuantity,
-        status: v.status,
       })),
     });
   } catch (error) {
@@ -62,10 +78,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  context: RouteContext
-) {
+export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
     await getSessionUserOrThrow();
     const { id } = await context.params;
@@ -85,18 +98,26 @@ export async function PATCH(
     const {
       code,
       name,
+      brand,
       description,
       status,
       imageUrl,
       imageUrl2,
       price,
-      category,
+      categoryId,
       isFeatured,
+      unit,
+      subcategory,
+      minimumStock,
+      maximumStock,
+      reorderLevel,
+      trades,
+      stockQuantity,
       variants,
     } = body;
 
     if (code !== undefined) {
-      if (!code.trim()) {
+      if (!String(code).trim()) {
         return NextResponse.json(
           { error: "Product code is required" },
           { status: 400 }
@@ -104,7 +125,7 @@ export async function PATCH(
       }
 
       const other = await prisma.product.findUnique({
-        where: { code: code.trim() },
+        where: { code: String(code).trim() },
       });
 
       if (other && other.id !== id) {
@@ -114,39 +135,99 @@ export async function PATCH(
         );
       }
 
-      data.code = code.trim();
+      data.code = String(code).trim();
     }
 
     if (name !== undefined) {
-      if (!name.trim()) {
+      if (!String(name).trim()) {
         return NextResponse.json(
           { error: "Product name is required" },
           { status: 400 }
         );
       }
 
-      data.name = name.trim();
+      data.name = String(name).trim();
+    }
+
+    if (brand !== undefined) {
+      data.brand = String(brand).trim() || null;
     }
 
     if (description !== undefined) {
-      data.description = description?.trim() || null;
+      data.description = String(description).trim() || null;
     }
 
-    if (imageUrl !== undefined) data.imageUrl = imageUrl?.trim() || null;
-    if (imageUrl2 !== undefined) data.imageUrl2 = imageUrl2?.trim() || null;
+    if (imageUrl !== undefined) data.imageUrl = String(imageUrl).trim() || null;
+    if (imageUrl2 !== undefined)
+      data.imageUrl2 = String(imageUrl2).trim() || null;
 
-    if (category !== undefined) {
-      data.category = category?.trim() || null;
+    if (categoryId !== undefined) {
+      if (categoryId) {
+        const category = await prisma.category.findUnique({
+          where: { id: categoryId },
+        });
+
+        if (!category) {
+          return NextResponse.json(
+            { error: "Category not found" },
+            { status: 400 }
+          );
+        }
+      }
+
+      data.categoryId = categoryId || null;
+    }
+
+    if (unit !== undefined) {
+      if (!isValidUnit(String(unit))) {
+        return NextResponse.json(
+          { error: "Invalid selling unit" },
+          { status: 400 }
+        );
+      }
+
+      data.unit = String(unit);
+    }
+
+    if (subcategory !== undefined) {
+      data.subcategory = String(subcategory).trim() || null;
+    }
+
+    if (minimumStock !== undefined)
+      data.minimumStock = toNumberOrNull(minimumStock)?.toString() ?? null;
+    if (maximumStock !== undefined)
+      data.maximumStock = toNumberOrNull(maximumStock)?.toString() ?? null;
+    if (reorderLevel !== undefined)
+      data.reorderLevel = toNumberOrNull(reorderLevel)?.toString() ?? null;
+
+    if (trades !== undefined) {
+      data.trades = Array.isArray(trades)
+        ? trades.map((t) => String(t).trim()).filter(Boolean)
+        : [];
+    }
+
+    if (stockQuantity !== undefined) {
+      const n = toNumberOrZero(stockQuantity);
+
+      if (Number.isFinite(Number(n))) {
+        const diff = n - Number(product.stockQuantity);
+
+        if (diff !== 0) {
+          data.stockQuantity = String(n);
+        }
+      }
     }
 
     if (price !== undefined) {
-      const numeric = price === null || price === "" ? null : Number(price);
-      if (numeric !== null && Number.isNaN(numeric)) {
+      const numeric = toNumberOrNull(price);
+
+      if (numeric !== null && numeric < 0) {
         return NextResponse.json(
           { error: "Invalid price" },
           { status: 400 }
         );
       }
+
       data.price = numeric !== null ? String(numeric) : null;
     }
 
@@ -155,66 +236,62 @@ export async function PATCH(
     }
 
     if (status !== undefined) {
-      const valid = ["ACTIVE", "INACTIVE", "DISCONTINUED"];
-      if (!valid.includes(status)) {
-        return NextResponse.json(
-          { error: "Invalid status" },
-          { status: 400 }
-        );
+      if (!VALID_PRODUCT_STATUSES.includes(status)) {
+        return NextResponse.json({ error: "Invalid status" }, { status: 400 });
       }
+
       data.status = status;
     }
 
     const updatedProduct = await prisma.$transaction(async (tx) => {
-      const saved = await tx.product.update({
-        where: { id },
-        data,
-        include: {
-          variants: {
-            orderBy: { sizeValue: "asc" },
-          },
-        },
-      });
+      if (Object.keys(data).length > 0) {
+        await tx.product.update({ where: { id }, data });
+      }
 
       if (Array.isArray(variants)) {
-        const existingVariantIds = new Set(
-          saved.variants.map((v) => v.id)
-        );
+        const saved = await tx.product.findUniqueOrThrow({
+          where: { id },
+          include: { variants: true },
+        });
+
+        const existingVariantIds = new Set(saved.variants.map((v) => v.id));
+        const seenSkus = new Set<string>();
 
         for (const v of variants) {
+          const sku = String(v.sku ?? "").trim();
+          const name = String(v.name ?? "").trim();
           const sizeValue = Number(v.sizeValue);
-          const variantPrice =
-            v.price === undefined || v.price === null || v.price === ""
-              ? null
-              : Number(v.price);
+          const variantPrice = toNumberOrNull(v.price);
 
-          if (
-            !String(v.sku ?? "").trim() ||
-            !String(v.name ?? "").trim()
-          ) {
+          if (!sku || !name) {
             throw new Error("Every variant requires an SKU and name");
           }
 
           if (!Number.isFinite(sizeValue) || sizeValue <= 0) {
-            throw new Error(`Invalid size for variant ${v.name}`);
+            throw new Error(`Invalid size for variant ${name}`);
           }
 
-          if (variantPrice !== null && Number.isNaN(variantPrice)) {
-            throw new Error(`Invalid price for variant ${v.name}`);
+          if (variantPrice !== null && variantPrice < 0) {
+            throw new Error(`Invalid price for variant ${name}`);
           }
 
-          const stockQuantity = Number.isFinite(Number(v.stockQuantity))
-            ? Math.max(0, Math.floor(Number(v.stockQuantity)))
-            : 0;
+          if (v.sizeUnit && !isValidUnit(String(v.sizeUnit))) {
+            throw new Error(`Invalid unit for variant ${name}`);
+          }
+
+          if (seenSkus.has(sku)) {
+            throw new Error(`Duplicate SKU within product: ${sku}`);
+          }
+
+          seenSkus.add(sku);
 
           const variantData = {
-            sku: String(v.sku).trim(),
-            name: String(v.name).trim(),
+            sku,
+            name,
             sizeValue,
-            sizeUnit: v.sizeUnit === "L" ? ("L" as const) : ("ML" as const),
+            sizeUnit: v.sizeUnit || data.unit || "PIECE",
             price: variantPrice !== null ? String(variantPrice) : null,
             imageUrl: v.imageUrl?.trim() || null,
-            stockQuantity,
           };
 
           if (v.id && existingVariantIds.has(v.id)) {
@@ -222,21 +299,33 @@ export async function PATCH(
               where: { id: v.id },
               data: variantData,
             });
+            existingVariantIds.delete(v.id);
           } else {
             await tx.productVariant.create({
               data: { ...variantData, productId: id },
             });
           }
         }
+
+        if (existingVariantIds.size > 0) {
+          const idsToDelete = Array.from(existingVariantIds);
+          const linked = await tx.inventoryTransaction.count({
+            where: { variantId: { in: idsToDelete } },
+          });
+
+          if (linked > 0) {
+            throw new Error("A variant has ledger history and cannot be removed");
+          }
+
+          await tx.productVariant.deleteMany({
+            where: { id: { in: idsToDelete } },
+          });
+        }
       }
 
       return tx.product.findUniqueOrThrow({
         where: { id },
-        include: {
-          variants: {
-            orderBy: { sizeValue: "asc" },
-          },
-        },
+        include: productInclude,
       });
     });
 
@@ -244,15 +333,31 @@ export async function PATCH(
       id: updatedProduct.id,
       code: updatedProduct.code,
       name: updatedProduct.name,
+      brand: updatedProduct.brand,
       description: updatedProduct.description,
       status: updatedProduct.status,
       imageUrl: updatedProduct.imageUrl,
       imageUrl2: updatedProduct.imageUrl2,
       price:
-        updatedProduct.price !== null
-          ? Number(updatedProduct.price)
-          : null,
+        updatedProduct.price !== null ? Number(updatedProduct.price) : null,
       isFeatured: updatedProduct.isFeatured,
+      unit: updatedProduct.unit,
+      subcategory: updatedProduct.subcategory,
+      minimumStock:
+        updatedProduct.minimumStock !== null
+          ? Number(updatedProduct.minimumStock)
+          : null,
+      maximumStock:
+        updatedProduct.maximumStock !== null
+          ? Number(updatedProduct.maximumStock)
+          : null,
+      reorderLevel:
+        updatedProduct.reorderLevel !== null
+          ? Number(updatedProduct.reorderLevel)
+          : null,
+      trades: updatedProduct.trades,
+      stockQuantity: Number(updatedProduct.stockQuantity),
+      categoryId: updatedProduct.categoryId,
       category: updatedProduct.category,
       variants: updatedProduct.variants.map((v) => ({
         id: v.id,
@@ -262,15 +367,13 @@ export async function PATCH(
         sizeUnit: v.sizeUnit,
         price: v.price !== null ? Number(v.price) : null,
         imageUrl: v.imageUrl,
-        stockQuantity: v.stockQuantity,
-        status: v.status,
       })),
     });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to update product";
 
-    if (/SKU|variant|Invalid|required/i.test(message)) {
+    if (/SKU|variant|Invalid|required|Duplicate|ledger/i.test(message)) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
@@ -283,10 +386,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  _request: NextRequest,
-  context: RouteContext
-) {
+export async function DELETE(_request: NextRequest, context: RouteContext) {
   try {
     await getSessionUserOrThrow();
     const { id } = await context.params;

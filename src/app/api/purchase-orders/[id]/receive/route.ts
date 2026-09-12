@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSessionUserOrThrow } from "@/lib/auth";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -9,15 +10,11 @@ type ReceiveItem = {
   itemId: string;
   receivedQuantity: number;
   costPerUnit?: number | null;
-  lotNumber?: string | null;
-  expiryDate?: string | null;
 };
 
-export async function POST(
-  request: NextRequest,
-  context: RouteContext
-) {
+export async function POST(request: NextRequest, context: RouteContext) {
   try {
+    const user = await getSessionUserOrThrow();
     const { id } = await context.params;
     const body = await request.json();
 
@@ -36,7 +33,7 @@ export async function POST(
         supplier: true,
         items: {
           include: {
-            rawMaterial: true,
+            product: true,
           },
         },
       },
@@ -65,8 +62,6 @@ export async function POST(
       poItem: (typeof purchaseOrder.items)[number];
       receivedQuantity: number;
       costPerUnit: number;
-      lotNumber: string;
-      expiryDate: Date | null;
     };
 
     const preparedItems: PreparedReceiveItem[] = [];
@@ -83,71 +78,35 @@ export async function POST(
         );
       }
 
-      const receivedQuantity = Number(
-        receivedItem.receivedQuantity
-      );
+      const receivedQuantity = Number(receivedItem.receivedQuantity);
 
-      if (
-        !Number.isFinite(receivedQuantity) ||
-        receivedQuantity <= 0
-      ) {
+      if (!Number.isFinite(receivedQuantity) || receivedQuantity <= 0) {
         return NextResponse.json(
-          {
-            error: `Invalid received quantity for ${poItem.rawMaterial.name}`,
-          },
+          { error: `Invalid received quantity for ${poItem.product.name}` },
           { status: 400 }
         );
       }
 
       const orderedQuantity = Number(poItem.quantity);
       const alreadyReceived = Number(poItem.receivedQuantity);
-
-      const remainingQuantity =
-        orderedQuantity - alreadyReceived;
+      const remainingQuantity = orderedQuantity - alreadyReceived;
 
       if (receivedQuantity > remainingQuantity) {
         return NextResponse.json(
           {
-            error: `Cannot receive ${receivedQuantity} ${poItem.unit}. Only ${remainingQuantity} ${poItem.unit} remains for ${poItem.rawMaterial.name}`,
+            error: `Cannot receive ${receivedQuantity} ${poItem.unit}. Only ${remainingQuantity} ${poItem.unit} remains for ${poItem.product.name}`,
           },
           { status: 400 }
         );
       }
 
       const costPerUnit = Number(
-        receivedItem.costPerUnit ??
-          poItem.estimatedCostPerUnit ??
-          0
+        receivedItem.costPerUnit ?? poItem.estimatedCostPerUnit ?? 0
       );
 
-      if (
-        !Number.isFinite(costPerUnit) ||
-        costPerUnit < 0
-      ) {
+      if (!Number.isFinite(costPerUnit) || costPerUnit < 0) {
         return NextResponse.json(
-          {
-            error: `Invalid cost per unit for ${poItem.rawMaterial.name}`,
-          },
-          { status: 400 }
-        );
-      }
-
-      const lotNumber =
-        receivedItem.lotNumber?.trim() ||
-        `${purchaseOrder.poNumber}-${poItem.rawMaterialId.slice(-6)}-${Date.now()}`;
-
-      const expiryDate = receivedItem.expiryDate
-        ? new Date(receivedItem.expiryDate)
-        : null;
-
-      if (
-        expiryDate &&
-        Number.isNaN(expiryDate.getTime())
-      ) {
-        return NextResponse.json(
-          {
-            error: `Invalid expiry date for ${poItem.rawMaterial.name}`,
-          },
+          { error: `Invalid cost per unit for ${poItem.product.name}` },
           { status: 400 }
         );
       }
@@ -156,175 +115,115 @@ export async function POST(
         poItem,
         receivedQuantity,
         costPerUnit,
-        lotNumber,
-        expiryDate,
       });
     }
 
     const purchaseNo = `PUR-${purchaseOrder.poNumber}-${Date.now()}`;
 
     const subtotal = preparedItems.reduce(
-      (sum, item) =>
-        sum +
-        item.receivedQuantity *
-          item.costPerUnit,
+      (sum, item) => sum + item.receivedQuantity * item.costPerUnit,
       0
     );
 
-    const purchase = await prisma.$transaction(
-      async (tx) => {
-        const createdPurchase =
-          await tx.purchase.create({
-            data: {
-              purchaseNo,
-              supplierId:
-                purchaseOrder.supplierId,
-              purchaseDate: new Date(),
-              status: "RECEIVED",
-              subtotal,
-              tax: 0,
-              discount: 0,
-              totalAmount: subtotal,
-              notes: `Received against Purchase Order ${purchaseOrder.poNumber}`,
-            },
-          });
+    const purchase = await prisma.$transaction(async (tx) => {
+      const createdPurchase = await tx.purchase.create({
+        data: {
+          purchaseNo,
+          supplierId: purchaseOrder.supplierId,
+          purchaseDate: new Date(),
+          status: "RECEIVED",
+          subtotal,
+          tax: 0,
+          discount: 0,
+          totalAmount: subtotal,
+          notes: `Received against Purchase Order ${purchaseOrder.poNumber}`,
+        },
+      });
 
-        for (const item of preparedItems) {
-          const lot =
-            await tx.rawMaterialLot.create({
-              data: {
-                rawMaterialId:
-                  item.poItem.rawMaterialId,
-                supplierId:
-                  purchaseOrder.supplierId,
-                lotNumber: item.lotNumber,
-                receivedAt: new Date(),
-                expiryDate: item.expiryDate,
-                receivedQty:
-                  item.receivedQuantity,
-                unitType:
-                  item.poItem.unitType,
-                unit: item.poItem.unit,
-                costPerUnit:
-                  item.costPerUnit,
-                totalCost:
-                  item.receivedQuantity *
-                  item.costPerUnit,
-                notes: `Received from PO ${purchaseOrder.poNumber}`,
-              },
-            });
-
-          await tx.purchaseItem.create({
-            data: {
-              purchaseId:
-                createdPurchase.id,
-              rawMaterialId:
-                item.poItem.rawMaterialId,
-              lotId: lot.id,
-              quantity:
-                item.receivedQuantity,
-              unitType:
-                item.poItem.unitType,
-              unit: item.poItem.unit,
-              costPerUnit:
-                item.costPerUnit,
-              totalCost:
-                item.receivedQuantity *
-                item.costPerUnit,
-              notes: `Received from PO ${purchaseOrder.poNumber}`,
-            },
-          });
-
-          await tx.inventoryTransaction.create({
-            data: {
-              rawMaterialId:
-                item.poItem.rawMaterialId,
-              lotId: lot.id,
-              transactionType:
-                "PURCHASE",
-              quantity:
-                item.receivedQuantity,
-              unitType:
-                item.poItem.unitType,
-              unit: item.poItem.unit,
-              referenceType:
-                "PURCHASE",
-              referenceId:
-                createdPurchase.id,
-              notes: `Received against PO ${purchaseOrder.poNumber}`,
-            },
-          });
-
-          await tx.purchaseOrderItem.update({
-            where: {
-              id: item.poItem.id,
-            },
-            data: {
-              receivedQuantity: {
-                increment:
-                  item.receivedQuantity,
-              },
-            },
-          });
-        }
-
-        const updatedItems =
-          await tx.purchaseOrderItem.findMany({
-            where: {
-              purchaseOrderId:
-                purchaseOrder.id,
-            },
-          });
-
-        const fullyReceived =
-          updatedItems.every(
-            (item) =>
-              Number(
-                item.receivedQuantity
-              ) >=
-              Number(item.quantity)
-          );
-
-        await tx.purchaseOrder.update({
-          where: {
-            id: purchaseOrder.id,
-          },
+      for (const item of preparedItems) {
+        await tx.purchaseItem.create({
           data: {
-            status: fullyReceived
-              ? "RECEIVED"
-              : "PARTIALLY_RECEIVED",
+            purchaseId: createdPurchase.id,
+            productId: item.poItem.productId,
+            variantId: item.poItem.variantId,
+            quantity: item.receivedQuantity,
+            unit: item.poItem.unit,
+            costPerUnit: item.costPerUnit,
+            totalCost: item.receivedQuantity * item.costPerUnit,
+            notes: `Received from PO ${purchaseOrder.poNumber}`,
           },
         });
 
-        return createdPurchase;
-      },
-      {
-        maxWait: 30000,
-        timeout: 30000,
+        await tx.inventoryTransaction.create({
+          data: {
+            productId: item.poItem.productId,
+            variantId: item.poItem.variantId,
+            transactionType: "PURCHASE",
+            quantity: item.receivedQuantity,
+            unit: item.poItem.unit,
+            referenceType: "PURCHASE",
+            referenceId: createdPurchase.id,
+            notes: `Received against PO ${purchaseOrder.poNumber}`,
+            createdById: user.id,
+          },
+        });
+
+        const product = await tx.product.findUnique({
+          where: { id: item.poItem.productId },
+          select: { stockQuantity: true },
+        });
+
+        await tx.product.update({
+          where: { id: item.poItem.productId },
+          data: {
+            stockQuantity: String(
+              Number(product?.stockQuantity ?? 0) + item.receivedQuantity
+            ),
+          },
+        });
+
+        await tx.purchaseOrderItem.update({
+          where: { id: item.poItem.id },
+          data: {
+            receivedQuantity: {
+              increment: item.receivedQuantity,
+            },
+          },
+        });
       }
-    );
+
+      const updatedItems = await tx.purchaseOrderItem.findMany({
+        where: { purchaseOrderId: purchaseOrder.id },
+      });
+
+      const fullyReceived = updatedItems.every(
+        (poi) => Number(poi.receivedQuantity) >= Number(poi.quantity)
+      );
+
+      await tx.purchaseOrder.update({
+        where: { id: purchaseOrder.id },
+        data: {
+          status: fullyReceived ? "RECEIVED" : "PARTIALLY_RECEIVED",
+        },
+      });
+
+      return createdPurchase;
+    });
 
     return NextResponse.json(
       {
         success: true,
-        message:
-          "Purchase order received successfully",
+        message: "Purchase order received successfully",
         purchaseId: purchase.id,
         purchaseNo: purchase.purchaseNo,
       },
       { status: 201 }
     );
   } catch (error) {
-    console.error(
-      "POST purchase order receive error:",
-      error
-    );
+    console.error("POST purchase order receive error:", error);
 
     return NextResponse.json(
-      {
-        error:
-          "Failed to receive purchase order",
-      },
+      { error: "Failed to receive purchase order" },
       { status: 500 }
     );
   }
