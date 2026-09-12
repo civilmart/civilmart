@@ -126,6 +126,7 @@ export const CategoryScalarFieldEnum = {
   id: 'id',
   name: 'name',
   slug: 'slug',
+  group: 'group',
   description: 'description',
   imageUrl: 'imageUrl',
   isActive: 'isActive',
@@ -143,9 +144,16 @@ export const ProductScalarFieldEnum = {
   brand: 'brand',
   description: 'description',
   status: 'status',
+  unit: 'unit',
+  price: 'price',
+  stockQuantity: 'stockQuantity',
+  subcategory: 'subcategory',
+  minimumStock: 'minimumStock',
+  maximumStock: 'maximumStock',
+  reorderLevel: 'reorderLevel',
+  trades: 'trades',
   imageUrl: 'imageUrl',
   imageUrl2: 'imageUrl2',
-  price: 'price',
   isFeatured: 'isFeatured',
   categoryId: 'categoryId',
   createdAt: 'createdAt',
@@ -165,7 +173,6 @@ export const ProductVariantScalarFieldEnum = {
   status: 'status',
   price: 'price',
   imageUrl: 'imageUrl',
-  stockQuantity: 'stockQuantity',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -175,8 +182,8 @@ export type ProductVariantScalarFieldEnum = (typeof ProductVariantScalarFieldEnu
 
 export const InventoryTransactionScalarFieldEnum = {
   id: 'id',
-  variantId: 'variantId',
   productId: 'productId',
+  variantId: 'variantId',
   transactionType: 'transactionType',
   quantity: 'quantity',
   unit: 'unit',
@@ -312,6 +319,7 @@ export const CustomerOrderItemScalarFieldEnum = {
   variantName: 'variantName',
   imageUrl: 'imageUrl',
   quantity: 'quantity',
+  unit: 'unit',
   unitPrice: 'unitPrice'
 } as const
 

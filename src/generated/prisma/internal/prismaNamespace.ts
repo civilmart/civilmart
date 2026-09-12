@@ -1918,6 +1918,7 @@ export const CategoryScalarFieldEnum = {
   id: 'id',
   name: 'name',
   slug: 'slug',
+  group: 'group',
   description: 'description',
   imageUrl: 'imageUrl',
   isActive: 'isActive',
@@ -1935,9 +1936,16 @@ export const ProductScalarFieldEnum = {
   brand: 'brand',
   description: 'description',
   status: 'status',
+  unit: 'unit',
+  price: 'price',
+  stockQuantity: 'stockQuantity',
+  subcategory: 'subcategory',
+  minimumStock: 'minimumStock',
+  maximumStock: 'maximumStock',
+  reorderLevel: 'reorderLevel',
+  trades: 'trades',
   imageUrl: 'imageUrl',
   imageUrl2: 'imageUrl2',
-  price: 'price',
   isFeatured: 'isFeatured',
   categoryId: 'categoryId',
   createdAt: 'createdAt',
@@ -1957,7 +1965,6 @@ export const ProductVariantScalarFieldEnum = {
   status: 'status',
   price: 'price',
   imageUrl: 'imageUrl',
-  stockQuantity: 'stockQuantity',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -1967,8 +1974,8 @@ export type ProductVariantScalarFieldEnum = (typeof ProductVariantScalarFieldEnu
 
 export const InventoryTransactionScalarFieldEnum = {
   id: 'id',
-  variantId: 'variantId',
   productId: 'productId',
+  variantId: 'variantId',
   transactionType: 'transactionType',
   quantity: 'quantity',
   unit: 'unit',
@@ -2104,6 +2111,7 @@ export const CustomerOrderItemScalarFieldEnum = {
   variantName: 'variantName',
   imageUrl: 'imageUrl',
   quantity: 'quantity',
+  unit: 'unit',
   unitPrice: 'unitPrice'
 } as const
 
@@ -2277,20 +2285,6 @@ export type ListEnumProductStatusFieldRefInput<$PrismaModel> = FieldRefInputType
 
 
 /**
- * Reference to a field of type 'Decimal'
- */
-export type DecimalFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Decimal'>
-    
-
-
-/**
- * Reference to a field of type 'Decimal[]'
- */
-export type ListDecimalFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Decimal[]'>
-    
-
-
-/**
  * Reference to a field of type 'ProductUnit'
  */
 export type EnumProductUnitFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProductUnit'>
@@ -2301,6 +2295,20 @@ export type EnumProductUnitFieldRefInput<$PrismaModel> = FieldRefInputType<$Pris
  * Reference to a field of type 'ProductUnit[]'
  */
 export type ListEnumProductUnitFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProductUnit[]'>
+    
+
+
+/**
+ * Reference to a field of type 'Decimal'
+ */
+export type DecimalFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Decimal'>
+    
+
+
+/**
+ * Reference to a field of type 'Decimal[]'
+ */
+export type ListDecimalFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Decimal[]'>
     
 
 
