@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCart } from "@/context/cart-context";
-import { formatPrice, placeholderImage } from "@/lib/store-front";
+import { formatPrice, formatQuantity, placeholderImage } from "@/lib/store-front";
 import { computeShipping } from "@/lib/money";
 
 type Customer = {
@@ -175,7 +175,14 @@ export default function CheckoutPage() {
             notes: notes.trim() || null,
           },
           items: items.map((i) => ({
+            productId: i.productId,
             variantId: i.variantId,
+            sku: i.sku,
+            productName: i.productName,
+            variantName: i.variantName,
+            imageUrl: i.imageUrl,
+            unit: i.unit,
+            unitPrice: i.unitPrice,
             quantity: i.quantity,
           })),
           shipping,
@@ -461,7 +468,7 @@ export default function CheckoutPage() {
 
             <div className="mt-4 max-h-72 space-y-3 overflow-y-auto">
               {items.map((item) => (
-                <div key={item.variantId} className="flex gap-3 text-sm">
+                <div key={item.id} className="flex gap-3 text-sm">
                   <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
                     <Image
                       src={item.imageUrl || placeholderImage(item.productName)}
@@ -476,7 +483,8 @@ export default function CheckoutPage() {
                       {item.productName}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {item.variantName} · {item.sizeLabel} · ×{item.quantity}
+                      {formatQuantity(item.quantity)} {item.unit.toLowerCase()}
+                      {item.variantName ? ` · ${item.variantName}` : ""}
                     </p>
                   </div>
                   <p className="font-medium">
@@ -529,7 +537,7 @@ export default function CheckoutPage() {
 
             <Button
               size="lg"
-              className="mt-4 w-full rounded-full"
+              className="mt-4 w-full rounded-md"
               disabled={!canPlace || placing}
             >
               {placing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

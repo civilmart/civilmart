@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ProductUnit } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserOrThrow } from "@/lib/auth";
 import {
@@ -131,7 +132,7 @@ export async function POST(request: NextRequest) {
       sku: string;
       name: string;
       sizeValue: number;
-      sizeUnit: string;
+      sizeUnit: ProductUnit;
       price: string | null;
       imageUrl: string | null;
       status: "ACTIVE";
@@ -175,7 +176,7 @@ export async function POST(request: NextRequest) {
           sku: variant.sku.trim(),
           name: variant.name.trim(),
           sizeValue,
-          sizeUnit: variant.sizeUnit || unit,
+          sizeUnit: (variant.sizeUnit || unit) as ProductUnit,
           price: variantPrice !== null ? String(variantPrice) : null,
           imageUrl: variant.imageUrl?.trim() || null,
           status: "ACTIVE",

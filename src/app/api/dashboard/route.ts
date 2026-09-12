@@ -1,170 +1,105 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getDaysUntilExpiry, getExpiryStatus } from "@/lib/expiry";
 
 export async function GET() {
   try {
-    const now = new Date();
-
     const [
-      activeMaterials,
-      activeSuppliers,
-      rawMaterials,
-      transactions,
+      productCount,
+      supplierCount,
+      products,
       purchaseOrders,
-      batches,
-      qcPending,
-      expiryLots,
-      recentPurchases,
-      recentBatches,
       orderCounts,
+      orderTotals,
+      invoiceTotals,
+      recentPurchases,
       recentOrders,
+      topSellers,
     ] = await Promise.all([
-      prisma.rawMaterial.count({ where: { isActive: true } }),
+      prisma.product.count({ where: { status: "ACTIVE" } }),
       prisma.supplier.count({ where: { isActive: true } }),
-      prisma.rawMaterial.findMany({
-        where: { isActive: true },
-      }),
-      prisma.inventoryTransaction.findMany({
+      prisma.product.findMany({
         select: {
-          rawMaterialId: true,
-          lotId: true,
-          transactionType: true,
-          quantity: true,
+          id: true,
+          code: true,
+          name: true,
+          brand: true,
+          unit: true,
+          stockQuantity: true,
+          price: true,
+          reorderLevel: true,
+          category: { select: { name: true } },
         },
       }),
       prisma.purchaseOrder.findMany({
-        where: {
-          status: { notIn: ["RECEIVED", "CANCELLED"] },
-        },
-      }),
-      prisma.productionBatch.groupBy({
-        by: ["status"],
-        _count: { _all: true },
-      }),
-      prisma.qualityControl.count({ where: { decision: "PENDING" } }),
-      prisma.rawMaterialLot.findMany({
-        where: { expiryDate: { not: null } },
-        include: {
-          rawMaterial: { select: { id: true, code: true, name: true } },
-          supplier: { select: { id: true, name: true } },
-        },
-      }),
-      prisma.purchase.findMany({
-        include: {
-          supplier: { select: { name: true } },
-        },
-        orderBy: { purchaseDate: "desc" },
-        take: 8,
-      }),
-      prisma.productionBatch.findMany({
-        include: {
-          product: { select: { name: true } },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 8,
+        where: { status: { notIn: ["RECEIVED", "CANCELLED"] } },
+        select: { id: true },
       }),
       prisma.customerOrder.groupBy({
         by: ["status"],
         _count: { _all: true },
+      }),
+      prisma.customerOrder.aggregate({
+        where: { status: { not: "CANCELLED" } },
+        _sum: { total: true },
+      }),
+      prisma.invoice.aggregate({
+        where: { paymentStatus: { in: ["UNPAID", "PARTIAL"] } },
+        _sum: { totalAmount: true, paidAmount: true },
+      }),
+      prisma.purchase.findMany({
+        include: { supplier: { select: { name: true } } },
+        orderBy: { purchaseDate: "desc" },
+        take: 8,
       }),
       prisma.customerOrder.findMany({
         include: { items: true },
         orderBy: { createdAt: "desc" },
         take: 6,
       }),
+      prisma.customerOrderItem.groupBy({
+        by: ["productId", "productName"],
+        _sum: { quantity: true },
+        orderBy: { _sum: { quantity: "desc" } },
+        take: 8,
+      }),
     ]);
-
-    const stockByMaterial = new Map<string, number>();
-    const balanceByLot = new Map<string, number>();
-
-    for (const transaction of transactions) {
-      const qty = Number(transaction.quantity);
-      const isIncoming =
-        transaction.transactionType === "PURCHASE" ||
-        transaction.transactionType === "RETURN" ||
-        transaction.transactionType === "TRANSFER_IN" ||
-        transaction.transactionType === "OPENING_BALANCE" ||
-        transaction.transactionType === "ADJUSTMENT_IN" ||
-        transaction.transactionType === "CORRECTION";
-      const delta = isIncoming ? qty : -qty;
-
-      if (transaction.rawMaterialId) {
-        stockByMaterial.set(
-          transaction.rawMaterialId,
-          (stockByMaterial.get(transaction.rawMaterialId) ?? 0) + delta
-        );
-      }
-
-      if (transaction.lotId) {
-        balanceByLot.set(
-          transaction.lotId,
-          (balanceByLot.get(transaction.lotId) ?? 0) + delta
-        );
-      }
-    }
 
     const lowStockItems = [];
     const outOfStockItems = [];
+    let stockValue = 0;
 
-    for (const material of rawMaterials) {
-      const stock = stockByMaterial.get(material.id) ?? 0;
+    for (const product of products) {
+      const stock = Number(product.stockQuantity);
+      const price = product.price ? Number(product.price) : 0;
+
+      if (price >= 0 && stock > 0) {
+        stockValue += stock * price;
+      }
 
       if (stock <= 0) {
         outOfStockItems.push({
-          id: material.id,
-          code: material.code,
-          name: material.name,
+          id: product.id,
+          code: product.code,
+          name: product.name,
+          brand: product.brand,
+          unit: product.unit,
           currentStock: stock,
-          reorderLevel: material.reorderLevel
-            ? Number(material.reorderLevel)
-            : null,
+          reorderLevel: Number(product.reorderLevel ?? 0) || null,
         });
       } else if (
-        material.reorderLevel !== null &&
-        stock <= Number(material.reorderLevel)
+        product.reorderLevel !== null &&
+        stock <= Number(product.reorderLevel)
       ) {
         lowStockItems.push({
-          id: material.id,
-          code: material.code,
-          name: material.name,
+          id: product.id,
+          code: product.code,
+          name: product.name,
+          brand: product.brand,
+          unit: product.unit,
           currentStock: stock,
-          reorderLevel: Number(material.reorderLevel),
+          reorderLevel: Number(product.reorderLevel),
         });
       }
-    }
-
-    const expiryAlerts = [];
-
-    for (const lot of expiryLots) {
-      if (!lot.expiryDate) continue;
-
-      const status = getExpiryStatus(lot.expiryDate, now);
-
-      if (status !== "EXPIRED" && status !== "EXPIRING_SOON") continue;
-
-      const remainingQty = Math.max(balanceByLot.get(lot.id) ?? 0, 0);
-
-      if (remainingQty <= 0) continue;
-
-      expiryAlerts.push({
-        id: lot.id,
-        lotNumber: lot.lotNumber,
-        expiryDate: lot.expiryDate,
-        daysUntilExpiry: getDaysUntilExpiry(lot.expiryDate, now),
-        status,
-        rawMaterial: lot.rawMaterial,
-        supplier: lot.supplier,
-      });
-    }
-
-    expiryAlerts.sort(
-      (a, b) => (a.daysUntilExpiry ?? 0) - (b.daysUntilExpiry ?? 0)
-    );
-
-    const statusCounts: Record<string, number> = {};
-    for (const group of batches) {
-      statusCounts[group.status] = group._count._all;
     }
 
     const orderStatusCounts: Record<string, number> = {};
@@ -176,13 +111,11 @@ export async function GET() {
       (sum, group) => sum + group._count._all,
       0
     );
-    const openOrders =
-      totalOrders -
-      (orderStatusCounts["DELIVERED"] ?? 0) -
-      (orderStatusCounts["CANCELLED"] ?? 0);
-    const newOrders =
-      (orderStatusCounts["PLACED"] ?? 0) +
-      (orderStatusCounts["CONFIRMED"] ?? 0);
+    const delivered = orderStatusCounts["DELIVERED"] ?? 0;
+    const cancelled = orderStatusCounts["CANCELLED"] ?? 0;
+
+    const unpaidInvoices = invoiceTotals._sum.totalAmount ?? 0;
+    const paidOnInvoices = invoiceTotals._sum.paidAmount ?? 0;
 
     const activity = [
       ...recentPurchases.map((purchase) => ({
@@ -193,74 +126,56 @@ export async function GET() {
         amount: Number(purchase.totalAmount),
         date: purchase.purchaseDate.toISOString(),
       })),
-      ...recentBatches.map((batch) => ({
-        id: batch.id,
-        type: "PRODUCTION",
-        title: `Batch ${batch.batchNumber}`,
-        detail: batch.product.name,
-        amount: null,
-        date: batch.createdAt.toISOString(),
-      })),
       ...recentOrders.map((order) => ({
         id: order.id,
         type: "ORDER",
         title: `Order ${order.orderNumber}`,
-        detail: `${order.customerName} · ${order.status === "CANCELLED" ? "cancelled" : order.status.toLowerCase()}`,
+        detail: `${order.customerName} · ${
+          order.status === "CANCELLED" ? "cancelled" : order.status.toLowerCase()
+        }`,
         amount: Number(order.total),
         date: order.createdAt.toISOString(),
       })),
     ]
-      .sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      )
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 10);
 
     return NextResponse.json({
       success: true,
       data: {
         stats: {
-          materials: activeMaterials,
-          suppliers: activeSuppliers,
+          products: productCount,
+          suppliers: supplierCount,
           lowStock: lowStockItems.length,
           outOfStock: outOfStockItems.length,
           openPurchaseOrders: purchaseOrders.length,
-          batchesInProgress: statusCounts["IN_PROGRESS"] ?? 0,
-          batchesCompleted: statusCounts["COMPLETED"] ?? 0,
-          batchesReleased: statusCounts["RELEASED"] ?? 0,
-          qcPending,
-          expiredLots: expiryAlerts.filter(
-            (a) => a.status === "EXPIRED"
-          ).length,
-          expiringSoon: expiryAlerts.filter(
-            (a) => a.status === "EXPIRING_SOON"
-          ).length,
+          stockValue,
+          outstandingInvoices: Number(
+            (Number(unpaidInvoices) - Number(paidOnInvoices)).toFixed(2)
+          ),
+        },
+        revenue: Number(orderTotals._sum.total ?? 0),
+        storeOrderStats: {
+          total: totalOrders,
+          open: totalOrders - delivered - cancelled,
+          new: (orderStatusCounts["PLACED"] ?? 0) + (orderStatusCounts["CONFIRMED"] ?? 0),
+          delivered,
+          cancelled,
         },
         lowStockItems: lowStockItems.slice(0, 8),
         outOfStockItems: outOfStockItems.slice(0, 8),
-        expiryAlerts: expiryAlerts.slice(0, 8),
-        batchStatusCounts: statusCounts,
-        totalBatches: batches.reduce(
-          (sum, group) => sum + group._count._all,
-          0
-        ),
-        orderStatusCounts,
-        storeOrderStats: {
-          total: totalOrders,
-          open: openOrders,
-          new: newOrders,
-          delivered: orderStatusCounts["DELIVERED"] ?? 0,
-          cancelled: orderStatusCounts["CANCELLED"] ?? 0,
-        },
+        topSellingItems: topSellers.map((item) => ({
+          productId: item.productId,
+          productName: item.productName,
+          quantitySold: Number(item._sum.quantity ?? 0),
+        })),
         recentOrders: recentOrders.map((order) => ({
           id: order.id,
           orderNumber: order.orderNumber,
           customerName: order.customerName,
           status: order.status,
           total: Number(order.total),
-          itemCount: order.items.reduce(
-            (sum, item) => sum + item.quantity,
-            0
-          ),
+          itemCount: order.items.reduce((sum, item) => sum + Number(item.quantity), 0),
           createdAt: order.createdAt,
         })),
         activity,

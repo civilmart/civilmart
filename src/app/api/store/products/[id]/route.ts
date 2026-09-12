@@ -13,10 +13,8 @@ export async function GET(_request: Request, context: RouteContext) {
     const product = await prisma.product.findFirst({
       where: { id, status: "ACTIVE" },
       include: {
-        variants: {
-          where: { status: "ACTIVE" },
-          orderBy: { sizeValue: "asc" },
-        },
+        category: { select: { id: true, name: true, slug: true } },
+        variants: { orderBy: { sizeValue: "asc" } },
       },
     });
 
@@ -31,10 +29,16 @@ export async function GET(_request: Request, context: RouteContext) {
       id: product.id,
       code: product.code,
       name: product.name,
+      brand: product.brand,
       description: product.description,
+      unit: product.unit,
+      stockQuantity: Number(product.stockQuantity),
       imageUrl: product.imageUrl,
       imageUrl2: product.imageUrl2,
-      category: product.category,
+      category: product.category?.name ?? null,
+      categorySlug: product.category?.slug ?? null,
+      subcategory: product.subcategory,
+      trades: product.trades,
       isFeatured: product.isFeatured,
       price: product.price !== null ? Number(product.price) : null,
       variants: product.variants.map((v) => ({
@@ -45,7 +49,6 @@ export async function GET(_request: Request, context: RouteContext) {
         sizeUnit: v.sizeUnit,
         price: v.price !== null ? Number(v.price) : null,
         imageUrl: v.imageUrl,
-        stockQuantity: v.stockQuantity,
       })),
     };
 

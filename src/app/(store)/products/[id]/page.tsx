@@ -11,7 +11,8 @@ import {
   Loader2,
   Minus,
   Plus,
-  ShoppingBag,
+  ShoppingCart,
+  Truck,
 } from "lucide-react";
 import { Carousel } from "@/components/store/carousel";
 import { Badge } from "@/components/ui/badge";
@@ -21,12 +22,26 @@ import { useWishlist } from "@/context/wishlist-context";
 import {
   effectivePrice,
   formatPrice,
+  isInStock,
   maybeInt,
   placeholderImage,
+  productUnitLabel,
   sizeLabel,
   type StoreProduct,
   type StoreVariant,
 } from "@/lib/store-front";
+
+function StockBadge({ inStock }: { inStock: boolean }) {
+  return inStock ? (
+    <span className="flex items-center gap-1 text-sm font-medium text-green-700">
+      <Check className="h-4 w-4" /> In stock
+    </span>
+  ) : (
+    <span className="flex items-center gap-1 text-sm font-medium text-red-600">
+      <span className="h-2 w-2 rounded-full bg-red-600" /> Out of stock
+    </span>
+  );
+}
 
 export default function ProductDetailPage({
   params,
@@ -94,7 +109,7 @@ export default function ProductDetailPage({
         </p>
         <Link
           href="/products"
-          className="text-sm font-medium text-amber-700 underline"
+          className="text-sm font-semibold text-amber-700 underline"
         >
           Back to shop
         </Link>
@@ -106,9 +121,7 @@ export default function ProductDetailPage({
 
   const currentVariant = selectedVariant ?? product.variants[0] ?? null;
   const unitPrice = currentVariant?.price ?? effectivePrice(product);
-  const inStock = currentVariant
-    ? currentVariant.stockQuantity > 0
-    : product.variants.some((v) => v.stockQuantity > 0);
+  const inStock = isInStock(product);
 
   const images: React.ReactNode[] = [];
   if (currentVariant?.imageUrl) {
@@ -144,7 +157,7 @@ export default function ProductDetailPage({
       <Image
         key="product2"
         src={product.imageUrl2}
-        alt={`${product.name} — bottle and packing`}
+        alt={`${product.name} — additional photo`}
         width={640}
         height={640}
         className="aspect-square w-full object-cover"
@@ -165,25 +178,46 @@ export default function ProductDetailPage({
   }
 
   function handleAddToCart() {
-    if (!currentVariant || !product) return;
+    if (!product) return;
 
     addItem(
       {
-        variantId: currentVariant.id,
+        id: currentVariant?.id ?? product.id,
         productId: product.id,
-        sku: currentVariant.sku,
+        variantId: currentVariant?.id ?? null,
+        sku: currentVariant?.sku ?? product.code,
         productName: product.name,
-        variantName: currentVariant.name,
-        sizeLabel: sizeLabel(currentVariant),
-        unitPrice: currentVariant.price ?? product.price ?? 0,
-        imageUrl: currentVariant.imageUrl ?? product.imageUrl,
-        stockQuantity: currentVariant.stockQuantity,
+        variantName: currentVariant?.name ?? null,
+        unit: currentVariant?.sizeUnit ?? product.unit,
+        unitPrice: unitPrice ?? 0,
+        imageUrl: currentVariant?.imageUrl ?? product.imageUrl,
+        stockQuantity: Number(product.stockQuantity),
       },
       quantity
     );
 
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
+  }
+
+  const specRows: Array<{ label: string; value: string }> = [
+    { label: "Product code", value: product.code },
+    { label: "Category", value: product.category ?? "—" },
+    { label: "Brand", value: product.brand ?? "—" },
+    { label: "Unit", value: product.unit.toLowerCase() },
+  ];
+
+  if (product.subcategory) {
+    specRows.push({ label: "Subcategory", value: product.subcategory });
+  }
+  if (product.trades.length > 0) {
+    specRows.push({ label: "Trade", value: product.trades.join(", ") });
+  }
+  if (product.stockQuantity > 0) {
+    specRows.push({
+      label: "Available",
+      value: `${formatQuantity(product.stockQuantity)} ${productUnitLabel(product)}`,
+    });
   }
 
   return (
@@ -193,38 +227,40 @@ export default function ProductDetailPage({
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-slate-900"
       >
         <ChevronLeft className="h-4 w-4" />
-        Back to shop
+        Back to all products
       </Link>
 
       <div className="grid gap-8 lg:grid-cols-2">
         <div className="space-y-3">
           <Carousel
             slides={images}
-            className="overflow-hidden rounded-2xl border"
+            className="overflow-hidden rounded-md border"
             autoAdvanceMs={images.length > 1 ? 5000 : undefined}
             showArrows={images.length > 1}
           />
 
-          <div className="flex flex-wrap gap-2">
-            {product.variants.map((v) => (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => {
-                  setSelectedVariant(v);
-                  setQuantity(1);
-                  setAdded(false);
-                }}
-                className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-                  currentVariant?.id === v.id
-                    ? "border-amber-500 bg-amber-50 text-amber-800"
-                    : "bg-white text-slate-700 hover:border-slate-400"
-                }`}
-              >
-                {maybeInt(v.sizeValue)} {v.sizeUnit.toLowerCase()}
-              </button>
-            ))}
-          </div>
+          {product.variants.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {product.variants.map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedVariant(v);
+                    setQuantity(1);
+                    setAdded(false);
+                  }}
+                  className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
+                    currentVariant?.id === v.id
+                      ? "border-amber-500 bg-amber-50 text-amber-900"
+                      : "bg-white text-slate-700 hover:border-slate-400"
+                  }`}
+                >
+                  {maybeInt(v.sizeValue)} {v.sizeUnit.toLowerCase()}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-4">
@@ -233,7 +269,7 @@ export default function ProductDetailPage({
               {product.category && (
                 <Badge
                   variant="secondary"
-                  className="w-fit text-[11px] uppercase tracking-wide"
+                  className="w-fit rounded-sm text-[11px] uppercase tracking-wide"
                 >
                   {product.category}
                 </Badge>
@@ -242,6 +278,11 @@ export default function ProductDetailPage({
               <h1 className="mt-2 text-3xl font-bold tracking-tight">
                 {product.name}
               </h1>
+
+              <p className="mt-1 text-sm text-muted-foreground">
+                Code {product.code}
+                {product.brand ? ` · ${product.brand}` : ""}
+              </p>
             </div>
 
             <button
@@ -254,41 +295,32 @@ export default function ProductDetailPage({
                 }
                 await toggle(product.id);
               }}
-              className={`rounded-full border p-2.5 transition ${
+              className={`rounded-md border p-2.5 transition ${
                 wishlisted
-                  ? "border-rose-200 bg-rose-50 text-rose-600"
-                  : "bg-white text-slate-500 hover:border-rose-300 hover:text-rose-600"
+                  ? "border-amber-300 bg-amber-50 text-amber-700"
+                  : "bg-white text-slate-500 hover:border-amber-300 hover:text-amber-700"
               }`}
             >
               <Heart
-                className={`h-5 w-5 ${wishlisted ? "fill-rose-600 text-rose-600" : ""}`}
+                className={`h-5 w-5 ${wishlisted ? "fill-amber-600 text-amber-600" : ""}`}
               />
             </button>
           </div>
 
-          {currentVariant && (
-            <p className="text-sm text-muted-foreground">
-              {sizeLabel(currentVariant)} · SKU {currentVariant.sku}
-            </p>
-          )}
-
           {unitPrice !== null ? (
-            <p className="text-2xl font-bold text-amber-700">
-              {formatPrice(unitPrice)}
+            <p className="font-bold text-slate-900">
+              <span className="text-3xl">{formatPrice(unitPrice)}</span>{" "}
+              <span className="text-sm font-medium text-muted-foreground">
+                / {currentVariant ? currentVariant.sizeUnit.toLowerCase() : productUnitLabel(product)}
+              </span>
             </p>
           ) : (
-            <p className="text-sm text-muted-foreground">Price on request</p>
+            <p className="text-sm font-medium text-muted-foreground">
+              Price on request
+            </p>
           )}
 
-          <div className="flex items-center gap-2 text-sm">
-            {inStock ? (
-              <span className="flex items-center gap-1 text-green-700">
-                <Check className="h-4 w-4" /> In stock
-              </span>
-            ) : (
-              <span className="text-red-600">Sold out</span>
-            )}
-          </div>
+          <StockBadge inStock={inStock} />
 
           {product.description && (
             <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600">
@@ -297,7 +329,7 @@ export default function ProductDetailPage({
           )}
 
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <div className="flex items-center rounded-full border">
+            <div className="flex items-center rounded-md border">
               <button
                 type="button"
                 aria-label="Decrease quantity"
@@ -307,15 +339,31 @@ export default function ProductDetailPage({
               >
                 <Minus className="h-4 w-4" />
               </button>
-              <span className="w-10 text-center text-sm font-semibold">
-                {quantity}
-              </span>
+              <input
+                aria-label="Quantity"
+                type="number"
+                min={1}
+                step={product.unit === "KG" || product.unit === "LITER" ? 0.5 : 1}
+                value={quantity}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (Number.isFinite(next) && next > 0) {
+                    setQuantity(
+                      Math.min(next, Number(product.stockQuantity) || 9999)
+                    );
+                  }
+                }}
+                className="w-16 border-x bg-transparent py-2 text-center text-sm font-semibold outline-none"
+              />
               <button
                 type="button"
                 aria-label="Increase quantity"
                 onClick={() =>
                   setQuantity((q) =>
-                    Math.min(currentVariant?.stockQuantity ?? 99, q + 1)
+                    Math.min(
+                      q + (product.unit === "KG" || product.unit === "LITER" ? 0.5 : 1),
+                      Number(product.stockQuantity) || 9999
+                    )
                   )
                 }
                 className="p-2.5 text-slate-600 hover:text-slate-900 disabled:opacity-40"
@@ -327,31 +375,53 @@ export default function ProductDetailPage({
 
             <Button
               size="lg"
-              className="flex-1 rounded-full sm:flex-none"
+              className="flex-1 rounded-md sm:flex-none"
               onClick={handleAddToCart}
               disabled={!inStock}
             >
               {added ? (
                 <Check className="mr-2 h-4 w-4" />
               ) : (
-                <ShoppingBag className="mr-2 h-4 w-4" />
+                <ShoppingCart className="mr-2 h-4 w-4" />
               )}
-              {added ? "Added to cart" : inStock ? "Add to cart" : "Sold out"}
+              {added ? "Added to cart" : inStock ? "Add to cart" : "Out of stock"}
             </Button>
           </div>
 
-          <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Pay in cash when your order arrives. Delivery nationwide.
+          <div className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            <Truck className="h-5 w-5 shrink-0 text-amber-700" />
+            Cash on delivery — pay when your order arrives.
           </div>
 
           <button
             onClick={() => router.push("/cart")}
-            className="mt-1 w-fit text-sm font-medium text-amber-700 underline"
+            className="mt-1 w-fit text-sm font-semibold text-amber-700 underline"
           >
             Go to cart
           </button>
         </div>
       </div>
+
+      <section className="rounded-md border">
+        <h2 className="border-b bg-slate-50 px-4 py-3 text-sm font-bold uppercase tracking-wide">
+          Product details
+        </h2>
+        <dl className="divide-y">
+          {specRows.map((row) => (
+            <div
+              key={row.label}
+              className="grid grid-cols-2 gap-4 px-4 py-2.5 text-sm"
+            >
+              <dt className="text-muted-foreground">{row.label}</dt>
+              <dd className="font-medium">{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
     </div>
   );
+}
+
+function formatQuantity(value: number): string {
+  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)));
 }

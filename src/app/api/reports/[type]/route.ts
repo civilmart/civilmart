@@ -1,20 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-const REPORT_TYPES = [
-  "purchases",
-  "vendors",
-  "materials",
-  "inventory",
-  "formulas",
-  "production",
-  "qc",
-] as const;
+const REPORT_TYPES = ["purchases", "vendors", "stock", "sales", "invoices"] as const;
 
 type ReportType = (typeof REPORT_TYPES)[number];
-
-const isIncoming = (type: string) =>
-  ["PURCHASE", "RETURN", "TRANSFER_IN", "OPENING_BALANCE", "ADJUSTMENT_IN", "CORRECTION"].includes(type);
 
 async function getPurchasesReport() {
   const purchases = await prisma.purchase.findMany({
@@ -25,13 +14,19 @@ async function getPurchasesReport() {
     orderBy: { purchaseDate: "desc" },
   });
 
-  const totalSpend = purchases.reduce(
-    (sum, p) => sum + Number(p.totalAmount),
-    0
-  );
+  const totalSpend = purchases.reduce((sum, p) => sum + Number(p.totalAmount), 0);
 
   return {
-    columns: ["Purchase No", "Date", "Supplier", "Items", "Subtotal", "Tax", "Total", "Status"],
+    columns: [
+      "Purchase No",
+      "Date",
+      "Supplier",
+      "Items",
+      "Subtotal",
+      "Tax",
+      "Discount",
+      "Total",
+    ],
     rows: purchases.map((p) => [
       p.purchaseNo,
       p.purchaseDate.toISOString().split("T")[0],
@@ -39,8 +34,8 @@ async function getPurchasesReport() {
       String(p.items.length),
       Number(p.subtotal).toFixed(2),
       Number(p.tax).toFixed(2),
+      Number(p.discount).toFixed(2),
       Number(p.totalAmount).toFixed(2),
-      p.status,
     ]),
     summary: { count: purchases.length, totalSpend },
   };
@@ -58,21 +53,32 @@ async function getVendorsReport() {
   });
 
   return {
-    columns: ["Supplier", "Contact", "County", "Orders", "Total Spend", "Avg Order Value", "Last Order Date"],
+    columns: [
+      "Supplier",
+      "Contact",
+      "Phone",
+      "Purchases",
+      "Total Spend",
+      "Avg Order Value",
+      "Last Purchase Date",
+    ],
     rows: suppliers.map((supplier) => {
-      const orders = supplier.purchases;
-      const totalSpend = orders.reduce((sum, p) => sum + Number(p.totalAmount), 0);
-      const lastOrder = orders.length > 0
-        ? orders.sort((a, b) => b.purchaseDate.getTime() - a.purchaseDate.getTime())[0]
-        : null;
+      const purchases = supplier.purchases;
+      const totalSpend = purchases.reduce((sum, p) => sum + Number(p.totalAmount), 0);
+      const lastOrder =
+        purchases.length > 0
+          ? purchases.sort(
+              (a, b) => b.purchaseDate.getTime() - a.purchaseDate.getTime()
+            )[0]
+          : null;
 
       return [
         supplier.name,
         supplier.contactName ?? "",
-        supplier.address ?? "",
-        String(orders.length),
+        supplier.phone ?? "",
+        String(purchases.length),
         totalSpend.toFixed(2),
-        orders.length > 0 ? (totalSpend / orders.length).toFixed(2) : "0.00",
+        purchases.length > 0 ? (totalSpend / purchases.length).toFixed(2) : "0.00",
         lastOrder ? lastOrder.purchaseDate.toISOString().split("T")[0] : "",
       ];
     }),
@@ -80,239 +86,128 @@ async function getVendorsReport() {
   };
 }
 
-async function getMaterialsReport() {
-  const materials = await prisma.rawMaterial.findMany({
-    include: {
-      inventoryTransactions: {
-        select: { transactionType: true, quantity: true, unit: true },
-      },
-    },
+async function getStockReport() {
+  const products = await prisma.product.findMany({
+    include: { category: { select: { name: true } } },
     orderBy: { name: "asc" },
   });
-
-  const rows = materials.map((material) => {
-    let currentStock = 0;
-    let purchased = 0;
-    let consumed = 0;
-
-    for (const tx of material.inventoryTransactions) {
-      const qty = Number(tx.quantity);
-      if (isIncoming(tx.transactionType)) {
-        currentStock += qty;
-        if (tx.transactionType === "PURCHASE") purchased += qty;
-      } else {
-        currentStock -= qty;
-        if (tx.transactionType === "CONSUMPTION") consumed += qty;
-      }
-    }
-
-    let status = "IN_STOCK";
-    if (currentStock <= 0) status = "OUT_OF_STOCK";
-    else if (material.reorderLevel !== null && currentStock <= Number(material.reorderLevel)) status = "LOW_STOCK";
-
-    return [
-      material.code,
-      material.name,
-      material.materialType.replaceAll("_", " "),
-      currentStock.toFixed(2),
-      purchased.toFixed(2),
-      consumed.toFixed(2),
-      material.reorderLevel !== null ? Number(material.reorderLevel).toFixed(2) : "",
-      material.isActive ? "Active" : "Inactive",
-      status,
-    ];
-  });
-
-  return {
-    columns: ["Code", "Name", "Type", "Current Stock", "Purchased", "Consumed", "Reorder Level", "Status", "Stock Status"],
-    rows,
-    summary: { count: materials.length },
-  };
-}
-
-async function getInventoryReport() {
-  const materials = await prisma.rawMaterial.findMany({
-    where: { isActive: true },
-    include: {
-      inventoryTransactions: {
-        select: { transactionType: true, quantity: true },
-      },
-      lots: {
-        select: { costPerUnit: true },
-      },
-    },
-    orderBy: { name: "asc" },
-  });
-
-  const purchaseItems = await prisma.purchaseItem.findMany({
-    select: {
-      rawMaterialId: true,
-      costPerUnit: true,
-      quantity: true,
-    },
-  });
-
-  const avgCostByMaterial = new Map<string, { totalCost: number; totalQty: number }>();
-  for (const item of purchaseItems) {
-    const qty = Number(item.quantity);
-    const cost = Number(item.costPerUnit);
-    if (qty <= 0) continue;
-    const current = avgCostByMaterial.get(item.rawMaterialId) ?? { totalCost: 0, totalQty: 0 };
-    current.totalCost += cost * qty;
-    current.totalQty += qty;
-    avgCostByMaterial.set(item.rawMaterialId, current);
-  }
 
   let totalValue = 0;
 
-  const rows = materials.map((material) => {
-    let currentStock = 0;
-    for (const tx of material.inventoryTransactions) {
-      const qty = Number(tx.quantity);
-      if (isIncoming(tx.transactionType)) currentStock += qty;
-      else currentStock -= qty;
-    }
-
-    const lotCosts = material.lots
-      .map((lot) => (lot.costPerUnit !== null ? Number(lot.costPerUnit) : null))
-      .filter((c): c is number => c !== null);
-
-    const lotAvg = lotCosts.length > 0
-      ? lotCosts.reduce((a, b) => a + b, 0) / lotCosts.length
-      : null;
-
-    const avgCost = lotAvg ?? (() => {
-      const data = avgCostByMaterial.get(material.id);
-      return data && data.totalQty > 0 ? data.totalCost / data.totalQty : 0;
-    })();
-
-    const value = currentStock * avgCost;
+  const rows = products.map((product) => {
+    const stock = Number(product.stockQuantity);
+    const price = product.price ? Number(product.price) : null;
+    const value = price !== null ? stock * price : 0;
     totalValue += value;
 
+    const stockStatus =
+      stock <= 0
+        ? "OUT_OF_STOCK"
+        : product.reorderLevel !== null && stock <= Number(product.reorderLevel)
+          ? "LOW_STOCK"
+          : "IN_STOCK";
+
     return [
-      material.code,
-      material.name,
-      material.materialType.replaceAll("_", " "),
-      currentStock.toFixed(2),
-      String(material.unitType),
-      avgCost.toFixed(4),
+      product.code,
+      product.name,
+      product.category?.name ?? "",
+      product.brand ?? "",
+      product.unit,
+      stock.toFixed(2),
+      stockStatus,
+      price !== null ? price.toFixed(2) : "",
       value.toFixed(2),
+      product.status,
     ];
   });
 
   return {
-    columns: ["Code", "Material", "Type", "Current Stock", "Unit Type", "Avg Cost/Unit", "Stock Value"],
+    columns: [
+      "Code",
+      "Product",
+      "Category",
+      "Brand",
+      "Unit",
+      "Current Stock",
+      "Stock Status",
+      "Price",
+      "Stock Value",
+      "Status",
+    ],
     rows,
-    summary: { count: materials.length, totalValue },
+    summary: { count: products.length, totalValue },
   };
 }
 
-async function getFormulasReport() {
-  const formulas = await prisma.formula.findMany({
-    include: {
-      versions: {
-        include: {
-          _count: { select: { ingredients: true } },
-        },
-      },
-    },
-    orderBy: { name: "asc" },
-  });
-
-  const rows = formulas.map((formula) => {
-    const activeVersion =
-      formula.versions.find((v) => v.status === "ACTIVE") ??
-      formula.versions[formula.versions.length - 1];
-    return [
-      formula.name,
-      formula.code,
-      formula.description ?? "",
-      formula.status,
-      String(formula.versions.length),
-      activeVersion ? String(activeVersion.version) : "",
-      activeVersion ? String(activeVersion._count.ingredients) : "",
-    ];
-  });
-
-  return {
-    columns: ["Name", "Code", "Description", "Status", "Versions", "Active Version", "Ingredients"],
-    rows,
-    summary: { count: formulas.length },
-  };
-}
-
-async function getProductionReport() {
-  const batches = await prisma.productionBatch.findMany({
-    include: {
-      product: { select: { name: true } },
-      formula: { select: { name: true } },
-    },
+async function getSalesReport() {
+  const orders = await prisma.customerOrder.findMany({
+    include: { items: true },
     orderBy: { createdAt: "desc" },
   });
 
-  const rows = batches.map((batch) => [
-    batch.batchNumber,
-    batch.product.name,
-    batch.formula.name,
-    batch.status,
-    Number(batch.plannedQuantity).toFixed(2),
-    batch.producedQuantity !== null ? Number(batch.producedQuantity).toFixed(2) : "",
-    batch.startedAt ? batch.startedAt.toISOString().split("T")[0] : "",
-    batch.completedAt ? batch.completedAt.toISOString().split("T")[0] : "",
-    batch.releasedAt ? batch.releasedAt.toISOString().split("T")[0] : "",
-  ]);
+  const revenue = orders
+    .filter((o) => o.status !== "CANCELLED")
+    .reduce((sum, o) => sum + Number(o.total), 0);
 
   return {
-    columns: ["Batch No", "Product", "Formula", "Status", "Planned Qty", "Produced Qty", "Started", "Completed", "Released"],
-    rows,
-    summary: { count: batches.length },
+    columns: [
+      "Order No",
+      "Customer",
+      "Phone",
+      "Date",
+      "Items",
+      "Subtotal",
+      "Shipping",
+      "Total",
+      "Status",
+    ],
+    rows: orders.map((o) => [
+      o.orderNumber,
+      o.customerName,
+      o.phone,
+      o.createdAt.toISOString(),
+      String(o.items.length),
+      Number(o.subtotal).toFixed(2),
+      Number(o.shipping).toFixed(2),
+      Number(o.total).toFixed(2),
+      o.status,
+    ]),
+    summary: { count: orders.length, revenue },
   };
 }
 
-async function getQcReport() {
-  const records = await prisma.qualityControl.findMany({
-    include: {
-      productionBatch: {
-        include: {
-          product: { select: { name: true } },
-        },
-      },
-    },
-    orderBy: { updatedAt: "desc" },
+async function getInvoicesReport() {
+  const invoices = await prisma.invoice.findMany({
+    include: { customer: { select: { name: true } } },
+    orderBy: { invoiceDate: "desc" },
   });
 
-  const rows = records.map((record) => [
-    record.productionBatch.batchNumber,
-    record.productionBatch.product.name,
-    record.decision,
-    record.maturationResult,
-    record.stabilityResult,
-    record.clarityResult,
-    record.colourResult,
-    record.odourResult,
-    record.regulatoryReviewResult,
-    record.decidedAt ? record.decidedAt.toISOString().split("T")[0] : "",
-  ]);
-
-  const approved = records.filter((r) => r.decision === "APPROVED").length;
-  const rejected = records.filter((r) => r.decision === "REJECTED").length;
-  const pending = records.filter((r) => r.decision === "PENDING").length;
+  const paid = invoices.reduce((sum, i) => sum + Number(i.paidAmount), 0);
+  const invoiced = invoices.reduce((sum, i) => sum + Number(i.totalAmount), 0);
+  const outstanding = invoiced - paid;
 
   return {
-    columns: ["Batch", "Product", "Decision", "Maturation", "Stability", "Clarity", "Colour", "Odour", "Regulatory", "Decided"],
-    rows,
-    summary: { count: records.length, approved, rejected, pending },
+    columns: ["Invoice No", "Customer", "Date", "Due Date", "Total", "Paid", "Balance", "Status"],
+    rows: invoices.map((i) => [
+      i.invoiceNo,
+      i.customer?.name ?? "",
+      i.invoiceDate.toISOString().split("T")[0],
+      i.dueDate ? i.dueDate.toISOString().split("T")[0] : "",
+      Number(i.totalAmount).toFixed(2),
+      Number(i.paidAmount).toFixed(2),
+      (Number(i.totalAmount) - Number(i.paidAmount)).toFixed(2),
+      i.paymentStatus,
+    ]),
+    summary: { count: invoices.length, invoiced, paid, outstanding },
   };
 }
 
 const handlers: Record<ReportType, () => Promise<unknown>> = {
   purchases: getPurchasesReport,
   vendors: getVendorsReport,
-  materials: getMaterialsReport,
-  inventory: getInventoryReport,
-  formulas: getFormulasReport,
-  production: getProductionReport,
-  qc: getQcReport,
+  stock: getStockReport,
+  sales: getSalesReport,
+  invoices: getInvoicesReport,
 };
 
 export async function GET(_request: NextRequest, context: { params: Promise<{ type: string }> }) {

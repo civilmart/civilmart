@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ProductUnit } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/auth";
 import { getCustomerUser, generateOrderNumber } from "@/lib/customer";
 import { serializeOrder } from "@/lib/store-order";
 import { getSiteSettings } from "@/lib/site-settings";
 import { computeShipping } from "@/lib/money";
-
-type LineItem = {
-  variantId: string;
-  quantity: number;
-};
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,15 +19,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const lineItems: LineItem[] = items
+    const lineItems = items
+      .map((i) => ({
+        productId: typeof i?.productId === "string" ? i.productId : "",
+        variantId: typeof i?.variantId === "string" ? i.variantId : null,
+        quantity: Number(i?.quantity),
+      }))
       .filter(
-        (i): i is LineItem =>
-          i &&
-          typeof i.variantId === "string" &&
-          Number.isInteger(i.quantity) &&
-          i.quantity > 0
-      )
-      .map((i) => ({ variantId: i.variantId, quantity: i.quantity }));
+        (i) => i.productId && Number.isFinite(i.quantity) && i.quantity > 0
+      );
 
     if (lineItems.length === 0) {
       return NextResponse.json(
@@ -51,7 +47,10 @@ export async function POST(request: NextRequest) {
 
       if (!username?.trim() || !password?.trim()) {
         return NextResponse.json(
-          { success: false, error: "Username and password are required to checkout" },
+          {
+            success: false,
+            error: "Username and password are required to checkout",
+          },
           { status: 400 }
         );
       }
@@ -78,12 +77,15 @@ export async function POST(request: NextRequest) {
       });
 
       if (existing) {
-        // If credentials match, log them in via existing account.
         if (verifyPassword(password, existing.passwordHash)) {
           customerAccount = existing;
         } else {
           return NextResponse.json(
-            { success: false, error: "This account already exists with a different password. Please log in first." },
+            {
+              success: false,
+              error:
+                "This account already exists with a different password. Please log in first.",
+            },
             { status: 409 }
           );
         }
@@ -101,62 +103,85 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const variants = await prisma.productVariant.findMany({
-      where: {
-        id: { in: lineItems.map((i) => i.variantId) },
-        status: "ACTIVE",
-        product: { status: "ACTIVE" },
-      },
-      include: { product: true },
+    const productIds = Array.from(new Set(lineItems.map((i) => i.productId)));
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds }, status: "ACTIVE" },
+      include: { variants: true },
     });
+    const productsById = new Map(products.map((p) => [p.id, p]));
 
-    const variantsById = new Map(variants.map((v) => [v.id, v]));
-
-    const resolvedItems: {
-      variantId: string;
+    const resolvedItems: Array<{
       productId: string;
+      variantId: string | null;
       quantity: number;
+      unit: ProductUnit;
       sku: string;
       productName: string;
-      variantName: string;
+      variantName: string | null;
       imageUrl: string | null;
       unitPrice: number;
-    }[] = [];
+    }> = [];
 
     for (const item of lineItems) {
-      const variant = variantsById.get(item.variantId);
+      const product = productsById.get(item.productId);
 
-      if (!variant) {
+      if (!product) {
         return NextResponse.json(
-          { success: false, error: "One of the selected items is no longer available" },
+          {
+            success: false,
+            error: "One of the selected items is no longer available",
+          },
           { status: 400 }
         );
       }
 
-      const unitPrice = variant.price ?? variant.product.price;
+      let variant = null;
+
+      if (item.variantId) {
+        variant = product.variants.find((v) => v.id === item.variantId);
+
+        if (!variant) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "One of the selected options is no longer available",
+            },
+            { status: 400 }
+          );
+        }
+      }
+
+      const unitPrice = variant?.price ?? product.price;
 
       if (unitPrice === null || unitPrice === undefined) {
         return NextResponse.json(
-          { success: false, error: `${variant.product.name} is not available for ordering` },
+          {
+            success: false,
+            error: `${product.name} is not available for ordering`,
+          },
           { status: 400 }
         );
       }
 
-      if (variant.stockQuantity < item.quantity) {
+      if (Number(product.stockQuantity) < item.quantity) {
         return NextResponse.json(
-          { success: false, error: `Only ${variant.stockQuantity} left in stock for ${variant.product.name}` },
+          {
+            success: false,
+            error: `Only ${Number(product.stockQuantity)} ${product.unit.toLowerCase()} of ${product.name} are currently available`,
+          },
           { status: 400 }
         );
       }
 
       resolvedItems.push({
-        variantId: variant.id,
-        productId: variant.productId,
-        quantity: item.quantity,
-        sku: variant.sku,
-        productName: variant.product.name,
-        variantName: variant.name,
-        imageUrl: variant.imageUrl ?? variant.product.imageUrl,
+        productId: product.id,
+        variantId: variant?.id ?? null,
+        quantity: Number(item.quantity.toFixed(4)),
+        unit: product.unit as ProductUnit,
+        sku: variant?.sku ?? product.code,
+        productName: product.name,
+        variantName: variant?.name ?? null,
+        imageUrl: variant?.imageUrl ?? product.imageUrl,
         unitPrice: Number(unitPrice),
       });
     }
@@ -213,9 +238,9 @@ export async function POST(request: NextRequest) {
               city: customer?.city?.trim() || null,
               notes: customer?.notes?.trim() || null,
               paymentMethod: "COD",
-              subtotal: String(subtotal),
-              shipping: String(Number(shipping)),
-              total: String(total),
+              subtotal: String(subtotal.toFixed(2)),
+              shipping: String(Number(shipping).toFixed(2)),
+              total: String(total.toFixed(2)),
               items: {
                 create: resolvedItems.map((i) => ({
                   productId: i.productId,
@@ -225,6 +250,7 @@ export async function POST(request: NextRequest) {
                   variantName: i.variantName,
                   imageUrl: i.imageUrl,
                   quantity: i.quantity,
+                  unit: i.unit,
                   unitPrice: String(i.unitPrice),
                 })),
               },
@@ -239,9 +265,31 @@ export async function POST(request: NextRequest) {
           });
 
           for (const item of resolvedItems) {
-            await tx.productVariant.update({
-              where: { id: item.variantId },
-              data: { stockQuantity: { decrement: item.quantity } },
+            const product = await tx.product.findUnique({
+              where: { id: item.productId },
+              select: { stockQuantity: true },
+            });
+
+            await tx.product.update({
+              where: { id: item.productId },
+              data: {
+                stockQuantity: String(
+                  Number(product?.stockQuantity ?? 0) - item.quantity
+                ),
+              },
+            });
+
+            await tx.inventoryTransaction.create({
+              data: {
+                productId: item.productId,
+                variantId: item.variantId,
+                transactionType: "SALE",
+                quantity: item.quantity,
+                unit: item.unit,
+                referenceType: "CUSTOMER_ORDER",
+                referenceId: created.id,
+                notes: `Order ${orderNumber} placed`,
+              },
             });
           }
 
@@ -304,9 +352,7 @@ export async function POST(request: NextRequest) {
           { status: 201 }
         );
       } catch (error) {
-        const isUnique = String(error)
-          .toLowerCase()
-          .includes("unique");
+        const isUnique = String(error).toLowerCase().includes("unique");
 
         if (!isUnique) {
           throw error;

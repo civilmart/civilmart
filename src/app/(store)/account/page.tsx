@@ -8,7 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useWishlist } from "@/context/wishlist-context";
-import { formatPrice, placeholderImage, type StoreVariant } from "@/lib/store-front";
+import {
+  effectivePrice,
+  formatPrice,
+  isInStock,
+  placeholderImage,
+  productUnitLabel,
+  type StoreProduct,
+} from "@/lib/store-front";
 
 type Customer = {
   id: string;
@@ -30,14 +37,7 @@ type Order = {
 
 type WishlistItem = {
   id: string;
-  product: {
-    id: string;
-    name: string;
-    description: string | null;
-    imageUrl: string | null;
-    price: number | null;
-    variants: StoreVariant[];
-  };
+  product: StoreProduct;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -416,32 +416,17 @@ export default function AccountPage() {
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {wishlist.map((item) => {
-              const totalStock = item.product.variants.reduce(
-                (sum, v) => sum + (v.stockQuantity ?? 0),
-                0
-              );
-              const inStock = totalStock > 0;
-              const minVariantPrice =
-                item.product.variants.length > 0
-                  ? Math.min(
-                      ...item.product.variants.map((v) => v.price ?? Infinity)
-                    )
-                  : null;
-              const price =
-                item.product.price ??
-                (typeof minVariantPrice === "number" &&
-                Number.isFinite(minVariantPrice)
-                  ? minVariantPrice
-                  : null);
+              const inStock = isInStock(item.product);
+              const price = effectivePrice(item.product);
 
               return (
                 <div
                   key={item.id}
-                  className="flex gap-3 rounded-xl border bg-card p-3"
+                  className="flex gap-3 rounded-md border bg-card p-3"
                 >
                   <Link
                     href={`/products/${item.product.id}`}
-                    className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-muted"
+                    className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md border bg-muted"
                   >
                     <Image
                       src={
@@ -463,8 +448,12 @@ export default function AccountPage() {
                       {item.product.name}
                     </Link>
 
-                    <p className="mt-0.5 text-xs font-bold text-amber-700">
-                      {price !== null ? formatPrice(price) : "—"}
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      per {productUnitLabel(item.product)}
+                    </p>
+
+                    <p className="text-xs font-bold text-amber-700">
+                      {price !== null ? formatPrice(price) : "Price on request"}
                     </p>
 
                     <div className="mt-auto flex items-center justify-between pt-2">

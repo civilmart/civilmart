@@ -1,85 +1,80 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  AlertTriangle,
-  Boxes,
-  CheckCircle2,
-  FileText,
-  Loader2,
-  PackageX,
-  RefreshCw,
-  Search,
-} from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { Boxes, ChevronDown, Loader2, Search } from "lucide-react";
+import { formatMoney } from "@/lib/money";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
-type InventoryItem = {
+type InventoryRow = {
   id: string;
   code: string;
   name: string;
-  materialType: string;
-  unitType: string;
+  unit: string;
+  brand: string | null;
+  category: string | null;
+  categoryId: string | null;
   minimumStock: number | null;
+  maximumStock: number | null;
   reorderLevel: number | null;
   currentStock: number;
   totalPurchased: number;
-  totalConsumed: number;
+  totalSold: number;
   totalAdjustments: number;
-  stockStatus: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
+  stockStatus: string;
 };
 
 type LedgerEntry = {
   id: string;
   transactionType: string;
   quantity: number;
+  isIncoming: boolean;
   unit: string;
-  unitType: string;
+  variantId: string | null;
+  variant: { id: string; sku: string; name: string } | null;
   referenceType: string | null;
-  referenceId: string | null;
   notes: string | null;
+  createdBy: { id: string; name: string | null } | null;
   createdAt: string;
-  lot: { id: string; lotNumber: string } | null;
-  rawMaterial: { id: string; code: string; name: string; unitType: string };
   runningBalance: number;
 };
 
-export default function InventoryPage() {
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
+const statusClasses: Record<string, string> = {
+  IN_STOCK: "border-green-200 bg-green-50 text-green-700",
+  LOW_STOCK: "border-amber-200 bg-amber-50 text-amber-700",
+  OUT_OF_STOCK: "border-red-200 bg-red-50 text-red-700",
+};
 
-  const [ledgerOpen, setLedgerOpen] = useState(false);
+export default function InventoryPage() {
+  const [rows, setRows] = useState<InventoryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [ledgerProductId, setLedgerProductId] = useState<string | null>(null);
+  const [ledger, setLedger] = useState<LedgerEntry[] | null>(null);
   const [ledgerLoading, setLedgerLoading] = useState(false);
-  const [ledgerMaterial, setLedgerMaterial] = useState<InventoryItem | null>(null);
-  const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
 
   const loadInventory = async () => {
+    setLoading(true);
+
     try {
-      setLoading(true);
+      const params = new URLSearchParams();
+      if (search.trim()) params.set("q", search.trim());
+      if (status) params.set("status", status);
 
-      const response = await fetch("/api/inventory");
-      const result = await response.json();
+      const response = await fetch(`/api/inventory?${params.toString()}`);
+      const data = await response.json();
 
-      if (result.success) {
-        setInventory(result.data);
+      if (data.success) {
+        setRows(data.data ?? []);
       }
     } catch (error) {
       console.error("Failed to load inventory:", error);
@@ -89,23 +84,30 @@ export default function InventoryPage() {
   };
 
   useEffect(() => {
-    loadInventory();
-  }, []);
+    const timer = setTimeout(loadInventory, search.trim() ? 300 : 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, status]);
 
-  const openLedger = async (item: InventoryItem) => {
-    setLedgerMaterial(item);
-    setLedgerOpen(true);
+  const toggleLedger = async (productId: string) => {
+    if (ledgerProductId === productId) {
+      setLedgerProductId(null);
+      setLedger(null);
+      return;
+    }
+
+    setLedgerProductId(productId);
+    setLedger(null);
     setLedgerLoading(true);
-    setLedgerEntries([]);
 
     try {
       const response = await fetch(
-        `/api/inventory/ledger?rawMaterialId=${item.id}`
+        `/api/inventory/ledger?productId=${encodeURIComponent(productId)}`
       );
-      const result = await response.json();
+      const data = await response.json();
 
-      if (result.success) {
-        setLedgerEntries(result.data);
+      if (data.success) {
+        setLedger(data.data ?? []);
       }
     } catch (error) {
       console.error("Failed to load ledger:", error);
@@ -114,415 +116,246 @@ export default function InventoryPage() {
     }
   };
 
-  const filteredInventory = useMemo(() => {
-    const query = search.toLowerCase().trim();
+  const filteredRows = useMemo(() => {
+    const term = search.toLowerCase().trim();
 
-    if (!query) {
-      return inventory;
-    }
+    return rows.filter((row) => {
+      if (!term) return true;
 
-    return inventory.filter(
-      (item) =>
-        item.name.toLowerCase().includes(query) ||
-        item.code.toLowerCase().includes(query) ||
-        item.materialType.toLowerCase().includes(query)
-    );
-  }, [inventory, search]);
-
-  const totalItems = inventory.length;
-
-  const inStockCount = inventory.filter(
-    (item) => item.stockStatus === "IN_STOCK"
-  ).length;
-
-  const lowStockCount = inventory.filter(
-    (item) => item.stockStatus === "LOW_STOCK"
-  ).length;
-
-  const outOfStockCount = inventory.filter(
-    (item) => item.stockStatus === "OUT_OF_STOCK"
-  ).length;
-
-  const formatNumber = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
-
-  const formatMaterialType = (value: string) => {
-    return value
-      .replaceAll("_", " ")
-      .toLowerCase()
-      .replace(/\b\w/g, (char) => char.toUpperCase());
-  };
-
-  const getUnitLabel = (item: InventoryItem) => {
-    if (item.unitType === "WEIGHT") {
-      return "G / KG";
-    }
-
-    if (item.unitType === "VOLUME") {
-      return "ML / L";
-    }
-
-    return "PIECE";
-  };
-
-  const formatTransactionType = (type: string) => {
-    return type
-      .replaceAll("_", " ")
-      .toLowerCase()
-      .replace(/\b\w/g, (char) => char.toUpperCase());
-  };
-
-  const formatReferenceType = (ref: string | null) => {
-    if (!ref) return "—";
-    return ref
-      .replaceAll("_", " ")
-      .toLowerCase()
-      .replace(/\b\w/g, (char) => char.toUpperCase());
-  };
-
-  const getStatusBadge = (status: InventoryItem["stockStatus"]) => {
-    if (status === "IN_STOCK") {
       return (
-        <Badge variant="outline" className="gap-1">
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          In Stock
-        </Badge>
+        row.name.toLowerCase().includes(term) ||
+        row.code.toLowerCase().includes(term) ||
+        (row.category ?? "").toLowerCase().includes(term) ||
+        (row.brand ?? "").toLowerCase().includes(term)
       );
-    }
+    });
+  }, [rows, search]);
 
-    if (status === "LOW_STOCK") {
-      return (
-        <Badge variant="secondary" className="gap-1">
-          <AlertTriangle className="h-3.5 w-3.5" />
-          Low Stock
-        </Badge>
-      );
-    }
-
-    return (
-      <Badge variant="destructive" className="gap-1">
-        <PackageX className="h-3.5 w-3.5" />
-        Out of Stock
-      </Badge>
-    );
-  };
+  const formatNumber = (value: number) =>
+    new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value);
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <Boxes className="h-6 w-6" />
-            <h1 className="text-2xl font-bold tracking-tight">Inventory</h1>
-          </div>
-
-          <p className="text-muted-foreground">
-            Monitor raw material stock and inventory levels.
-          </p>
+    <div className="space-y-6 p-6 lg:p-8">
+      <div>
+        <div className="flex items-center gap-2">
+          <Boxes className="h-6 w-6" />
+          <h1 className="text-2xl font-bold">Stock</h1>
         </div>
-
-        <Button
-          variant="outline"
-          onClick={loadInventory}
-          disabled={loading}
-        >
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Refresh
-        </Button>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Materials
-            </CardTitle>
-
-            <Boxes className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-
-          <CardContent>
-            <div className="text-2xl font-bold">{totalItems}</div>
-            <p className="text-xs text-muted-foreground">
-              Active raw materials
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              In Stock
-            </CardTitle>
-
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-
-          <CardContent>
-            <div className="text-2xl font-bold">{inStockCount}</div>
-            <p className="text-xs text-muted-foreground">
-              Healthy stock levels
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Low Stock
-            </CardTitle>
-
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-
-          <CardContent>
-            <div className="text-2xl font-bold">{lowStockCount}</div>
-            <p className="text-xs text-muted-foreground">
-              Need replenishment
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Out of Stock
-            </CardTitle>
-
-            <PackageX className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-
-          <CardContent>
-            <div className="text-2xl font-bold">{outOfStockCount}</div>
-            <p className="text-xs text-muted-foreground">
-              No available stock
-            </p>
-          </CardContent>
-        </Card>
+        <p className="text-muted-foreground">
+          Current stock levels for every product, with a full inventory ledger.
+        </p>
       </div>
 
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <CardTitle>Raw Material Inventory</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Stock calculated from inventory transactions.
-              </p>
-            </div>
+            <CardTitle>Product Stock</CardTitle>
 
-            <div className="relative w-full md:w-80">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <div className="flex flex-col gap-3 md:flex-row">
+              <div className="relative w-full md:w-64">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  placeholder="Search product..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
 
-              <Input
-                placeholder="Search materials..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="pl-9"
-              />
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm md:w-44"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                <option value="">All statuses</option>
+                <option value="IN_STOCK">In stock</option>
+                <option value="LOW_STOCK">Low stock</option>
+                <option value="OUT_OF_STOCK">Out of stock</option>
+              </select>
             </div>
           </div>
         </CardHeader>
 
         <CardContent>
           {loading ? (
-            <div className="flex h-40 items-center justify-center text-muted-foreground">
-              Loading inventory...
+            <div className="flex h-40 items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : filteredInventory.length === 0 ? (
-            <div className="flex h-40 items-center justify-center text-muted-foreground">
-              No inventory records found.
+          ) : filteredRows.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground">
+              No products found.
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Raw Material</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Current Stock</TableHead>
-                    <TableHead>Unit</TableHead>
-                    <TableHead>Purchased</TableHead>
-                    <TableHead>Consumed</TableHead>
-                    <TableHead>Reorder Level</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b text-xs uppercase tracking-wider text-muted-foreground">
+                    <th className="px-3 py-2">Product</th>
+                    <th className="px-3 py-2">Category</th>
+                    <th className="px-3 py-2">Unit</th>
+                    <th className="px-3 py-2 text-right">In Stock</th>
+                    <th className="px-3 py-2 text-right">Purchased</th>
+                    <th className="px-3 py-2 text-right">Sold</th>
+                    <th className="px-3 py-2 text-right">Adjustments</th>
+                    <th className="px-3 py-2 text-right">Reorder At</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2"></th>
+                  </tr>
+                </thead>
 
-                <TableBody>
-                  {filteredInventory.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">
-                        {item.code}
-                      </TableCell>
+                <tbody>
+                  {filteredRows.map((row) => (
+                    <Fragment key={row.id}>
+                      <tr className="border-b hover:bg-muted/40">
+                        <td className="px-3 py-3">
+                          <div className="font-medium">{row.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {row.code}
+                            {row.brand ? ` · ${row.brand}` : ""}
+                          </div>
+                        </td>
 
-                      <TableCell>{item.name}</TableCell>
+                        <td className="px-3 py-3 text-muted-foreground">
+                          {row.category ?? "—"}
+                        </td>
 
-                      <TableCell>
-                        {formatMaterialType(item.materialType)}
-                      </TableCell>
+                        <td className="px-3 py-3">{row.unit}</td>
 
-                      <TableCell className="font-semibold">
-                        {formatNumber(item.currentStock)}
-                      </TableCell>
+                        <td className="px-3 py-3 text-right font-medium">
+                          {formatNumber(row.currentStock)}
+                        </td>
 
-                      <TableCell>{getUnitLabel(item)}</TableCell>
+                        <td className="px-3 py-3 text-right text-muted-foreground">
+                          {formatNumber(row.totalPurchased)}
+                        </td>
 
-                      <TableCell>
-                        {formatNumber(item.totalPurchased)}
-                      </TableCell>
+                        <td className="px-3 py-3 text-right text-muted-foreground">
+                          {formatNumber(row.totalSold)}
+                        </td>
 
-                      <TableCell>
-                        {formatNumber(item.totalConsumed)}
-                      </TableCell>
+                        <td className="px-3 py-3 text-right text-muted-foreground">
+                          {formatNumber(row.totalAdjustments)}
+                        </td>
 
-                      <TableCell>
-                        {item.reorderLevel !== null
-                          ? formatNumber(item.reorderLevel)
-                          : "—"}
-                      </TableCell>
+                        <td className="px-3 py-3 text-right text-muted-foreground">
+                          {row.reorderLevel !== null
+                            ? formatNumber(row.reorderLevel)
+                            : "—"}
+                        </td>
 
-                      <TableCell>
-                        {getStatusBadge(item.stockStatus)}
-                      </TableCell>
-
-                      <TableCell>
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
+                        <td className="px-3 py-3">
+                          <Badge
                             variant="outline"
-                            onClick={() => openLedger(item)}
+                            className={statusClasses[row.stockStatus] ?? ""}
                           >
-                            <FileText className="mr-1 h-4 w-4" />
+                            {row.stockStatus.replace("_", " ").toLowerCase()}
+                          </Badge>
+                        </td>
+
+                        <td className="px-3 py-3">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleLedger(row.id)}
+                          >
+                            <ChevronDown
+                              className={`mr-1 h-4 w-4 transition-transform ${
+                                ledgerProductId === row.id ? "rotate-180" : ""
+                              }`}
+                            />
                             Ledger
                           </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                        </td>
+                      </tr>
+
+                      {ledgerProductId === row.id && (
+                        <tr key={`${row.id}-ledger`}>
+                          <td colSpan={10} className="bg-muted/30 px-4 py-3">
+                            {ledgerLoading ? (
+                              <div className="flex justify-center py-6">
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                              </div>
+                            ) : ledger && ledger.length === 0 ? (
+                              <p className="py-6 text-center text-sm text-muted-foreground">
+                                No inventory transactions recorded yet.
+                              </p>
+                            ) : (
+                              <div className="max-h-80 overflow-auto">
+                                <table className="w-full text-left text-sm">
+                                  <thead>
+                                    <tr className="border-b text-xs uppercase tracking-wider text-muted-foreground">
+                                      <th className="px-3 py-2">Date</th>
+                                      <th className="px-3 py-2">Type</th>
+                                      <th className="px-3 py-2">Variant</th>
+                                      <th className="px-3 py-2 text-right">Qty</th>
+                                      <th className="px-3 py-2 text-right">Balance</th>
+                                      <th className="px-3 py-2">Reference</th>
+                                      <th className="px-3 py-2">Notes</th>
+                                      <th className="px-3 py-2">By</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {ledger?.map((entry) => (
+                                      <tr key={entry.id} className="border-b">
+                                        <td className="px-3 py-2 text-muted-foreground">
+                                          {new Date(entry.createdAt).toLocaleString()}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          <Badge
+                                            variant="outline"
+                                            className={
+                                              entry.isIncoming
+                                                ? "border-green-200 bg-green-50 text-green-700"
+                                                : "border-red-200 bg-red-50 text-red-700"
+                                            }
+                                          >
+                                            {entry.transactionType.replace("_", " ").toLowerCase()}
+                                          </Badge>
+                                        </td>
+                                        <td className="px-3 py-2 text-muted-foreground">
+                                          {entry.variant
+                                            ? `${entry.variant.name} (${entry.variant.sku})`
+                                            : "—"}
+                                        </td>
+                                        <td
+                                          className={`px-3 py-2 text-right font-medium ${
+                                            entry.isIncoming
+                                              ? "text-green-700"
+                                              : "text-red-700"
+                                          }`}
+                                        >
+                                          {entry.isIncoming ? "+" : "−"}
+                                          {formatNumber(entry.quantity)}
+                                        </td>
+                                        <td className="px-3 py-2 text-right font-medium">
+                                          {formatNumber(entry.runningBalance)}
+                                        </td>
+                                        <td className="px-3 py-2 text-muted-foreground">
+                                          {entry.referenceType?.replace("_", " ").toLowerCase() ?? "—"}
+                                        </td>
+                                        <td className="px-3 py-2 text-muted-foreground">
+                                          {entry.notes ?? "—"}
+                                        </td>
+                                        <td className="px-3 py-2 text-muted-foreground">
+                                          {entry.createdBy?.name ?? "—"}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   ))}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>
       </Card>
-
-      <Dialog open={ledgerOpen} onOpenChange={setLedgerOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>
-              {ledgerMaterial
-                ? `Stock Ledger — ${ledgerMaterial.name} (${ledgerMaterial.code})`
-                : "Stock Ledger"}
-            </DialogTitle>
-          </DialogHeader>
-
-          {ledgerLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
-          ) : ledgerEntries.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <FileText className="mb-3 h-10 w-10 text-muted-foreground" />
-              <h3 className="font-semibold">No transactions found</h3>
-              <p className="text-sm text-muted-foreground">
-                This material has no inventory transactions yet.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between rounded-md border bg-muted/50 p-3 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Current Balance: </span>
-                  <span className="font-semibold">
-                    {formatNumber(ledgerEntries[ledgerEntries.length - 1].runningBalance)}{" "}
-                    {ledgerEntries[ledgerEntries.length - 1].unit}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Transactions: </span>
-                  <span className="font-semibold">{ledgerEntries.length}</span>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left">
-                      <th className="px-3 py-3 font-medium">Date</th>
-                      <th className="px-3 py-3 font-medium">Type</th>
-                      <th className="px-3 py-3 font-medium">Lot</th>
-                      <th className="px-3 py-3 font-medium text-right">Quantity</th>
-                      <th className="px-3 py-3 font-medium">Unit</th>
-                      <th className="px-3 py-3 font-medium">Reference</th>
-                      <th className="px-3 py-3 font-medium">Notes</th>
-                      <th className="px-3 py-3 font-medium text-right">Balance</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ledgerEntries.map((entry) => {
-                      const isIncoming = [
-                        "PURCHASE",
-                        "RETURN",
-                        "TRANSFER_IN",
-                        "OPENING_BALANCE",
-                        "ADJUSTMENT_IN",
-                        "CORRECTION",
-                      ].includes(entry.transactionType);
-
-                      return (
-                        <tr key={entry.id} className="border-b last:border-0">
-                          <td className="px-3 py-3 whitespace-nowrap">
-                            {new Date(entry.createdAt).toLocaleDateString()}{" "}
-                            {new Date(entry.createdAt).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </td>
-                          <td className="px-3 py-3">
-                            <Badge
-                              variant="outline"
-                              className={
-                                isIncoming
-                                  ? "border-green-200 bg-green-50 text-green-700"
-                                  : "border-red-200 bg-red-50 text-red-700"
-                              }
-                            >
-                              {formatTransactionType(entry.transactionType)}
-                            </Badge>
-                          </td>
-                          <td className="px-3 py-3">
-                            {entry.lot ? entry.lot.lotNumber : "—"}
-                          </td>
-                          <td className="px-3 py-3 text-right font-medium">
-                            {isIncoming ? "+" : "-"}
-                            {formatNumber(entry.quantity)}
-                          </td>
-                          <td className="px-3 py-3">{entry.unit}</td>
-                          <td className="px-3 py-3">
-                            {formatReferenceType(entry.referenceType)}
-                          </td>
-                          <td className="px-3 py-3 max-w-[200px] truncate text-muted-foreground">
-                            {entry.notes || "—"}
-                          </td>
-                          <td className="px-3 py-3 text-right font-semibold">
-                            {formatNumber(entry.runningBalance)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

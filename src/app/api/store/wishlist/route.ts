@@ -1,36 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma, ProductUnit } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCustomerUser } from "@/lib/customer";
 
-function serializeProduct(p: {
+type Numeric = Prisma.Decimal | string | number;
+
+type WishlistProduct = {
   id: string;
   code: string;
   name: string;
+  brand: string | null;
   description: string | null;
+  unit: ProductUnit;
+  stockQuantity: Numeric;
   imageUrl: string | null;
   imageUrl2: string | null;
-  category: string | null;
   isFeatured: boolean;
-  price: number | null;
-  variants: {
+  price: Numeric | null;
+  subcategory: string | null;
+  trades: string[];
+  category: { id: string; name: string; slug: string } | null;
+  variants: Array<{
     id: string;
     sku: string;
     name: string;
-    sizeValue: number;
-    sizeUnit: string;
-    price: number | null;
+    sizeValue: Numeric;
+    sizeUnit: ProductUnit;
+    price: Numeric | null;
     imageUrl: string | null;
-    stockQuantity: number;
-  }[];
-}) {
+  }>;
+};
+
+function serializeProduct(p: WishlistProduct) {
   return {
     id: p.id,
     code: p.code,
     name: p.name,
+    brand: p.brand,
     description: p.description,
+    unit: p.unit,
+    stockQuantity: Number(p.stockQuantity),
     imageUrl: p.imageUrl,
     imageUrl2: p.imageUrl2,
-    category: p.category,
+    category: p.category?.name ?? null,
+    categorySlug: p.category?.slug ?? null,
+    subcategory: p.subcategory,
+    trades: p.trades,
     isFeatured: p.isFeatured,
     price: p.price !== null ? Number(p.price) : null,
     variants: p.variants.map((v) => ({
@@ -41,7 +56,6 @@ function serializeProduct(p: {
       sizeUnit: v.sizeUnit,
       price: v.price !== null ? Number(v.price) : null,
       imageUrl: v.imageUrl,
-      stockQuantity: v.stockQuantity,
     })),
   };
 }
@@ -58,11 +72,35 @@ export async function GET() {
 
   const items = await prisma.customerWishlistItem.findMany({
     where: { customerId: customer.id },
-    include: {
+    select: {
+      id: true,
+      createdAt: true,
       product: {
-        include: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          brand: true,
+          description: true,
+          unit: true,
+          stockQuantity: true,
+          imageUrl: true,
+          imageUrl2: true,
+          isFeatured: true,
+          price: true,
+          subcategory: true,
+          trades: true,
+          category: { select: { id: true, name: true, slug: true } },
           variants: {
-            where: { status: "ACTIVE" },
+            select: {
+              id: true,
+              sku: true,
+              name: true,
+              sizeValue: true,
+              sizeUnit: true,
+              price: true,
+              imageUrl: true,
+            },
             orderBy: { sizeValue: "asc" },
           },
         },
@@ -76,27 +114,7 @@ export async function GET() {
     data: items.map((item) => ({
       id: item.id,
       createdAt: item.createdAt,
-      product: serializeProduct({
-        id: item.product.id,
-        code: item.product.code,
-        name: item.product.name,
-        description: item.product.description,
-        imageUrl: item.product.imageUrl,
-        imageUrl2: item.product.imageUrl2,
-        category: item.product.category,
-        isFeatured: item.product.isFeatured,
-        price: item.product.price !== null ? Number(item.product.price) : null,
-        variants: item.product.variants.map((v) => ({
-          id: v.id,
-          sku: v.sku,
-          name: v.name,
-          sizeValue: Number(v.sizeValue),
-          sizeUnit: v.sizeUnit,
-          price: v.price !== null ? Number(v.price) : null,
-          imageUrl: v.imageUrl,
-          stockQuantity: v.stockQuantity,
-        })),
-      }),
+      product: serializeProduct(item.product),
     })),
   });
 }

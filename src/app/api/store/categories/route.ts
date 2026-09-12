@@ -3,19 +3,15 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const products = await prisma.product.findMany({
-      where: { status: "ACTIVE", category: { not: null } },
-      distinct: ["category"],
-      select: { category: true },
-      orderBy: { category: "asc" },
+    const categories = await prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: [{ group: "asc" }, { name: "asc" }],
     });
 
-    const categories = products
-      .map((p) => p.category)
-      .filter((c): c is string => c !== null)
-      .sort();
-
-    return NextResponse.json({ success: true, data: categories });
+    return NextResponse.json({
+      success: true,
+      data: categories.map((c) => c.name),
+    });
   } catch (error) {
     console.error("Store categories error:", error);
 

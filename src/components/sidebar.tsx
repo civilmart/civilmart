@@ -4,19 +4,18 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
   BarChart3,
-  Beaker,
   Boxes,
-  ClipboardCheck,
   ClipboardList,
-  Factory,
   FileText,
-  FlaskConical,
+  FolderTree,
   LayoutDashboard,
   LogOut,
   Package,
+  PackageSearch,
+  Receipt,
   Settings,
   ShoppingCart,
-  Sparkles,
+  SlidersHorizontal,
   Truck,
   Users,
   type LucideIcon,
@@ -47,26 +46,31 @@ const menuSections: MenuSection[] = [
     ],
   },
   {
+    title: "CATALOGUE",
+    items: [
+      {
+        name: "Products",
+        icon: Package,
+        href: "/admin/products",
+      },
+      {
+        name: "Categories",
+        icon: FolderTree,
+        href: "/admin/categories",
+      },
+    ],
+  },
+  {
     title: "INVENTORY",
     items: [
       {
-        name: "Raw Materials",
-        icon: FlaskConical,
-        href: "/admin/raw-materials",
-      },
-      {
-        name: "Inventory",
+        name: "Stock",
         icon: Boxes,
         href: "/admin/inventory",
       },
       {
-        name: "Lots",
-        icon: Boxes,
-        href: "/admin/lots",
-      },
-      {
         name: "Adjustments",
-        icon: Package,
+        icon: SlidersHorizontal,
         href: "/admin/adjustments",
       },
     ],
@@ -89,70 +93,25 @@ const menuSections: MenuSection[] = [
         icon: FileText,
         href: "/admin/purchase-orders",
       },
-      {
-        name: "Recommendations",
-        icon: Sparkles,
-        href: "/admin/recommendations",
-      },
     ],
   },
   {
-    title: "MANUFACTURING",
+    title: "SALES",
     items: [
       {
-        name: "Formulas",
-        icon: Beaker,
-        href: "/admin/formulas",
-      },
-      {
-        name: "Production",
-        icon: Factory,
-        href: "/admin/production",
-      },
-      {
-        name: "Batches",
-        icon: Package,
-        href: "/admin/batches",
-      },
-    ],
-  },
-  {
-    title: "STORE",
-    items: [
-      {
-        name: "Products",
-        icon: Package,
-        href: "/admin/products",
+        name: "Customers",
+        icon: Users,
+        href: "/admin/customers",
       },
       {
         name: "Orders",
         icon: ClipboardList,
         href: "/admin/orders",
       },
-    ],
-  },
-  {
-    title: "QUALITY",
-    items: [
       {
-        name: "Quality Control",
-        icon: ClipboardCheck,
-        href: "/admin/qc",
-      },
-      {
-        name: "QC Records",
-        icon: ClipboardList,
-        href: "/admin/qc-records",
-      },
-    ],
-  },
-  {
-    title: "SITE SETTINGS",
-    items: [
-      {
-        name: "Site Settings",
-        icon: Settings,
-        href: "/admin/site-settings",
+        name: "Invoices",
+        icon: Receipt,
+        href: "/admin/invoices",
       },
     ],
   },
@@ -163,7 +122,12 @@ const menuSections: MenuSection[] = [
         name: "Reports",
         icon: BarChart3,
         href: "/admin/reports",
-        adminOnly: false,
+      },
+      {
+        name: "Site Settings",
+        icon: Settings,
+        href: "/admin/site-settings",
+        adminOnly: true,
       },
       {
         name: "Users",
@@ -219,9 +183,9 @@ export function Sidebar() {
     <aside className="flex h-screen w-64 flex-col border-r bg-background">
       <div className="flex h-16 items-center border-b px-6">
         <div>
-          <h1 className="text-lg font-bold tracking-tight">NaranScents</h1>
+          <h1 className="text-lg font-bold tracking-tight">Civil Mart</h1>
           <p className="text-xs text-muted-foreground">
-            Fragrance Management
+            Construction &amp; Building Materials
           </p>
         </div>
       </div>
@@ -246,7 +210,11 @@ export function Sidebar() {
                       <Link
                         key={item.name}
                         href={item.href}
-                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted ${
+                          pathname === item.href
+                            ? "bg-muted font-medium text-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
                       >
                         <Icon className="h-4 w-4" />
                         <span>{item.name}</span>
@@ -278,8 +246,8 @@ export function Sidebar() {
           </div>
         ) : (
           <div className="rounded-lg bg-muted p-3">
-            <p className="text-sm font-medium">NaranScents</p>
-            <p className="text-xs text-muted-foreground">Management System</p>
+            <p className="text-sm font-medium">Civil Mart</p>
+            <p className="text-xs text-muted-foreground">Store Management</p>
           </div>
         )}
       </div>

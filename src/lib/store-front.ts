@@ -60,6 +60,8 @@ export type StoreProduct = {
   imageUrl2: string | null;
   category: string | null;
   categorySlug: string | null;
+  subcategory: string | null;
+  trades: string[];
   isFeatured: boolean;
   price: number | null;
   variants: StoreVariant[];
@@ -121,4 +123,59 @@ export function placeholderImage(seed: string): string {
   </svg>`;
 
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+export type CatalogueCategory = {
+  id: string;
+  name: string;
+  slug: string | null;
+  count: number;
+};
+
+export type CatalogueGroup = {
+  name: string;
+  categories: CatalogueCategory[];
+};
+
+export type BrandCount = {
+  name: string;
+  count: number;
+};
+
+export type CatalogueFilters = {
+  groups: CatalogueGroup[];
+  brands: BrandCount[];
+};
+
+export type ProductPageResult = {
+  total: number;
+  page: number;
+  pageSize: number;
+  pages: number;
+  products: StoreProduct[];
+};
+
+export type SortKey = "featured" | "name_asc" | "price_asc" | "price_desc";
+
+export const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
+  { value: "featured", label: "Featured" },
+  { value: "name_asc", label: "Name A–Z" },
+  { value: "price_asc", label: "Price: Low to High" },
+  { value: "price_desc", label: "Price: High to Low" },
+];
+
+export function defaultCartVariant(
+  product: StoreProduct
+): StoreVariant | null {
+  if (product.variants.length === 0) return null;
+
+  const priced = product.variants.filter((v) => v.price !== null);
+  const pool = priced.length > 0 ? priced : product.variants;
+
+  return pool.reduce((cheapest, v) =>
+    (v.price ?? Number.POSITIVE_INFINITY) <
+    (cheapest.price ?? Number.POSITIVE_INFINITY)
+      ? v
+      : cheapest
+  );
 }

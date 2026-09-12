@@ -355,7 +355,7 @@ export default function SiteSettingsPage() {
               <Textarea
                 value={topbarMessages}
                 onChange={(e) => setTopbarMessages(e.target.value)}
-                placeholder={"Welcome to NaranScents\nENJOY 5% OFF..."}
+                placeholder={"Welcome to Civil Mart\nBuilding materials, tools and hardware…"}
                 className="min-h-32"
               />
               <p className="text-xs text-muted-foreground">

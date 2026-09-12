@@ -52,7 +52,7 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_DESCRIPTIONS: Record<string, string> = {
   PLACED: "We received your order and will call you shortly.",
   CONFIRMED: "Your order was confirmed over the phone.",
-  PROCESSING: "We are preparing your fragrance.",
+  PROCESSING: "We are preparing your order.",
   SHIPPED: "Your order is on its way to you.",
   DELIVERED: "Delivered — thank you for shopping with us!",
   CANCELLED: "This order was cancelled.",
@@ -132,7 +132,7 @@ function TrackPageInner() {
             value={orderNumber}
             onChange={(e) => setOrderNumber(e.target.value)}
             className="mt-1"
-            placeholder="NS-XXXXXX"
+            placeholder="CM-XXXXXX"
             required
           />
         </div>

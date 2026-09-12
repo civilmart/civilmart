@@ -3,37 +3,40 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, Loader2, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Boxes,
+  Loader2,
+  ShieldCheck,
+  Truck,
+} from "lucide-react";
 import { Carousel } from "@/components/store/carousel";
 import { ProductCard } from "@/components/store/product-card";
-import { PromoBanners } from "@/components/store/promo-banners";
 import { type StoreProduct } from "@/lib/store-front";
 import { type HeroSlide, type SiteSettings } from "@/lib/site-settings";
 
 const FALLBACK_HERO_SLIDES = [
   {
-    title: "Fragrances for every occasion",
-    subtitle: "Find a scent that fits your personality and your budget.",
-    cta: "Shop now",
+    title: "Building materials & hardware",
+    subtitle:
+      "Cement, steel, timber, tiles, plumbing and tools — everything for your project, at trade-friendly prices.",
+    cta: "Browse catalogue",
     href: "/products",
-    bg: "from-amber-100 to-orange-50",
-    accent: "text-amber-800",
   },
   {
     title: "Cash on Delivery",
-    subtitle: "Order online and pay when your order arrives at your door.",
+    subtitle:
+      "Order online and pay in cash when your order arrives at your site or doorstep.",
     cta: "How it works",
     href: "/track",
-    bg: "from-emerald-100 to-teal-50",
-    accent: "text-emerald-800",
   },
   {
-    title: "Quality you can trust",
-    subtitle: "Long-lasting fragrances, delivered to your door.",
-    cta: "Explore",
+    title: "Contractors & bulk orders",
+    subtitle:
+      "Need project quantities? Contact our desk for bulk pricing and scheduled deliveries.",
+    cta: "View all products",
     href: "/products",
-    bg: "from-violet-100 to-fuchsia-50",
-    accent: "text-violet-800",
   },
 ];
 
@@ -89,13 +92,13 @@ export default function StoreHomePage() {
       {/* Hero slider */}
       <Carousel
         autoAdvanceMs={6000}
-        className="overflow-hidden rounded-2xl"
+        className="overflow-hidden rounded-xl border"
         slides={
           heroSlides.length > 0
             ? heroSlides.map((slide, index) => (
                 <div
                   key={slide.id}
-                  className="relative flex min-h-[320px] items-center px-6 py-10 sm:min-h-[380px] sm:px-12"
+                  className="relative flex min-h-[320px] items-center bg-slate-900 px-6 py-10 sm:min-h-[380px] sm:px-12"
                 >
                   <Image
                     src={slide.imageUrl}
@@ -106,15 +109,19 @@ export default function StoreHomePage() {
                     className="object-cover"
                   />
 
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-black/10" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-slate-950/75 via-slate-950/40 to-slate-950/10" />
 
-                  <div className="relative max-w-lg">
-                    <h2 className="text-3xl font-bold leading-tight text-white drop-shadow-md sm:text-4xl">
+                  <div className="relative max-w-2xl">
+                    <span className="inline-block rounded-sm bg-amber-500 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-slate-950">
+                      Civil Mart
+                    </span>
+
+                    <h2 className="mt-3 text-3xl font-bold leading-tight text-white sm:text-4xl">
                       {slide.heading}
                     </h2>
 
                     {slide.subheading && (
-                      <p className="mt-3 text-sm text-white/90 sm:text-base">
+                      <p className="mt-3 text-sm text-slate-200 sm:text-base">
                         {slide.subheading}
                       </p>
                     )}
@@ -122,7 +129,7 @@ export default function StoreHomePage() {
                     {slide.cta && slide.href && (
                       <Link
                         href={slide.href}
-                        className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-medium text-slate-900 shadow-sm transition hover:bg-slate-100"
+                        className="mt-6 inline-flex items-center gap-2 rounded-md bg-amber-500 px-6 py-3 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-amber-400"
                       >
                         {slide.cta}
                         <ArrowRight className="h-4 w-4" />
@@ -134,18 +141,24 @@ export default function StoreHomePage() {
             : FALLBACK_HERO_SLIDES.map((slide) => (
                 <div
                   key={slide.title}
-                  className={`flex min-h-[320px] items-center bg-gradient-to-br ${slide.bg} px-6 py-10 sm:min-h-[380px] sm:px-12`}
+                  className="flex min-h-[320px] items-center bg-slate-900 px-6 py-10 sm:min-h-[380px] sm:px-12"
                 >
-                  <div className="max-w-lg">
-                    <h2 className={`text-3xl font-bold leading-tight sm:text-4xl ${slide.accent}`}>
+                  <div className="max-w-2xl">
+                    <span className="inline-block rounded-sm bg-amber-500 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-slate-950">
+                      Civil Mart
+                    </span>
+
+                    <h2 className="mt-3 text-3xl font-bold leading-tight text-white sm:text-4xl">
                       {slide.title}
                     </h2>
-                    <p className="mt-3 text-sm text-slate-600 sm:text-base">
+
+                    <p className="mt-3 text-sm text-slate-300 sm:text-base">
                       {slide.subtitle}
                     </p>
+
                     <Link
                       href={slide.href}
-                      className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-900 px-6 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
+                      className="mt-6 inline-flex items-center gap-2 rounded-md bg-amber-500 px-6 py-3 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-amber-400"
                     >
                       {slide.cta}
                       <ArrowRight className="h-4 w-4" />
@@ -160,10 +173,12 @@ export default function StoreHomePage() {
       {categories.length > 0 && (
         <section>
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold">Shop by category</h2>
+            <h2 className="text-lg font-bold tracking-tight">
+              Shop by category
+            </h2>
             <Link
               href="/products"
-              className="flex items-center gap-1 text-sm font-medium text-amber-700"
+              className="flex items-center gap-1 text-sm font-semibold text-amber-700"
             >
               View all <ArrowRight className="h-3.5 w-3.5" />
             </Link>
@@ -174,7 +189,7 @@ export default function StoreHomePage() {
               <Link
                 key={category}
                 href={`/products?category=${encodeURIComponent(category)}`}
-                className="shrink-0 rounded-full border bg-slate-50 px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800"
+                className="shrink-0 rounded-md border bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-amber-400 hover:bg-amber-50 hover:text-amber-900"
               >
                 {category}
               </Link>
@@ -183,26 +198,26 @@ export default function StoreHomePage() {
         </section>
       )}
 
-      {/* Promo banners */}
-      {featured.length > 0 && <PromoBanners products={featured} />}
-
       {/* Featured */}
       <section>
         <div className="mb-4 flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-amber-500" />
-          <h2 className="text-xl font-bold">Featured fragrances</h2>
+          <Boxes className="h-5 w-5 text-amber-600" />
+          <h2 className="text-lg font-bold tracking-tight">Featured products</h2>
         </div>
 
         <ProductShelf loading={loading} products={featured} />
       </section>
 
+      {/* Featured promo tiles */}
+      {featured.length > 0 && <PromoTiles products={featured} />}
+
       {/* Latest */}
       <section>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold">New arrivals</h2>
+          <h2 className="text-lg font-bold tracking-tight">New in store</h2>
           <Link
             href="/products"
-            className="flex items-center gap-1 text-sm font-medium text-amber-700"
+            className="flex items-center gap-1 text-sm font-semibold text-amber-700"
           >
             Browse all <ArrowRight className="h-3.5 w-3.5" />
           </Link>
@@ -211,6 +226,60 @@ export default function StoreHomePage() {
         <ProductShelf loading={loading} products={latest} />
       </section>
     </div>
+  );
+}
+
+function PromoTiles({ products }: { products: StoreProduct[] }) {
+  const featuredProduct = products[0];
+
+  return (
+    <section className="grid gap-4 md:grid-cols-3">
+      <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-5">
+        <Truck className="mt-0.5 h-6 w-6 shrink-0 text-amber-700" />
+        <div>
+          <h3 className="text-sm font-bold uppercase tracking-wide text-amber-900">
+            Cash on Delivery
+          </h3>
+          <p className="mt-1 text-sm text-amber-800">
+            Pay in cash when your order arrives. Nationwide delivery available.
+          </p>
+        </div>
+      </div>
+
+      {featuredProduct && (
+        <Link
+          href={`/products/${featuredProduct.id}`}
+          className="group border border-slate-200 bg-white p-5 shadow-sm transition hover:border-amber-400 hover:shadow-md"
+        >
+          <span className="inline-block rounded-sm bg-slate-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+            Recommended
+          </span>
+          <h3 className="mt-2 text-sm font-bold leading-snug">
+            {featuredProduct.name}
+          </h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {featuredProduct.brand || "Civil Mart"} ·{" "}
+            {featuredProduct.unit.toLowerCase()}
+          </p>
+          <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-amber-700">
+            View details
+            <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </span>
+        </Link>
+      )}
+
+      <div className="flex items-start gap-3 bg-slate-900 p-5 text-white">
+        <ShieldCheck className="mt-0.5 h-6 w-6 shrink-0 text-amber-400" />
+        <div>
+          <h3 className="text-sm font-bold uppercase tracking-wide text-amber-400">
+            Bulk &amp; project orders
+          </h3>
+          <p className="mt-1 text-sm text-slate-300">
+            Request contractor quantities through your order or helpline.
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -232,7 +301,7 @@ function ProductShelf({
   if (products.length === 0) {
     return (
       <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-        Nothing here yet — new products are on the way.
+        Products are being added to the catalogue.
       </div>
     );
   }

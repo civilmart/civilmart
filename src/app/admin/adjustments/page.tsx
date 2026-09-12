@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Loader2, Minus, Pencil, Plus, SlidersHorizontal } from "lucide-react";
+import { formatMoney } from "@/lib/money";
+import { PRODUCT_UNITS } from "@/lib/catalog";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,475 +14,403 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 
-type RawMaterial = {
+type Product = {
   id: string;
   code: string;
   name: string;
-  unitType: "WEIGHT" | "VOLUME" | "PIECE";
+  brand: string | null;
+  unit: string;
+  price: number | null;
+  stockQuantity: number;
+  reorderLevel: string | number | null;
+  variants: {
+    id: string;
+    sku: string;
+    name: string;
+  }[];
 };
 
-type Lot = {
-  id: string;
-  lotNumber: string;
-  receivedQty: number | string;
-  unit: "G" | "KG" | "ML" | "L" | "PIECE";
-  receivedAt: string;
-  expiryDate: string | null;
-  rawMaterialId: string;
+type FormState = {
+  productId: string;
+  variantId: string;
+  adjustmentType: "ADJUSTMENT_IN" | "ADJUSTMENT_OUT";
+  quantity: string;
+  unit: string;
+  reason: string;
+  notes: string;
 };
 
 export default function AdjustmentsPage() {
-  const [materials, setMaterials] = useState<RawMaterial[]>([]);
-  const [lots, setLots] = useState<Lot[]>([]);
-
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-
-  const [rawMaterialId, setRawMaterialId] = useState("");
-  const [lotId, setLotId] = useState("");
-
-  const [adjustmentType, setAdjustmentType] = useState<
-    "ADJUSTMENT_IN" | "ADJUSTMENT_OUT"
-  >("ADJUSTMENT_IN");
-
-  const [quantity, setQuantity] = useState("");
-  const [unit, setUnit] = useState("");
-  const [reason, setReason] = useState("");
-  const [notes, setNotes] = useState("");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
 
-  const loadMaterials = async () => {
+  const [form, setForm] = useState<FormState>({
+    productId: "",
+    variantId: "",
+    adjustmentType: "ADJUSTMENT_IN",
+    quantity: "",
+    unit: "BAG",
+    reason: "",
+    notes: "",
+  });
+
+  const loadProducts = useCallback(async () => {
+    setLoading(true);
+
     try {
-      const response = await fetch("/api/raw-materials");
-      const result = await response.json();
+      const response = await fetch("/api/products");
+      const data = await response.json();
 
-      if (result.success) {
-        setMaterials(result.data);
+      if (response.ok) {
+        setProducts(Array.isArray(data) ? data : []);
       }
     } catch (error) {
-      console.error("Failed to load raw materials:", error);
+      console.error("Failed to load products:", error);
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const loadLots = async () => {
-    try {
-      const response = await fetch("/api/lots");
-      const result = await response.json();
-
-      if (result.success) {
-        setLots(result.data);
-      }
-    } catch (error) {
-      console.error("Failed to load lots:", error);
-    }
-  };
-
-  useEffect(() => {
-    loadMaterials();
-    loadLots();
   }, []);
 
-  const selectedMaterial = materials.find(
-    (material) => material.id === rawMaterialId
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
+
+  const selectedProduct = products.find(
+    (product) => product.id === form.productId
   );
 
-  const selectedLot = lots.find((lot) => lot.id === lotId);
+  function startAdjust(product: Product) {
+    setForm({
+      productId: product.id,
+      variantId: "",
+      adjustmentType: "ADJUSTMENT_IN",
+      quantity: "",
+      unit: product.unit,
+      reason: "",
+      notes: "",
+    });
+    setEditing(true);
+  }
 
-  const materialLots = lots.filter(
-    (lot) => lot.rawMaterialId === rawMaterialId
-  );
-
-  const resetForm = () => {
-    setRawMaterialId("");
-    setLotId("");
-    setAdjustmentType("ADJUSTMENT_IN");
-    setQuantity("");
-    setUnit("");
-    setReason("");
-    setNotes("");
-  };
-
-  const handleMaterialChange = (value: string) => {
-    setRawMaterialId(value);
-    setLotId("");
-    setUnit("");
-    setQuantity("");
-  };
-
-  const handleLotChange = (value: string) => {
-    const lot = lots.find((item) => item.id === value);
-
-    setLotId(value);
-    setUnit(lot?.unit ?? "");
-  };
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    if (
-      !rawMaterialId ||
-      !lotId ||
-      !adjustmentType ||
-      !quantity ||
-      !unit ||
-      !reason.trim()
-    ) {
-      alert("Please fill in all required fields.");
+  async function submitAdjustment() {
+    if (!form.productId) {
+      alert("Please select a product.");
       return;
     }
 
-    const numericQuantity = Number(quantity);
+    const quantity = Number(form.quantity);
 
-    if (!Number.isFinite(numericQuantity) || numericQuantity <= 0) {
+    if (!Number.isFinite(quantity) || quantity <= 0) {
       alert("Quantity must be greater than zero.");
       return;
     }
 
-    if (!selectedLot) {
-      alert("Please select a valid lot.");
+    if (!form.reason.trim()) {
+      alert("A reason is required.");
       return;
     }
 
-    if (selectedLot.unit !== unit) {
-      alert(`Unit must match the selected lot unit (${selectedLot.unit}).`);
+    if (
+      form.adjustmentType === "ADJUSTMENT_OUT" &&
+      selectedProduct &&
+      quantity > Number(selectedProduct.stockQuantity)
+    ) {
+      alert(
+        `Cannot adjust out ${quantity}: only ${selectedProduct.stockQuantity} ${selectedProduct.unit.toLowerCase()} in stock.`
+      );
       return;
     }
+
+    setSaving(true);
 
     try {
-      setSaving(true);
-
       const response = await fetch("/api/adjustments", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          rawMaterialId,
-          lotId,
-          adjustmentType,
-          quantity: numericQuantity,
-          unit,
-          reason,
-          notes,
+          productId: form.productId,
+          variantId: form.variantId || null,
+          adjustmentType: form.adjustmentType,
+          quantity,
+          unit: form.unit,
+          reason: form.reason.trim(),
+          notes: form.notes.trim() || null,
         }),
       });
 
-      const result = await response.json();
+      const data = await response.json();
 
-      if (!response.ok || !result.success) {
-        alert(result.error || "Failed to create adjustment.");
+      if (!response.ok) {
+        alert(data.error || "Failed to record adjustment.");
         return;
       }
 
-      alert("Inventory adjustment created successfully.");
-
-      await loadLots();
-
-      resetForm();
-      setOpen(false);
+      alert("Adjustment recorded successfully.");
+      setEditing(false);
+      setForm({
+        productId: "",
+        variantId: "",
+        adjustmentType: "ADJUSTMENT_IN",
+        quantity: "",
+        unit: "BAG",
+        reason: "",
+        notes: "",
+      });
+      await loadProducts();
     } catch (error) {
-      console.error("Failed to create adjustment:", error);
-      alert("Failed to create adjustment.");
+      console.error(error);
+      alert("Failed to record adjustment.");
     } finally {
       setSaving(false);
     }
-  };
+  }
 
-  const filteredMaterials = materials.filter((material) => {
-    const query = search.toLowerCase().trim();
-
-    return (
-      material.name.toLowerCase().includes(query) ||
-      material.code.toLowerCase().includes(query)
-    );
-  });
+  const formatNumber = (value: number) =>
+    new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value);
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Inventory Adjustments
-          </h1>
-
-          <p className="text-muted-foreground">
-            Manage stock corrections and inventory adjustments by lot.
-          </p>
+    <div className="space-y-6 p-6 lg:p-8">
+      <div>
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal className="h-6 w-6" />
+          <h1 className="text-2xl font-bold">Stock Adjustments</h1>
         </div>
+        <p className="text-muted-foreground">
+          Manually correct stock levels for damaged, missing or found stock.
+        </p>
+      </div>
 
-        <Dialog
-          open={open}
-          onOpenChange={(value) => {
-            setOpen(value);
+      {editing && selectedProduct && (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {form.adjustmentType === "ADJUSTMENT_IN" ? "Add" : "Remove"}{" "}
+              stock — {selectedProduct.name}
+              {selectedProduct.brand ? ` (${selectedProduct.brand})` : ""}
+            </CardTitle>
+          </CardHeader>
 
-            if (!value) {
-              resetForm();
-            }
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Adjustment
-            </Button>
-          </DialogTrigger>
-
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Create Inventory Adjustment</DialogTitle>
-            </DialogHeader>
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <Label>Raw Material *</Label>
-
-                <Select
-                  value={rawMaterialId}
-                  onValueChange={handleMaterialChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select raw material" />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    {materials.map((material) => (
-                      <SelectItem key={material.id} value={material.id}>
-                        {material.code} — {material.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Lot *</Label>
-
-                <Select
-                  value={lotId}
-                  onValueChange={handleLotChange}
-                  disabled={!rawMaterialId || materialLots.length === 0}
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        !rawMaterialId
-                          ? "Select raw material first"
-                          : materialLots.length === 0
-                            ? "No lots available"
-                            : "Select lot"
-                      }
-                    />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    {materialLots.map((lot) => (
-                      <SelectItem key={lot.id} value={lot.id}>
-                        {lot.lotNumber} — {lot.receivedQty} {lot.unit}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {rawMaterialId && materialLots.length === 0 && (
-                  <p className="text-sm text-destructive">
-                    This raw material has no lot. Create a lot before making
-                    an adjustment.
-                  </p>
-                )}
-              </div>
-
-              {selectedLot && (
-                <div className="rounded-md border bg-muted/40 p-3 text-sm">
-                  <div className="font-medium">
-                    Selected Lot: {selectedLot.lotNumber}
-                  </div>
-
-                  <div className="mt-1 text-muted-foreground">
-                    Received: {selectedLot.receivedQty} {selectedLot.unit}
-                  </div>
-
-                  {selectedLot.expiryDate && (
-                    <div className="text-muted-foreground">
-                      Expiry:{" "}
-                      {new Date(selectedLot.expiryDate).toLocaleDateString()}
-                    </div>
-                  )}
-                </div>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Current stock:{" "}
+              <span className="font-semibold text-foreground">
+                {formatNumber(Number(selectedProduct.stockQuantity))}{" "}
+                {selectedProduct.unit.toLowerCase()}
+              </span>
+              {selectedProduct.price !== null && (
+                <>
+                  {" "}
+                  · {formatMoney(selectedProduct.price)} /{" "}
+                  {selectedProduct.unit.toLowerCase()}
+                </>
               )}
+            </p>
 
+            {selectedProduct.variants.length > 0 && (
               <div className="space-y-2">
-                <Label>Adjustment Type *</Label>
-
-                <Select
-                  value={adjustmentType}
-                  onValueChange={(value) =>
-                    setAdjustmentType(
-                      value as "ADJUSTMENT_IN" | "ADJUSTMENT_OUT"
-                    )
+                <Label>Variant (optional)</Label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={form.variantId}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, variantId: e.target.value }))
                   }
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    <SelectItem value="ADJUSTMENT_IN">
-                      Stock Increase
-                    </SelectItem>
-
-                    <SelectItem value="ADJUSTMENT_OUT">
-                      Stock Decrease
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                  <option value="">Product level (no variant)</option>
+                  {selectedProduct.variants.map((variant) => (
+                    <option key={variant.id} value={variant.id}>
+                      {variant.name} ({variant.sku})
+                    </option>
+                  ))}
+                </select>
               </div>
+            )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Quantity *</Label>
-
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.0001"
-                    value={quantity}
-                    onChange={(event) => setQuantity(event.target.value)}
-                    placeholder="0"
-                    disabled={!selectedLot}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Unit *</Label>
-
-                  <Input
-                    value={unit}
-                    readOnly
-                    placeholder="Select lot first"
-                  />
-                </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Adjustment Type</Label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={form.adjustmentType}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      adjustmentType: e.target
+                        .value as FormState["adjustmentType"],
+                    }))
+                  }
+                >
+                  <option value="ADJUSTMENT_IN">
+                    Add stock (in)
+                  </option>
+                  <option value="ADJUSTMENT_OUT">
+                    Remove stock (out)
+                  </option>
+                </select>
               </div>
 
               <div className="space-y-2">
-                <Label>Reason *</Label>
-
+                <Label>Quantity</Label>
                 <Input
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                  placeholder="e.g. Physical stock count correction"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="10"
+                  value={form.quantity}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, quantity: e.target.value }))
+                  }
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Notes</Label>
+                <Label>Unit</Label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={form.unit}
+                  onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
+                >
+                  {PRODUCT_UNITS.map((unit) => (
+                    <option key={unit} value={unit}>
+                      {unit}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                <Textarea
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  placeholder="Additional information..."
-                  rows={3}
+              <div className="space-y-2">
+                <Label>Reason</Label>
+                <Input
+                  placeholder="Damaged in storage"
+                  value={form.reason}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, reason: e.target.value }))
+                  }
                 />
               </div>
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={saving || !selectedLot}
-              >
-                {saving ? "Saving..." : "Create Adjustment"}
+              <div className="space-y-2 md:col-span-2">
+                <Label>Notes (optional)</Label>
+                <Input
+                  placeholder="Additional detail..."
+                  value={form.notes}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, notes: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setEditing(false)}>
+                Cancel
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+              <Button onClick={submitAdjustment} disabled={saving}>
+                {form.adjustmentType === "ADJUSTMENT_IN" ? (
+                  <Plus className="mr-2 h-4 w-4" />
+                ) : (
+                  <Minus className="mr-2 h-4 w-4" />
+                )}
+                {saving
+                  ? "Saving..."
+                  : form.adjustmentType === "ADJUSTMENT_IN"
+                    ? "Add Stock"
+                    : "Remove Stock"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
-          <CardTitle>Raw Materials</CardTitle>
+          <CardTitle>Adjust By Product</CardTitle>
         </CardHeader>
 
         <CardContent>
-          <div className="relative mb-4 max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-
-            <Input
-              placeholder="Search raw materials..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="pl-9"
-            />
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          {loading ? (
+            <div className="flex h-40 items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : products.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground">
+              No products found.
+            </div>
+          ) : (
+            <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b text-left">
-                  <th className="px-4 py-3">Code</th>
-                  <th className="px-4 py-3">Raw Material</th>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Action</th>
+                <tr className="border-b text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="px-3 py-2">Product</th>
+                  <th className="px-3 py-2">Unit</th>
+                  <th className="px-3 py-2 text-right">Stock</th>
+                  <th className="px-3 py-2 text-right">Reorder At</th>
+                  <th className="px-3 py-2">Status</th>
+                  <th className="px-3 py-2"></th>
                 </tr>
               </thead>
 
               <tbody>
-                {filteredMaterials.map((material) => (
-                  <tr key={material.id} className="border-b">
-                    <td className="px-4 py-3 font-medium">
-                      {material.code}
-                    </td>
+                {products.map((product) => {
+                  const stock = Number(product.stockQuantity);
+                  const reorder = product.reorderLevel
+                    ? Number(product.reorderLevel)
+                    : null;
 
-                    <td className="px-4 py-3">{material.name}</td>
+                  return (
+                    <tr key={product.id} className="border-b hover:bg-muted/40">
+                      <td className="px-3 py-3">
+                        <div className="font-medium">{product.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {product.code}
+                          {product.brand ? ` · ${product.brand}` : ""}
+                        </div>
+                      </td>
 
-                    <td className="px-4 py-3">{material.unitType}</td>
+                      <td className="px-3 py-3">{product.unit}</td>
 
-                    <td className="px-4 py-3">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setRawMaterialId(material.id);
-                          setLotId("");
-                          setUnit("");
-                          setQuantity("");
-                          setOpen(true);
-                        }}
-                      >
-                        Adjust Stock
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                      <td className="px-3 py-3 text-right font-medium">
+                        {formatNumber(stock)}
+                      </td>
 
-                {filteredMaterials.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="px-4 py-8 text-center text-muted-foreground"
-                    >
-                      No raw materials found.
-                    </td>
-                  </tr>
-                )}
+                      <td className="px-3 py-3 text-right text-muted-foreground">
+                        {reorder !== null ? formatNumber(reorder) : "—"}
+                      </td>
+
+                      <td className="px-3 py-3">
+                        <Badge
+                          variant="outline"
+                          className={
+                            stock <= 0
+                              ? "border-red-200 bg-red-50 text-red-700"
+                              : reorder !== null && stock <= reorder
+                                ? "border-amber-200 bg-amber-50 text-amber-700"
+                                : "border-green-200 bg-green-50 text-green-700"
+                          }
+                        >
+                          {stock <= 0
+                            ? "Out of stock"
+                            : reorder !== null && stock <= reorder
+                              ? "Low stock"
+                              : "In stock"}
+                        </Badge>
+                      </td>
+
+                      <td className="px-3 py-3 text-right">
+                        <Button variant="outline" size="sm" onClick={() => startAdjust(product)}>
+                          <Pencil className="mr-1 h-3 w-3" />
+                          Adjust
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

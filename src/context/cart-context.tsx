@@ -10,12 +10,13 @@ import {
 } from "react";
 
 export type CartItem = {
-  variantId: string;
+  id: string;
   productId: string;
+  variantId: string | null;
   sku: string;
   productName: string;
-  variantName: string;
-  sizeLabel: string;
+  variantName: string | null;
+  unit: string;
   unitPrice: number;
   quantity: number;
   imageUrl: string | null;
@@ -27,15 +28,20 @@ type CartContextValue = {
   count: number;
   subtotal: number;
   addItem: (item: Omit<CartItem, "quantity">, qty?: number) => void;
-  removeItem: (variantId: string) => void;
-  updateQty: (variantId: string, qty: number) => void;
+  removeItem: (id: string) => void;
+  updateQty: (id: string, qty: number) => void;
   clear: () => void;
   hydrate: (items: CartItem[]) => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-const STORAGE_KEY = "naranscents_cart_v1";
+const STORAGE_KEY = "civilmart_cart_v1";
+
+function parseQuantity(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 1;
+  return Number(value.toFixed(4));
+}
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -68,43 +74,43 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addItem = useCallback(
     (item: Omit<CartItem, "quantity">, qty = 1) => {
+      const quantity = parseQuantity(qty);
+      const maxQty = Math.max(1, item.stockQuantity || 1);
+
       setItems((prev) => {
-        const existing = prev.find((i) => i.variantId === item.variantId);
+        const existing = prev.find((i) => i.id === item.id);
 
         if (existing) {
           return prev.map((i) =>
-            i.variantId === item.variantId
-              ? {
-                  ...i,
-                  quantity: Math.min(
-                    i.quantity + qty,
-                    Math.max(i.stockQuantity, i.quantity + qty)
-                  ),
-                }
+            i.id === item.id
+              ? { ...i, quantity: Math.min(i.quantity + quantity, maxQty) }
               : i
           );
         }
 
-        return [...prev, { ...item, quantity: qty }];
+        return [...prev, { ...item, quantity: Math.min(quantity, maxQty) }];
       });
     },
     []
   );
 
-  const removeItem = useCallback((variantId: string) => {
-    setItems((prev) => prev.filter((i) => i.variantId !== variantId));
+  const removeItem = useCallback((id: string) => {
+    setItems((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
-  const updateQty = useCallback((variantId: string, qty: number) => {
+  const updateQty = useCallback((id: string, qty: number) => {
     setItems((prev) =>
       qty <= 0
-        ? prev.filter((i) => i.variantId !== variantId)
+        ? prev.filter((i) => i.id !== id)
         : prev.map((i) =>
-            i.variantId === variantId
-              ? { ...i, quantity: Math.min(qty, i.stockQuantity || 99) }
+            i.id === id
+              ? {
+                  ...i,
+                  quantity: Math.min(parseQuantity(qty), Math.max(1, i.stockQuantity || 99)),
+                }
               : i
           )
-    );
+      );
   }, []);
 
   const clear = useCallback(() => setItems([]), []);

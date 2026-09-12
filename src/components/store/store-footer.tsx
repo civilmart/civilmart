@@ -1,18 +1,6 @@
 import Link from "next/link";
 import { Phone } from "lucide-react";
 
-function splitBrand(siteName: string): {
-  head: string;
-  tail: string;
-} {
-  const match = siteName.match(/^(.*?)(Scents.*)?$/);
-
-  return {
-    head: match?.[1] || siteName,
-    tail: match?.[2] || "",
-  };
-}
-
 export function StoreFooter({
   siteName,
   footerText,
@@ -24,60 +12,60 @@ export function StoreFooter({
   helpline: string;
   codNote: string;
 }) {
-  const brand = splitBrand(siteName);
-
   return (
-    <footer className="mt-16 border-t bg-slate-50">
+    <footer className="mt-16 border-t-4 border-amber-500 bg-slate-900 text-slate-300">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-3">
         <div>
-          <p className="text-lg font-bold tracking-tight">
-            {brand.head}
-            {brand.tail && (
-              <span className="text-amber-600">{brand.tail}</span>
-            )}
+          <p className="text-lg font-extrabold tracking-tight text-white">
+            {siteName}
+            <span className="text-amber-400">.</span>
           </p>
           {footerText && (
-            <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+            <p className="mt-2 max-w-xs text-sm text-slate-400">
               {footerText}
             </p>
           )}
         </div>
 
         <div>
-          <p className="mb-3 text-sm font-semibold">Shop</p>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li><Link href="/products" className="hover:text-slate-900">All fragrances</Link></li>
-            <li><Link href="/cart" className="hover:text-slate-900">Cart</Link></li>
-            <li><Link href="/track" className="hover:text-slate-900">Track order</Link></li>
-            <li><Link href="/account" className="hover:text-slate-900">My account</Link></li>
+          <p className="mb-3 text-sm font-bold uppercase tracking-wide text-white">
+            Shop
+          </p>
+          <ul className="space-y-2 text-sm text-slate-400">
+            <li><Link href="/products" className="hover:text-amber-400">All products</Link></li>
+            <li><Link href="/cart" className="hover:text-amber-400">Cart</Link></li>
+            <li><Link href="/track" className="hover:text-amber-400">Track order</Link></li>
+            <li><Link href="/account" className="hover:text-amber-400">My account</Link></li>
           </ul>
         </div>
 
         <div>
-          <p className="mb-3 text-sm font-semibold">Contact</p>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>Cash on delivery available nationwide</li>
+          <p className="mb-3 text-sm font-bold uppercase tracking-wide text-white">
+            Contact
+          </p>
+          <ul className="space-y-2 text-sm text-slate-400">
+            <li>Cash on delivery available</li>
             {helpline && (
-              <li className="text-slate-700">
+              <li className="text-slate-200">
                 <a
                   href={`tel:${helpline.replace(/[\s-]/g, "")}`}
-                  className="flex items-center gap-1.5 font-medium hover:text-amber-700"
+                  className="flex items-center gap-1.5 font-medium hover:text-amber-400"
                 >
-                  <Phone className="h-3.5 w-3.5 text-amber-600" />
+                  <Phone className="h-3.5 w-3.5 text-amber-400" />
                   {helpline}
                 </a>
               </li>
             )}
           </ul>
           {codNote && (
-            <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <p className="mt-4 rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-300">
               {codNote}
             </p>
           )}
         </div>
       </div>
 
-      <div className="border-t py-4 text-center text-xs text-muted-foreground">
+      <div className="border-t border-slate-800 py-4 text-center text-xs text-slate-500">
         © {new Date().getFullYear()} {siteName}. All rights reserved.
       </div>
     </footer>

@@ -2,10 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/cart-context";
-import { formatPrice, placeholderImage } from "@/lib/store-front";
+import {
+  formatPrice,
+  placeholderImage,
+} from "@/lib/store-front";
 
 export default function CartPage() {
   const { items, subtotal, updateQty, removeItem } = useCart();
@@ -13,16 +16,16 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center gap-4 py-20 text-center">
-        <div className="rounded-full bg-amber-50 p-5">
-          <ShoppingBag className="h-10 w-10 text-amber-600" />
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-5">
+          <ShoppingCart className="h-10 w-10 text-slate-500" />
         </div>
         <h1 className="text-2xl font-bold">Your cart is empty</h1>
         <p className="max-w-sm text-sm text-muted-foreground">
-          Browse our fragrances and add something you like to your cart.
+          Browse the catalogue and add the materials you need to your cart.
         </p>
         <Link
           href="/products"
-          className="rounded-full bg-slate-900 px-8 py-3 text-sm font-medium text-white transition hover:bg-slate-800"
+          className="rounded-md bg-slate-900 px-8 py-3 text-sm font-medium text-white transition hover:bg-slate-800"
         >
           Start shopping
         </Link>
@@ -38,10 +41,10 @@ export default function CartPage() {
         <div className="space-y-3">
           {items.map((item) => (
             <div
-              key={item.variantId}
-              className="flex gap-4 rounded-xl border bg-card p-3"
+              key={item.id}
+              className="flex gap-4 rounded-md border bg-card p-3"
             >
-              <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-muted">
+              <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md border bg-muted">
                 <Image
                   src={item.imageUrl || placeholderImage(item.productName)}
                   alt={item.productName}
@@ -61,14 +64,15 @@ export default function CartPage() {
                       {item.productName}
                     </Link>
                     <p className="text-xs text-muted-foreground">
-                      {item.variantName} · {item.sizeLabel}
+                      Code {item.sku}
+                      {item.variantName ? ` · ${item.variantName}` : ""}
                     </p>
                   </div>
 
                   <button
                     type="button"
                     aria-label="Remove"
-                    onClick={() => removeItem(item.variantId)}
+                    onClick={() => removeItem(item.id)}
                     className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -76,38 +80,54 @@ export default function CartPage() {
                 </div>
 
                 <div className="mt-auto flex items-center justify-between">
-                  <div className="flex items-center rounded-full border">
+                  <div className="flex items-center rounded-md border">
                     <button
                       type="button"
                       aria-label="Decrease"
-                      onClick={() => updateQty(item.variantId, item.quantity - 1)}
+                      onClick={() => updateQty(item.id, item.quantity - 1)}
                       className="p-1.5 text-slate-600 hover:text-slate-900"
                     >
                       <Minus className="h-3.5 w-3.5" />
                     </button>
-                    <span className="w-8 text-center text-sm font-semibold">
-                      {item.quantity}
-                    </span>
+                    <input
+                      aria-label="Quantity"
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={item.quantity}
+                      onChange={(e) => {
+                        const next = Number(e.target.value);
+                        if (Number.isFinite(next)) {
+                          updateQty(item.id, next);
+                        }
+                      }}
+                      className="w-14 border-x bg-transparent py-1 text-center text-sm font-semibold outline-none"
+                    />
                     <button
                       type="button"
                       aria-label="Increase"
-                      onClick={() => updateQty(item.variantId, item.quantity + 1)}
+                      onClick={() => updateQty(item.id, item.quantity + 1)}
                       className="p-1.5 text-slate-600 hover:text-slate-900"
                     >
                       <Plus className="h-3.5 w-3.5" />
                     </button>
                   </div>
 
-                  <p className="text-sm font-bold">
-                    {formatPrice(item.unitPrice * item.quantity)}
-                  </p>
+                  <div className="text-right">
+                    <p className="text-sm font-bold">
+                      {formatPrice(item.unitPrice * item.quantity)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatPrice(item.unitPrice)} / {item.unit.toLowerCase()}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="h-fit rounded-xl border bg-card p-5">
+        <div className="h-fit rounded-md border bg-card p-5">
           <h2 className="font-semibold">Order summary</h2>
 
           <dl className="mt-4 space-y-2 text-sm">
@@ -126,12 +146,12 @@ export default function CartPage() {
             <span>{formatPrice(subtotal)}</span>
           </p>
 
-          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <p className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
             Cash on delivery — pay when your order arrives.
           </p>
 
           <Link href="/checkout" className="mt-4 block">
-            <Button size="lg" className="w-full rounded-full">
+            <Button size="lg" className="w-full rounded-md">
               Checkout
             </Button>
           </Link>

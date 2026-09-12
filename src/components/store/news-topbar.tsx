@@ -1,8 +1,8 @@
 const DEFAULT_MESSAGES = [
-  "Welcome to NaranScents",
-  "ENJOY 5% OFF ON YOUR FIRST PURCHASE",
+  "Welcome to Civil Mart",
+  "Building materials, tools and hardware for every project",
   "Cash on Delivery — pay when your order arrives",
-  "Free delivery on orders over Rs 2,000",
+  "Bulk & contractor orders welcome",
 ];
 
 export function NewsTopbar({ messages }: { messages?: string[] }) {
@@ -14,17 +14,17 @@ export function NewsTopbar({ messages }: { messages?: string[] }) {
       {list.map((message) => (
         <span
           key={message}
-          className="flex items-center whitespace-nowrap px-8 text-[13px] font-semibold uppercase tracking-[0.08em]"
+          className="flex items-center whitespace-nowrap px-8 text-[12px] font-semibold uppercase tracking-[0.1em]"
         >
           {message}
-          <span className="ml-16 h-1.5 w-1.5 rounded-full bg-white/40" />
+          <span className="ml-16 h-1 w-1 rounded-full bg-amber-400/60" />
         </span>
       ))}
     </div>
   );
 
   return (
-    <div className="overflow-hidden bg-slate-900 py-2.5 text-white">
+    <div className="overflow-hidden bg-amber-500 py-2 text-slate-950">
       <div className="flex w-max animate-marquee">
         {row}
         {row}

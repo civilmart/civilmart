@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, Phone, Search, ShoppingBag, User, X } from "lucide-react";
+import { Menu, Phone, Search, ShoppingCart, User, X } from "lucide-react";
 import { useCart } from "@/context/cart-context";
 
 const NAV_LINKS = [
@@ -12,19 +12,7 @@ const NAV_LINKS = [
   { name: "Track Order", href: "/track" },
 ];
 
-const DEFAULT_SITE_NAME = "NaranScents";
-
-function splitBrand(siteName: string): {
-  head: string;
-  tail: string;
-} {
-  const match = siteName.match(/^(.*?)(Scents.*)?$/);
-
-  return {
-    head: match?.[1] || siteName,
-    tail: match?.[2] || "",
-  };
-}
+const DEFAULT_SITE_NAME = "Civil Mart";
 
 export function StoreHeader({
   siteName,
@@ -38,7 +26,7 @@ export function StoreHeader({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  const brand = splitBrand(siteName || DEFAULT_SITE_NAME);
+  const brand = siteName || DEFAULT_SITE_NAME;
 
   function submitSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -47,7 +35,7 @@ export function StoreHeader({
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6">
         <button
           type="button"
@@ -59,11 +47,9 @@ export function StoreHeader({
         </button>
 
         <Link href="/" className="shrink-0">
-          <span className="text-lg font-bold tracking-tight">
-            {brand.head}
-            {brand.tail && (
-              <span className="text-amber-600">{brand.tail}</span>
-            )}
+          <span className="text-lg font-extrabold tracking-tight text-slate-900">
+            {brand}
+            <span className="text-amber-600">.</span>
           </span>
         </Link>
 
@@ -87,7 +73,7 @@ export function StoreHeader({
                   ? `tel:${helpline.replace(/[\s-]/g, "")}`
                   : "#"
               }
-              className="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-amber-300 hover:text-amber-700 md:flex"
+              className="hidden items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-amber-400 hover:text-amber-800 md:flex"
               title="Order by phone"
             >
               <Phone className="h-3.5 w-3.5 text-amber-600" />
@@ -96,13 +82,13 @@ export function StoreHeader({
           )}
           <form
             onSubmit={submitSearch}
-            className="hidden items-center rounded-full border bg-slate-50 px-3 md:flex"
+            className="hidden items-center rounded-md border border-slate-200 bg-slate-50 px-3 md:flex"
           >
             <Search className="h-4 w-4 text-slate-400" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search fragrances…"
+              placeholder="Search products…"
               className="w-36 bg-transparent px-2 py-1.5 text-sm outline-none sm:w-48"
             />
           </form>
@@ -120,9 +106,9 @@ export function StoreHeader({
             aria-label="Cart"
             className="relative rounded-md p-2 text-slate-600 hover:bg-slate-100"
           >
-            <ShoppingBag className="h-5 w-5" />
+            <ShoppingCart className="h-5 w-5" />
             {count > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-sm bg-amber-500 px-1 text-[10px] font-bold text-white">
                 {count}
               </span>
             )}
@@ -131,13 +117,13 @@ export function StoreHeader({
       </div>
 
       {open && (
-        <div className="border-t bg-white px-4 py-3 lg:hidden">
-          <form onSubmit={submitSearch} className="mb-3 flex items-center rounded-full border bg-slate-50 px-3">
+        <div className="border-t border-slate-200 bg-white px-4 py-3 lg:hidden">
+          <form onSubmit={submitSearch} className="mb-3 flex items-center rounded-md border bg-slate-50 px-3">
             <Search className="h-4 w-4 text-slate-400" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search fragrances…"
+              placeholder="Search products…"
               className="w-full bg-transparent px-2 py-2 text-sm outline-none"
             />
           </form>

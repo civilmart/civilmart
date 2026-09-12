@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { Package, Pencil, Plus, Search, Star, Trash2 } from "lucide-react";
+import { Package, PackageX, Pencil, Plus, Search, Star, Trash2 } from "lucide-react";
 import { formatMoney } from "@/lib/money";
+import { PRODUCT_UNITS } from "@/lib/catalog";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,15 +18,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+type Category = {
+  id: string;
+  name: string;
+  group: string;
+};
+
 type ProductVariant = {
   id: string | null;
   sku: string;
   name: string;
   sizeValue: number;
-  sizeUnit: "ML" | "L";
+  sizeUnit: string;
   price: number | null;
   imageUrl: string | null;
-  stockQuantity: number;
   status: string;
 };
 
@@ -33,13 +39,21 @@ type Product = {
   id: string;
   code: string;
   name: string;
+  brand: string | null;
   description: string | null;
   status: string;
   imageUrl: string | null;
   imageUrl2: string | null;
   price: number | null;
   isFeatured: boolean;
-  category: string | null;
+  unit: string;
+  subcategory: string | null;
+  stockQuantity: number;
+  minimumStock: string | number | null;
+  maximumStock: string | number | null;
+  reorderLevel: string | number | null;
+  trades: string[];
+  category: Category | null;
   variants: ProductVariant[];
 };
 
@@ -48,22 +62,29 @@ type VariantForm = {
   sku: string;
   name: string;
   sizeValue: string;
-  sizeUnit: "ML" | "L";
+  sizeUnit: string;
   price: string;
   imageUrl: string;
-  stockQuantity: string;
 };
 
 type ProductFormState = {
   id: string | null;
   code: string;
   name: string;
+  brand: string;
   description: string;
   status: string;
   imageUrl: string;
   imageUrl2: string;
   price: string;
-  category: string;
+  categoryId: string;
+  unit: string;
+  subcategory: string;
+  stockQuantity: string;
+  minimumStock: string;
+  maximumStock: string;
+  reorderLevel: string;
+  trades: string;
   isFeatured: boolean;
   variants: VariantForm[];
 };
@@ -73,28 +94,36 @@ const emptyVariant: VariantForm = {
   sku: "",
   name: "",
   sizeValue: "",
-  sizeUnit: "ML",
+  sizeUnit: "UNIT",
   price: "",
   imageUrl: "",
-  stockQuantity: "0",
 };
 
 const emptyForm: ProductFormState = {
   id: null,
   code: "",
   name: "",
+  brand: "",
   description: "",
   status: "ACTIVE",
   imageUrl: "",
   imageUrl2: "",
   price: "",
-  category: "",
+  categoryId: "",
+  unit: "BAG",
+  subcategory: "",
+  stockQuantity: "0",
+  minimumStock: "",
+  maximumStock: "",
+  reorderLevel: "",
+  trades: "",
   isFeatured: false,
-  variants: [{ ...emptyVariant }],
+  variants: [],
 };
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<ProductFormState>({
     ...emptyForm,
@@ -121,15 +150,26 @@ export default function ProductsPage() {
     }
   };
 
+  const loadCategories = async () => {
+    try {
+      const response = await fetch("/api/categories");
+      const data = await response.json();
+
+      if (response.ok) {
+        setCategories(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error("Failed to load categories:", error);
+    }
+  };
+
   useEffect(() => {
     loadProducts();
+    loadCategories();
   }, []);
 
   function startCreate() {
-    setForm({
-      ...emptyForm,
-      variants: [{ ...emptyVariant }],
-    });
+    setForm({ ...emptyForm, variants: [] });
     setShowForm(true);
   }
 
@@ -138,12 +178,29 @@ export default function ProductsPage() {
       id: product.id,
       code: product.code,
       name: product.name,
+      brand: product.brand ?? "",
       description: product.description ?? "",
       status: product.status,
       imageUrl: product.imageUrl ?? "",
       imageUrl2: product.imageUrl2 ?? "",
       price: product.price !== null ? String(product.price) : "",
-      category: product.category ?? "",
+      categoryId: product.category?.id ?? "",
+      unit: product.unit,
+      subcategory: product.subcategory ?? "",
+      stockQuantity: String(product.stockQuantity),
+      minimumStock:
+        product.minimumStock !== null && product.minimumStock !== undefined
+          ? String(product.minimumStock)
+          : "",
+      maximumStock:
+        product.maximumStock !== null && product.maximumStock !== undefined
+          ? String(product.maximumStock)
+          : "",
+      reorderLevel:
+        product.reorderLevel !== null && product.reorderLevel !== undefined
+          ? String(product.reorderLevel)
+          : "",
+      trades: Array.isArray(product.trades) ? product.trades.join(", ") : "",
       isFeatured: product.isFeatured,
       variants: product.variants.map((variant) => ({
         id: variant.id,
@@ -153,7 +210,6 @@ export default function ProductsPage() {
         sizeUnit: variant.sizeUnit,
         price: variant.price !== null ? String(variant.price) : "",
         imageUrl: variant.imageUrl ?? "",
-        stockQuantity: String(variant.stockQuantity),
       })),
     });
     setShowForm(true);
@@ -164,9 +220,9 @@ export default function ProductsPage() {
     setForm({ ...emptyForm });
   }
 
-  function updateFormField(
-    field: keyof ProductFormState,
-    value: ProductFormState[typeof field]
+  function updateFormField<K extends keyof ProductFormState>(
+    field: K,
+    value: ProductFormState[K]
   ) {
     setForm((current) => ({ ...current, [field]: value }));
   }
@@ -174,23 +230,17 @@ export default function ProductsPage() {
   function addVariant() {
     setForm((current) => ({
       ...current,
-      variants: [...current.variants, { ...emptyVariant }],
+      variants: [...current.variants, { ...emptyVariant, sizeUnit: current.unit || "BAG" }],
     }));
   }
 
   function removeVariant(index: number) {
-    setForm((current) => {
-      if (current.variants.length === 1) {
-        return current;
-      }
-
-      return {
-        ...current,
-        variants: current.variants.filter(
-          (_, variantIndex) => variantIndex !== index
-        ),
-      };
-    });
+    setForm((current) => ({
+      ...current,
+      variants: current.variants.filter(
+        (_, variantIndex) => variantIndex !== index
+      ),
+    }));
   }
 
   function updateVariant(
@@ -221,7 +271,8 @@ export default function ProductsPage() {
       const productMatch =
         product.code.toLowerCase().includes(term) ||
         product.name.toLowerCase().includes(term) ||
-        (product.category ?? "").toLowerCase().includes(term);
+        (product.brand ?? "").toLowerCase().includes(term) ||
+        (product.category?.name ?? "").toLowerCase().includes(term);
 
       const variantMatch = product.variants.some(
         (variant) =>
@@ -244,10 +295,18 @@ export default function ProductsPage() {
       return false;
     }
 
+    if (!PRODUCT_UNITS.includes(form.unit)) {
+      alert("Please select a valid unit.");
+      return false;
+    }
+
+    if (form.stockQuantity === "" || Number(form.stockQuantity) < 0) {
+      alert("Stock quantity must be zero or more.");
+      return false;
+    }
+
     if (
-      form.variants.some(
-        (variant) => !variant.sku.trim() || !variant.name.trim()
-      )
+      form.variants.some((variant) => !variant.sku.trim() || !variant.name.trim())
     ) {
       alert("Every variant requires an SKU and name.");
       return false;
@@ -276,12 +335,23 @@ export default function ProductsPage() {
       const payload = {
         code: form.code.trim(),
         name: form.name.trim(),
-        description: form.description,
+        brand: form.brand.trim() || null,
+        description: form.description.trim() || null,
         status: form.status,
         imageUrl: form.imageUrl.trim() || null,
         imageUrl2: form.imageUrl2.trim() || null,
         price: form.price === "" ? null : form.price,
-        category: form.category.trim() || null,
+        categoryId: form.categoryId || null,
+        unit: form.unit,
+        subcategory: form.subcategory.trim() || null,
+        stockQuantity: form.stockQuantity,
+        minimumStock: form.minimumStock === "" ? null : form.minimumStock,
+        maximumStock: form.maximumStock === "" ? null : form.maximumStock,
+        reorderLevel: form.reorderLevel === "" ? null : form.reorderLevel,
+        trades: form.trades
+          .split(",")
+          .map((trade) => trade.trim())
+          .filter(Boolean),
         isFeatured: form.isFeatured,
         variants: form.variants.map((variant) => ({
           id: variant.id,
@@ -291,7 +361,6 @@ export default function ProductsPage() {
           sizeUnit: variant.sizeUnit,
           price: variant.price === "" ? null : variant.price,
           imageUrl: variant.imageUrl.trim() || null,
-          stockQuantity: variant.stockQuantity,
         })),
       };
 
@@ -332,7 +401,7 @@ export default function ProductsPage() {
   async function deleteProduct(product: Product) {
     if (
       !confirm(
-        `Delete "${product.name}"? The product will be discontinued and hidden from the storefront. Existing orders are unaffected.`
+        `Discontinue "${product.name}"? The product will be hidden from the storefront. Existing orders are unaffected.`
       )
     ) {
       return;
@@ -439,18 +508,15 @@ export default function ProductsPage() {
   const previewSize = "h-16 w-16";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6 lg:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <Package className="h-6 w-6" />
-
             <h1 className="text-2xl font-bold">Products</h1>
           </div>
-
           <p className="text-muted-foreground">
-            Manage fragrance products, images, prices, stock and their
-            size-based SKUs.
+            Manage building materials, sizes, prices, stock and catalogue details.
           </p>
         </div>
 
@@ -463,74 +529,155 @@ export default function ProductsPage() {
       {showForm && (
         <Card>
           <CardHeader>
-            <CardTitle>
-              {form.id ? "Edit Product" : "Create Product"}
-            </CardTitle>
+            <CardTitle>{form.id ? "Edit Product" : "Create Product"}</CardTitle>
           </CardHeader>
 
           <CardContent className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Product Code</Label>
-
                 <Input
-                  placeholder="PROD-001"
+                  placeholder="CEM-OPC-001"
                   value={form.code}
-                  onChange={(e) =>
-                    updateFormField("code", e.target.value)
-                  }
+                  onChange={(e) => updateFormField("code", e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
                 <Label>Product Name</Label>
-
                 <Input
-                  placeholder="Blue Ocean"
+                  placeholder="Ordinary Portland Cement"
                   value={form.name}
-                  onChange={(e) =>
-                    updateFormField("name", e.target.value)
-                  }
+                  onChange={(e) => updateFormField("name", e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Price</Label>
-
+                <Label>Brand</Label>
                 <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="2500"
-                  value={form.price}
-                  onChange={(e) =>
-                    updateFormField("price", e.target.value)
-                  }
+                  placeholder="Bestway (optional)"
+                  value={form.brand}
+                  onChange={(e) => updateFormField("brand", e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
                 <Label>Category</Label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={form.categoryId}
+                  onChange={(e) => updateFormField("categoryId", e.target.value)}
+                >
+                  <option value="">No category</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.group ? `${category.group} / ` : ""}
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
+              <div className="space-y-2">
+                <Label>Unit</Label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={form.unit}
+                  onChange={(e) => updateFormField("unit", e.target.value)}
+                >
+                  {PRODUCT_UNITS.map((unit) => (
+                    <option key={unit} value={unit}>
+                      {unit}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Price (per unit)</Label>
                 <Input
-                  placeholder="Eau de Parfum"
-                  value={form.category}
-                  onChange={(e) =>
-                    updateFormField("category", e.target.value)
-                  }
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="1450"
+                  value={form.price}
+                  onChange={(e) => updateFormField("price", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Stock Quantity</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="500"
+                  value={form.stockQuantity}
+                  onChange={(e) => updateFormField("stockQuantity", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Subcategory</Label>
+                <Input
+                  placeholder="Cement & Binding"
+                  value={form.subcategory}
+                  onChange={(e) => updateFormField("subcategory", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Trades (comma separated)</Label>
+                <Input
+                  placeholder="Masonry & Civil, Concrete"
+                  value={form.trades}
+                  onChange={(e) => updateFormField("trades", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Minimum Stock</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="100"
+                  value={form.minimumStock}
+                  onChange={(e) => updateFormField("minimumStock", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Maximum Stock</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="2000"
+                  value={form.maximumStock}
+                  onChange={(e) => updateFormField("maximumStock", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Reorder Level</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="150"
+                  value={form.reorderLevel}
+                  onChange={(e) => updateFormField("reorderLevel", e.target.value)}
                 />
               </div>
 
               <div className="flex items-end gap-4">
                 <div className="flex-1 space-y-2">
                   <Label>Status</Label>
-
                   <select
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     value={form.status}
-                    onChange={(e) =>
-                      updateFormField("status", e.target.value)
-                    }
+                    onChange={(e) => updateFormField("status", e.target.value)}
                   >
                     <option value="ACTIVE">ACTIVE</option>
                     <option value="INACTIVE">INACTIVE</option>
@@ -540,33 +687,21 @@ export default function ProductsPage() {
 
                 <Button
                   type="button"
-                  variant={
-                    form.isFeatured ? "default" : "outline"
-                  }
-                  onClick={() =>
-                    updateFormField(
-                      "isFeatured",
-                      !form.isFeatured
-                    )
-                  }
+                  variant={form.isFeatured ? "default" : "outline"}
+                  onClick={() => updateFormField("isFeatured", !form.isFeatured)}
                 >
                   <Star className="mr-2 h-4 w-4" />
-                  {form.isFeatured
-                    ? "Featured"
-                    : "Mark Featured"}
+                  {form.isFeatured ? "Featured" : "Mark Featured"}
                 </Button>
               </div>
             </div>
 
             <div className="space-y-2">
               <Label>Description</Label>
-
               <Textarea
                 placeholder="Product description..."
                 value={form.description}
-                onChange={(e) =>
-                  updateFormField("description", e.target.value)
-                }
+                onChange={(e) => updateFormField("description", e.target.value)}
                 className="min-h-24"
               />
             </div>
@@ -574,108 +709,74 @@ export default function ProductsPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <Label>
-                    Primary Image URL (1280x1280)
-                  </Label>
-
+                  <Label>Primary Image URL</Label>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
                     disabled={imageUploading}
-                    onClick={() =>
-                      mainImageInput.current?.click()
-                    }
+                    onClick={() => mainImageInput.current?.click()}
                   >
                     <Plus className="mr-1 h-3 w-3" />
-                    {imageUploading
-                      ? "Uploading..."
-                      : "Upload Image"}
+                    {imageUploading ? "Uploading..." : "Upload Image"}
                   </Button>
-
                   <input
                     ref={mainImageInput}
                     type="file"
                     accept="image/*"
                     className="hidden"
                     onChange={() =>
-                      uploadFile(
-                        mainImageInput,
-                        (url) =>
-                          updateFormField("imageUrl", url)
+                      uploadFile(mainImageInput, (url) =>
+                        updateFormField("imageUrl", url)
                       )
                     }
                   />
                 </div>
-
                 <Input
                   placeholder="https://res.cloudinary.com/..."
                   value={form.imageUrl}
-                  onChange={(e) =>
-                    updateFormField("imageUrl", e.target.value)
-                  }
+                  onChange={(e) => updateFormField("imageUrl", e.target.value)}
                 />
-
                 {form.imageUrl && (
                   <div className="pt-1">
-                    <ProductImage
-                      src={form.imageUrl}
-                      className={previewSize}
-                    />
+                    <ProductImage src={form.imageUrl} className={previewSize} />
                   </div>
                 )}
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <Label>
-                    Secondary Image URL (1280x1280)
-                  </Label>
-
+                  <Label>Secondary Image URL</Label>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
                     disabled={imageUploading}
-                    onClick={() =>
-                      secondaryImageInput.current?.click()
-                    }
+                    onClick={() => secondaryImageInput.current?.click()}
                   >
                     <Plus className="mr-1 h-3 w-3" />
-                    {imageUploading
-                      ? "Uploading..."
-                      : "Upload Image"}
+                    {imageUploading ? "Uploading..." : "Upload Image"}
                   </Button>
-
                   <input
                     ref={secondaryImageInput}
                     type="file"
                     accept="image/*"
                     className="hidden"
                     onChange={() =>
-                      uploadFile(
-                        secondaryImageInput,
-                        (url) =>
-                          updateFormField("imageUrl2", url)
+                      uploadFile(secondaryImageInput, (url) =>
+                        updateFormField("imageUrl2", url)
                       )
                     }
                   />
                 </div>
-
                 <Input
                   placeholder="https://res.cloudinary.com/..."
                   value={form.imageUrl2}
-                  onChange={(e) =>
-                    updateFormField("imageUrl2", e.target.value)
-                  }
+                  onChange={(e) => updateFormField("imageUrl2", e.target.value)}
                 />
-
                 {form.imageUrl2 && (
                   <div className="pt-1">
-                    <ProductImage
-                      src={form.imageUrl2}
-                      className={previewSize}
-                    />
+                    <ProductImage src={form.imageUrl2} className={previewSize} />
                   </div>
                 )}
               </div>
@@ -683,54 +784,48 @@ export default function ProductsPage() {
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="font-semibold">
-                  Product Variants / SKUs
-                </h2>
-
+                <h2 className="font-semibold">Product Variants / SKUs</h2>
                 <Button variant="outline" onClick={addVariant}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Variant
                 </Button>
               </div>
 
+              {form.variants.length === 0 && (
+                <p className="rounded-md bg-muted px-3 py-3 text-sm text-muted-foreground">
+                  Optional. Variants are pack sizes with their own SKU and price
+                  (for example: 50kg bag, 25kg bag).
+                </p>
+              )}
+
               {form.variants.map((variant, index) => (
-                <div
-                  key={index}
-                  className="rounded-lg border p-4"
-                >
+                <div key={index} className="rounded-lg border p-4">
                   <div className="grid gap-4 md:grid-cols-6">
                     <div className="space-y-2">
                       <Label>SKU</Label>
-
                       <Input
-                        placeholder="BO-30"
+                        placeholder="CEM-BEST-50"
                         value={variant.sku}
-                        onChange={(e) =>
-                          updateVariant(index, "sku", e.target.value)
-                        }
+                        onChange={(e) => updateVariant(index, "sku", e.target.value)}
                       />
                     </div>
 
                     <div className="space-y-2 md:col-span-2">
                       <Label>Variant Name</Label>
-
                       <Input
-                        placeholder="Blue Ocean 30ml"
+                        placeholder="50kg bag"
                         value={variant.name}
-                        onChange={(e) =>
-                          updateVariant(index, "name", e.target.value)
-                        }
+                        onChange={(e) => updateVariant(index, "name", e.target.value)}
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label>Size</Label>
-
                       <Input
                         type="number"
                         min="0"
                         step="0.01"
-                        placeholder="30"
+                        placeholder="50"
                         value={variant.sizeValue}
                         onChange={(e) =>
                           updateVariant(index, "sizeValue", e.target.value)
@@ -740,29 +835,25 @@ export default function ProductsPage() {
 
                     <div className="space-y-2">
                       <Label>Unit</Label>
-
                       <select
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                         value={variant.sizeUnit}
-                        onChange={(e) =>
-                          updateVariant(
-                            index,
-                            "sizeUnit",
-                            e.target.value
-                          )
-                        }
+                        onChange={(e) => updateVariant(index, "sizeUnit", e.target.value)}
                       >
-                        <option value="ML">ML</option>
-                        <option value="L">L</option>
+                        {PRODUCT_UNITS.map((unit) => (
+                          <option key={unit} value={unit}>
+                            {unit}
+                          </option>
+                        ))}
                       </select>
                     </div>
 
                     <div className="flex items-end justify-end">
                       <Button
+                        type="button"
                         variant="ghost"
                         size="icon"
                         onClick={() => removeVariant(index)}
-                        disabled={form.variants.length === 1}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -770,47 +861,22 @@ export default function ProductsPage() {
 
                     <div className="space-y-2">
                       <Label>Price</Label>
-
                       <Input
                         type="number"
                         min="0"
                         step="0.01"
-                        placeholder="2500"
+                        placeholder="1450"
                         value={variant.price}
-                        onChange={(e) =>
-                          updateVariant(index, "price", e.target.value)
-                        }
+                        onChange={(e) => updateVariant(index, "price", e.target.value)}
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label>Stock Quantity</Label>
-
-                      <Input
-                        type="number"
-                        min="0"
-                        step="1"
-                        placeholder="50"
-                        value={variant.stockQuantity}
-                        onChange={(e) =>
-                          updateVariant(
-                            index,
-                            "stockQuantity",
-                            e.target.value
-                          )
-                        }
-                      />
-                    </div>
-
-                    <div className="space-y-2 md:col-span-4">
+                    <div className="space-y-2 md:col-span-5">
                       <Label>Variant Image URL</Label>
-
                       <Input
                         placeholder="https://... (optional)"
                         value={variant.imageUrl}
-                        onChange={(e) =>
-                          updateVariant(index, "imageUrl", e.target.value)
-                        }
+                        onChange={(e) => updateVariant(index, "imageUrl", e.target.value)}
                       />
                     </div>
                   </div>
@@ -822,13 +888,8 @@ export default function ProductsPage() {
               <Button variant="outline" onClick={closeForm}>
                 Cancel
               </Button>
-
               <Button onClick={saveProduct} disabled={saving}>
-                {saving
-                  ? "Saving..."
-                  : form.id
-                    ? "Save Changes"
-                    : "Save Product"}
+                {saving ? "Saving..." : form.id ? "Save Changes" : "Save Product"}
               </Button>
             </div>
           </CardContent>
@@ -838,11 +899,10 @@ export default function ProductsPage() {
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <CardTitle>Product Catalog</CardTitle>
+            <CardTitle>Product Catalogue</CardTitle>
 
             <div className="relative w-full md:w-80">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-
               <Input
                 className="pl-9"
                 placeholder="Search product, SKU or category..."
@@ -861,28 +921,16 @@ export default function ProductsPage() {
           ) : (
             <div className="space-y-4">
               {filteredProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className="rounded-lg border p-5"
-                >
+                <div key={product.id} className="rounded-lg border p-5">
                   <div className="flex flex-col gap-4 md:flex-row md:items-start">
-                    <ProductImage
-                      src={product.imageUrl}
-                      className="h-20 w-20 shrink-0"
-                    />
+                    <ProductImage src={product.imageUrl} className="h-20 w-20 shrink-0" />
 
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-3">
-                        <h2 className="text-lg font-semibold">
-                          {product.name}
-                        </h2>
-
+                        <h2 className="text-lg font-semibold">{product.name}</h2>
                         <Badge>{product.code}</Badge>
-
-                        <Badge variant="secondary">
-                          {product.status}
-                        </Badge>
-
+                        {product.brand && <Badge variant="secondary">{product.brand}</Badge>}
+                        <Badge variant="secondary">{product.status}</Badge>
                         {product.isFeatured && (
                           <Badge variant="outline">
                             <Star className="mr-1 h-3 w-3" />
@@ -892,11 +940,47 @@ export default function ProductsPage() {
                       </div>
 
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {product.category ?? "No category"} ·{" "}
-                        {product.price !== null
-                          ? formatMoney(product.price)
-                          : "No price"}
+                        {product.category
+                          ? `${product.category.group ? `${product.category.group} · ` : ""}${product.category.name}`
+                          : "No category"}{" "}
+                        · {product.unit}
+                        {product.stockQuantity <= 0 ? (
+                          <span className="ml-2 inline-flex items-center gap-1 font-medium text-red-600">
+                            <PackageX className="h-3.5 w-3.5" />
+                            Out of stock
+                          </span>
+                        ) : (
+                          <span className="ml-2 text-foreground">
+                            ·{" "}
+                            {new Intl.NumberFormat("en-US", {
+                              maximumFractionDigits: 2,
+                            }).format(product.stockQuantity)}{" "}
+                            {product.unit.toLowerCase()}
+                          </span>
+                        )}
                       </p>
+
+                      <p className="mt-1 text-sm">
+                        {product.price !== null ? (
+                          <span className="font-medium">
+                            {formatMoney(product.price)} / {product.unit.toLowerCase()}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">No price set</span>
+                        )}
+                        {product.subcategory && (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            · {product.subcategory}
+                          </span>
+                        )}
+                      </p>
+
+                      {Array.isArray(product.trades) && product.trades.length > 0 && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Trades: {product.trades.join(", ")}
+                        </p>
+                      )}
 
                       {product.description && (
                         <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
@@ -906,14 +990,10 @@ export default function ProductsPage() {
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => startEdit(product)}
-                      >
+                      <Button variant="outline" onClick={() => startEdit(product)}>
                         <Pencil className="mr-2 h-4 w-4" />
                         Edit
                       </Button>
-
                       <Button
                         variant="ghost"
                         onClick={() => deleteProduct(product)}
@@ -925,65 +1005,47 @@ export default function ProductsPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-3">
-                    {product.variants.map((variant) => (
-                      <div
-                        key={variant.id ?? variant.sku}
-                        className="rounded-md bg-muted/40 p-3"
-                      >
-                        <div className="flex items-start gap-3">
-                          {variant.imageUrl && (
-                            <ProductImage
-                              src={variant.imageUrl}
-                              className="h-10 w-10 shrink-0"
-                            />
-                          )}
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="truncate font-medium">
-                                {variant.name}
-                              </span>
-
-                              <Badge variant="outline">
-                                {variant.status}
-                              </Badge>
+                  {product.variants.length > 0 && (
+                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                      {product.variants.map((variant) => (
+                        <div
+                          key={variant.id ?? variant.sku}
+                          className="rounded-md bg-muted/40 p-3"
+                        >
+                          <div className="flex items-start gap-3">
+                            {variant.imageUrl && (
+                              <ProductImage src={variant.imageUrl} className="h-10 w-10 shrink-0" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="truncate font-medium">{variant.name}</span>
+                                <Badge variant="outline">{variant.status}</Badge>
+                              </div>
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                SKU:{" "}
+                                <span className="font-medium text-foreground">{variant.sku}</span>
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                Size:{" "}
+                                <span className="font-medium text-foreground">
+                                  {new Intl.NumberFormat("en-US", {
+                                    maximumFractionDigits: 2,
+                                  }).format(variant.sizeValue)}{" "}
+                                  {variant.sizeUnit}
+                                </span>
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                Price:{" "}
+                                <span className="font-medium text-foreground">
+                                  {variant.price !== null ? formatMoney(variant.price) : "—"}
+                                </span>
+                              </p>
                             </div>
-
-                            <p className="mt-1 text-sm text-muted-foreground">
-                              SKU:{" "}
-                              <span className="font-medium text-foreground">
-                                {variant.sku}
-                              </span>
-                            </p>
-
-                            <p className="text-sm text-muted-foreground">
-                              Size:{" "}
-                              <span className="font-medium text-foreground">
-                                {variant.sizeValue} {variant.sizeUnit}
-                              </span>
-                            </p>
-
-                            <p className="text-sm text-muted-foreground">
-                              Price:{" "}
-                              <span className="font-medium text-foreground">
-                                {variant.price !== null
-                                  ? formatMoney(variant.price)
-                                  : "—"}
-                              </span>
-                            </p>
-
-                            <p className="text-sm text-muted-foreground">
-                              Stock:{" "}
-                              <span className="font-medium text-foreground">
-                                {variant.stockQuantity}
-                              </span>
-                            </p>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ProductUnit } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserOrThrow } from "@/lib/auth";
 import { isValidUnit } from "@/lib/catalog";
@@ -7,7 +8,7 @@ type PreparedItem = {
   productId: string;
   variantId: string | null;
   quantity: number;
-  unit: string;
+  unit: ProductUnit;
   estimatedCostPerUnit: number | null;
   notes: string | null;
 };
@@ -144,7 +145,7 @@ export async function POST(request: NextRequest) {
         productId: item.productId,
         variantId: variantIdResolved,
         quantity,
-        unit: String(item.unit),
+        unit: item.unit as ProductUnit,
         estimatedCostPerUnit,
         notes: item.notes?.trim() || null,
       });
