@@ -172,6 +172,19 @@ export default function StoreHomePage() {
         }
       />
 
+      {/* Featured */}
+      <section>
+        <div className="mb-4 flex items-center gap-2">
+          <Boxes className="h-5 w-5 text-amber-600" />
+          <h2 className="text-lg font-bold tracking-tight">Featured products</h2>
+        </div>
+
+        <ProductShelf loading={loading} products={featured} />
+      </section>
+
+      {/* Featured promo tiles */}
+      {featured.length > 0 && <PromoTiles products={featured} />}
+
       {/* Main categories */}
       <section>
         <div className="mb-4 flex items-center justify-between">
@@ -209,19 +222,6 @@ export default function StoreHomePage() {
 
       {/* Home banners */}
       <StoreAdBanners slot="HOME_BANNER" />
-
-      {/* Featured */}
-      <section>
-        <div className="mb-4 flex items-center gap-2">
-          <Boxes className="h-5 w-5 text-amber-600" />
-          <h2 className="text-lg font-bold tracking-tight">Featured products</h2>
-        </div>
-
-        <ProductShelf loading={loading} products={featured} />
-      </section>
-
-      {/* Featured promo tiles */}
-      {featured.length > 0 && <PromoTiles products={featured} />}
 
       {/* Latest */}
       <section>

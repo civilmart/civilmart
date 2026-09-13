@@ -48,11 +48,22 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     if (body.group !== undefined) {
-      data.group = String(body.group).trim() || "General";
+      data.group =
+        body.group === null ? null : String(body.group).trim() || null;
     }
 
     if (body.description !== undefined) {
-      data.description = String(body.description).trim() || null;
+      data.description =
+        body.description === null
+          ? null
+          : String(body.description).trim() || null;
+    }
+
+    if (body.imageUrl !== undefined) {
+      data.imageUrl =
+        body.imageUrl === null
+          ? null
+          : String(body.imageUrl).trim() || null;
     }
 
     if (body.isActive !== undefined) {

@@ -16,6 +16,10 @@ const UPLOAD_PRESETS: Record<
     folder: "naranscents/hero",
     transformation: "w_1920,h_720,c_fill,q_auto,f_auto",
   },
+  category: {
+    folder: "naranscents/categories",
+    transformation: "w_640,h_360,c_fill,q_auto,f_auto",
+  },
 };
 
 function getCloudinaryConfig() {

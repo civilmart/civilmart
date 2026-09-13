@@ -27,8 +27,18 @@ export async function GET() {
   try {
     const categories = await prisma.category.findMany({
       where: { isActive: true },
-      select: { id: true, name: true, group: true },
+      select: { id: true, name: true, group: true, imageUrl: true },
     });
+
+    const explicitImage = new Map<string, string>();
+
+    for (const category of categories) {
+      const image = category.imageUrl?.trim();
+
+      if (image?.startsWith("http")) {
+        explicitImage.set(category.id, image);
+      }
+    }
 
     const groups = new Map<string, { id: string; name: string }[]>();
     const standalone: { id: string; name: string }[] = [];
@@ -77,8 +87,12 @@ export async function GET() {
     for (const product of withImages) {
       if (!product.imageUrl || !product.categoryId) continue;
 
+      const image = product.imageUrl.trim();
+
+      if (!image.startsWith("http")) continue;
+
       if (!imageByCategory.has(product.categoryId)) {
-        imageByCategory.set(product.categoryId, product.imageUrl);
+        imageByCategory.set(product.categoryId, image);
       }
     }
 
@@ -88,7 +102,9 @@ export async function GET() {
       let imageUrl: string | null = null;
 
       for (const category of list) {
-        const candidate = imageByCategory.get(category.id);
+        const candidate =
+          explicitImage.get(category.id) ??
+          imageByCategory.get(category.id);
 
         if (candidate) {
           imageUrl = candidate;
@@ -118,18 +134,46 @@ export async function GET() {
         href: `/products?category=${encodeURIComponent(category.name)}`,
         productCount: countsByCategory.get(category.id) ?? 0,
         categoryCount: 1,
-        imageUrl: imageByCategory.get(category.id) ?? null,
+        imageUrl:
+          explicitImage.get(category.id) ??
+          imageByCategory.get(category.id) ??
+          null,
       });
     }
 
-    mainCategories.sort(
+    const merged = new Map<string, MainCategoryTile>();
+
+    for (const tile of mainCategories) {
+      const existing = merged.get(tile.name);
+
+      if (!existing) {
+        merged.set(tile.name, tile);
+        continue;
+      }
+
+      existing.productCount += tile.productCount;
+      existing.categoryCount += tile.categoryCount;
+
+      if (!existing.imageUrl && tile.imageUrl) {
+        existing.imageUrl = tile.imageUrl;
+      }
+
+      if (existing.kind === "category") {
+        existing.kind = "group";
+        existing.href = `/products?group=${encodeURIComponent(existing.name)}`;
+      }
+    }
+
+    const sortedTiles = [...merged.values()];
+
+    sortedTiles.sort(
       (a, b) => b.productCount - a.productCount || a.name.localeCompare(b.name)
     );
 
     const totalProducts = await prisma.product.count({ where: { status: "ACTIVE" } });
 
     const data: StoreHomeData = {
-      mainCategories,
+      mainCategories: sortedTiles,
       categoryCount: categories.length,
       productCount: totalProducts,
     };

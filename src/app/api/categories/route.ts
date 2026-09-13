@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
     const name = String(body.name ?? "").trim();
     const group = String(body.group ?? "").trim() || "General";
     const description = String(body.description ?? "").trim() || null;
+    const imageUrl = String(body.imageUrl ?? "").trim() || null;
 
     if (!name) {
       return NextResponse.json(
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
         slug,
         group,
         description,
+        imageUrl,
       },
     });
 

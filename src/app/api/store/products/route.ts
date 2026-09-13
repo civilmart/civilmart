@@ -44,10 +44,10 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, parseNumber(searchParams.get("page")) ?? 1);
     const pageSize = Math.min(Math.max(1, parseNumber(searchParams.get("pageSize")) ?? 24), 48);
 
-    const categoryFilter: { name?: string; group?: string } = {};
+    const categoryFilter: { name?: string; group?: string; OR?: Array<{ group: string } | { name: string }> } = {};
 
     if (category) categoryFilter.name = category;
-    if (group) categoryFilter.group = group;
+    if (group) categoryFilter.OR = [{ group }, { name: group }];
 
     const where = {
       status: "ACTIVE" as const,
