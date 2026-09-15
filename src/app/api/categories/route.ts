@@ -11,13 +11,12 @@ export async function GET(request: NextRequest) {
     const categories = await prisma.category.findMany({
       where: { isActive: true },
       orderBy: [{ group: "asc" }, { name: "asc" }],
-      ...(withCounts
-        ? {
-            include: {
-              _count: { select: { products: { where: { status: "ACTIVE" } } } },
-            },
-          }
-        : {}),
+      include: {
+        trade: { select: { id: true, name: true } },
+        ...(withCounts
+          ? { _count: { select: { products: { where: { status: "ACTIVE" } } } } }
+          : {}),
+      },
     });
 
     return NextResponse.json(categories);
@@ -40,6 +39,7 @@ export async function POST(request: NextRequest) {
     const group = String(body.group ?? "").trim() || "General";
     const description = String(body.description ?? "").trim() || null;
     const imageUrl = String(body.imageUrl ?? "").trim() || null;
+    const tradeId = body.tradeId ? String(body.tradeId) : null;
 
     if (!name) {
       return NextResponse.json(
@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
         group,
         description,
         imageUrl,
+        tradeId,
       },
     });
 

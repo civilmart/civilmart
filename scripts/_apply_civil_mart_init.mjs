@@ -4,7 +4,7 @@ import { Pool } from "pg";
 
 const url =
   process.env.DATABASE_URL ||
-  "postgres://fb2790cd88cf11f97a98da93fb493f9e4aaa760ee66a241ae20af4c68c55d006:sk_g5P1uawfvV2JqXODvO_9g@db.prisma.io:5432/postgres?sslmode=require";
+  "postgres://fb2790cd88cf11f97a98da93fb493f9e4aaa760ee66a241ae20af4c68c55d006:sk_g5P1uawfvV2JqXODvO_9g@db.prisma.io:5432/postgres?sslmode=verify-full";
 
 const sql = readFileSync(
   "prisma/migrations/20260912000000_init_civil_mart/migration.sql",

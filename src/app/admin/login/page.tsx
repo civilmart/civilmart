@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
@@ -10,10 +10,26 @@ import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [siteName, setSiteName] = useState("Civil Mart");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.error);
+        return data.data as { siteName: string };
+      })
+      .then((settings) => {
+        if (settings.siteName) setSiteName(settings.siteName);
+      })
+      .catch(() => {
+        // Keep the default store name when settings are unavailable.
+      });
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -47,7 +63,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30">
       <div className="w-full max-w-sm rounded-xl border bg-card p-8 shadow-sm">
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold tracking-tight">NaranScents</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{siteName}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Sign in to your account
           </p>

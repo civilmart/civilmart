@@ -26,7 +26,6 @@ import {
   maybeInt,
   placeholderImage,
   productUnitLabel,
-  sizeLabel,
   type StoreProduct,
   type StoreVariant,
 } from "@/lib/store-front";
@@ -89,10 +88,6 @@ export default function ProductDetailPage({
     };
   }, [id]);
 
-  useEffect(() => {
-    setSelectedVariant((prev) => prev ?? product?.variants[0] ?? null);
-  }, [product]);
-
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -119,7 +114,10 @@ export default function ProductDetailPage({
 
   const wishlisted = wishlistedIds.has(product.id);
 
-  const currentVariant = selectedVariant ?? product.variants[0] ?? null;
+  const currentVariant =
+    product.variants.find((v) => v.id === selectedVariant?.id) ??
+    product.variants[0] ??
+    null;
   const unitPrice = currentVariant?.price ?? effectivePrice(product);
   const inStock = isInStock(product);
 

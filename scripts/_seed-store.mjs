@@ -35,7 +35,7 @@ const products = [
     code: "NS-FRS-03",
     name: "Pine & Citrus",
     category: "Fresh",
-    description: "Crisp bergamot, pine needle and clean vetiver. Like a morning in the Naran valley.",
+    description: "Crisp bergamot, pine needle and clean vetiver. Like a morning in the northern mountains.",
     price: "2200",
     isFeatured: false,
     imageUrl: null,

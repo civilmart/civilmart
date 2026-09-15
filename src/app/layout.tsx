@@ -10,18 +10,21 @@ const inter = Inter({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  let siteName = "NaranScents";
+  let siteName = "Civil Mart";
+  let siteDescription =
+    "Building materials, tools and hardware for every project — order online and pay on delivery.";
 
   try {
     const settings = await getSiteSettings();
     siteName = settings.siteName || siteName;
+    siteDescription = settings.siteDescription || siteDescription;
   } catch {
-    // Fall back to default when settings are unavailable.
+    // Fall back to defaults when settings are unavailable.
   }
 
   return {
     title: siteName,
-    description: "Fragrance Management System",
+    description: siteDescription,
   };
 }
 

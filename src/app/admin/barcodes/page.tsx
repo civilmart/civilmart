@@ -1,8 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useEffect } from "react";
-import JsBarcode from "jsbarcode";
+import { useEffect, useMemo, useState } from "react";
 import {
   Barcode,
   CheckSquare2,
@@ -11,6 +9,7 @@ import {
   Square,
   Tags,
 } from "lucide-react";
+import { BarcodePrintArea } from "@/components/barcode-label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -95,27 +94,6 @@ export default function BarcodesPage() {
     () => products.filter((product) => product.barcode && selected[product.id]),
     [products, selected]
   );
-
-  useEffect(() => {
-    const canvases = document.querySelectorAll<HTMLCanvasElement>(
-      "#print-area canvas[data-barcode]"
-    );
-
-    for (const canvas of canvases) {
-      const barcode = canvas.getAttribute("data-barcode");
-
-      if (!barcode) continue;
-
-      JsBarcode(canvas, barcode, {
-        format: "CODE128",
-        width: 2,
-        height: 44,
-        fontSize: 14,
-        displayValue: true,
-        margin: 0,
-      });
-    }
-  }, [selectedProducts]);
 
   return (
     <div className="space-y-6 p-6 lg:p-8">
@@ -261,30 +239,17 @@ export default function BarcodesPage() {
         </p>
       )}
 
-      <div className="hidden print:block" id="print-area">
-        <div className="flex flex-wrap gap-4 p-4">
-          {selectedProducts.map((product) => (
-            <div
-              key={product.id}
-              className="flex w-56 flex-col items-center justify-center gap-1 rounded border border-black p-2 text-center"
-            >
-              <p className="line-clamp-2 text-xs font-bold leading-tight">
-                {product.name}
-              </p>
-              <p className="text-[10px]">{product.code}</p>
-              <div className="flex w-full justify-center">
-                <canvas
-                  data-barcode={`${product.barcode}`}
-                  className="max-w-full"
-                />
-              </div>
-              {product.price !== null && (
-                <p className="text-sm font-bold">{formatMoney(product.price)}</p>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+      <BarcodePrintArea
+        id="print-area"
+        items={selectedProducts
+          .filter((p) => p.barcode)
+          .map((product) => ({
+            key: product.id,
+            barcode: product.barcode!,
+            name: product.name,
+            code: product.code,
+          }))}
+      />
     </div>
   );
 }

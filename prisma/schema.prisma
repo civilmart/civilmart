@@ -130,6 +130,28 @@ model User {
 }
 
 // ============================================================
+// TRADES (top-level catalogue domain: Plumbing, Electrical, ...)
+// ============================================================
+
+model Trade {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  categories Category[]
+
+  @@index([name])
+  @@index([sortOrder])
+  @@map("trades")
+}
+
+// ============================================================
 // SUPPLIERS
 // ============================================================
 
@@ -146,8 +168,9 @@ model Supplier {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  purchases      Purchase[]
-  purchaseOrders PurchaseOrder[]
+  purchases          Purchase[]
+  purchaseOrders     PurchaseOrder[]
+  supplierProducts   SupplierProduct[]
 
   @@index([name])
   @@map("suppliers")
@@ -169,9 +192,15 @@ model Category {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  tradeId String?
+
   products Product[]
+  trade    Trade?    @relation(fields: [tradeId], references: [id])
+  brands   Brand[]
 
   @@index([name])
+  @@index([group])
+  @@index([tradeId])
   @@map("categories")
 }
 
@@ -218,10 +247,62 @@ model Product {
   purchaseItems         PurchaseItem[]
   purchaseOrderItems    PurchaseOrderItem[]
   invoiceItems          InvoiceItem[]
+  supplierProducts      SupplierProduct[]
 
   @@index([name])
   @@index([categoryId])
   @@map("products")
+}
+
+// ============================================================
+// BRANDS (normalised list per category)
+// ============================================================
+
+model Brand {
+  id         String   @id @default(cuid())
+  name       String
+  categoryId String?
+  active     Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  category        Category?         @relation(fields: [categoryId], references: [id])
+  supplierProducts SupplierProduct[]
+
+  @@unique([name, categoryId])
+  @@index([name])
+  @@index([categoryId])
+  @@map("brands")
+}
+
+// ============================================================
+// SUPPLIER CATALOG / RATE LIST
+// ============================================================
+
+model SupplierProduct {
+  id            String   @id @default(cuid())
+  supplierId    String
+  productId     String
+  brandId       String?
+  rateListPrice Decimal? @db.Decimal(14, 2)
+  discount      Decimal  @default(0) @db.Decimal(5, 2)
+  wholesalePrice Decimal? @db.Decimal(14, 2)
+  retailPrice   Decimal? @db.Decimal(14, 2)
+  notes         String?
+  active        Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  brand    Brand?   @relation(fields: [brandId], references: [id], onDelete: SetNull)
+
+  @@unique([supplierId, productId])
+  @@index([productId])
+  @@index([brandId])
+  @@map("supplier_products")
 }
 
 // ============================================================

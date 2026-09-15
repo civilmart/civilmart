@@ -72,7 +72,9 @@ export default function SuppliersPage() {
   }, []);
 
   useEffect(() => {
-    loadSuppliers();
+    void (async () => {
+      await loadSuppliers();
+    })();
   }, [loadSuppliers]);
 
   function startCreate() {

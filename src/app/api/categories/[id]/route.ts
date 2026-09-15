@@ -52,6 +52,20 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         body.group === null ? null : String(body.group).trim() || null;
     }
 
+    if (body.tradeId !== undefined) {
+      if (body.tradeId === null) {
+        data.tradeId = null;
+      } else {
+        const trade = await prisma.trade.findUnique({
+          where: { id: String(body.tradeId) },
+        });
+        if (!trade) {
+          return NextResponse.json({ error: "Trade not found" }, { status: 400 });
+        }
+        data.tradeId = trade.id;
+      }
+    }
+
     if (body.description !== undefined) {
       data.description =
         body.description === null

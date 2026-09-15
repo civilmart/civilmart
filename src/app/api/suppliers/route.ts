@@ -7,11 +7,42 @@ export async function GET() {
       orderBy: {
         name: "asc",
       },
+      include: {
+        supplierProducts: {
+          select: {
+            product: {
+              select: {
+                category: {
+                  select: {
+                    tradeId: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const data = suppliers.map((supplier) => {
+      const { supplierProducts, ...rest } = supplier;
+      const tradeIds = Array.from(
+        new Set(
+          supplierProducts
+            .map((sp) => sp.product?.category?.tradeId)
+            .filter((v): v is string => Boolean(v))
+        )
+      );
+
+      return {
+        ...rest,
+        tradeIds,
+      };
     });
 
     return NextResponse.json({
       success: true,
-      data: suppliers,
+      data,
     });
   } catch (error) {
     console.error("Failed to fetch suppliers:", error);

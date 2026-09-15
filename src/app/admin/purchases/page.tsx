@@ -170,7 +170,9 @@ export default function PurchasesPage() {
   }
 
   useEffect(() => {
-    loadData();
+    void (async () => {
+      await loadData();
+    })();
   }, []);
 
   function resetForm() {

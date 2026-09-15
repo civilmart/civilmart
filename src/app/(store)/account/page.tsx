@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, LogOut, Package, Trash2, User } from "lucide-react";
@@ -69,7 +69,7 @@ export default function AccountPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  async function loadMe() {
+const loadMe = useCallback(async () => {
     const res = await fetch("/api/store/customers");
     if (!res.ok) {
       setCustomer(null);
@@ -88,11 +88,23 @@ export default function AccountPage() {
 
       refreshWishlist();
     }
-  }
+  }, [refreshWishlist]);
 
   useEffect(() => {
-    loadMe().finally(() => setLoading(false));
-  }, []);
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        await loadMe();
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadMe]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();

@@ -11,6 +11,12 @@ import {
 const productInclude = {
   category: { select: { id: true, name: true, slug: true, group: true } },
   variants: { orderBy: { sizeValue: "asc" } },
+  supplierProducts: {
+    include: {
+      supplier: { select: { id: true, name: true } },
+      brand: { select: { id: true, name: true } },
+    },
+  },
 } as const;
 
 type RouteContext = {
@@ -68,6 +74,15 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         sizeUnit: v.sizeUnit,
         price: v.price !== null ? Number(v.price) : null,
         imageUrl: v.imageUrl,
+      })),
+      supplierProducts: product.supplierProducts.map((sp) => ({
+        id: sp.id,
+        rateListPrice: sp.rateListPrice !== null ? Number(sp.rateListPrice) : null,
+        discount: Number(sp.discount),
+        retailPrice: sp.retailPrice !== null ? Number(sp.retailPrice) : null,
+        notes: sp.notes,
+        supplier: sp.supplier,
+        brand: sp.brand,
       })),
     });
   } catch (error) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Loader2, Package, Phone, Receipt, RefreshCw, StickyNote } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -80,27 +80,34 @@ export default function OrdersPage() {
   const [updating, setUpdating] = useState(false);
   const [formError, setFormError] = useState("");
 
-  async function loadOrders(status = statusFilter, q = query) {
-    setLoading(true);
+  const loadOrders = useCallback(
+    async (status = statusFilter, q = query) => {
+      setLoading(true);
 
-    const params = new URLSearchParams();
-    if (status && status !== "ALL") params.set("status", status);
-    if (q) params.set("q", q);
+      const params = new URLSearchParams();
+      if (status && status !== "ALL") params.set("status", status);
+      if (q) params.set("q", q);
 
-    try {
-      const res = await fetch(`/api/orders${params.toString() ? `?${params.toString()}` : ""}`);
-      const data = await res.json();
-      if (data.success) setOrders(data.data);
-    } catch (error) {
-      console.error("Failed to load orders:", error);
-    } finally {
-      setLoading(false);
-    }
-  }
+      try {
+        const res = await fetch(`/api/orders${params.toString() ? `?${params.toString()}` : ""}`);
+        const data = await res.json();
+        if (data.success) setOrders(data.data);
+      } catch (error) {
+        console.error("Failed to load orders:", error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [statusFilter, query]
+  );
 
   useEffect(() => {
-    loadOrders();
+    void (async () => {
+      await loadOrders();
+    })();
+  }, [loadOrders]);
 
+  useEffect(() => {
     const idParam = new URLSearchParams(window.location.search).get("id");
     if (idParam) {
       fetch(`/api/orders/${idParam}`)
@@ -135,13 +142,11 @@ export default function OrdersPage() {
 
   function applyStatusFilter(status: string) {
     setStatusFilter(status);
-    loadOrders(status, query);
   }
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     setQuery(searchBox.trim());
-    loadOrders(statusFilter, searchBox.trim());
   }
 
   async function handleStatusUpdate(e: React.FormEvent) {

@@ -63,7 +63,9 @@ export function WishlistProvider({
   }, []);
 
   useEffect(() => {
-    refresh();
+    void (async () => {
+      await refresh();
+    })();
   }, [refresh]);
 
   const toggle = useCallback(

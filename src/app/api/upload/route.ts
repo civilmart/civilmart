@@ -9,15 +9,15 @@ const UPLOAD_PRESETS: Record<
   { folder: string; transformation: string }
 > = {
   product: {
-    folder: "naranscents",
+    folder: "civilmart",
     transformation: "w_1280,h_1280,c_fill,q_auto,f_auto",
   },
   hero: {
-    folder: "naranscents/hero",
+    folder: "civilmart/hero",
     transformation: "w_1920,h_720,c_fill,q_auto,f_auto",
   },
   category: {
-    folder: "naranscents/categories",
+    folder: "civilmart/categories",
     transformation: "w_640,h_360,c_fill,q_auto,f_auto",
   },
 };

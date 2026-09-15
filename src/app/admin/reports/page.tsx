@@ -76,7 +76,9 @@ export default function ReportsPage() {
   };
 
   useEffect(() => {
-    loadReport(activeType);
+    void (async () => {
+      await loadReport(activeType);
+    })();
   }, [activeType]);
 
   const downloadCsv = () => {
@@ -101,7 +103,7 @@ export default function ReportsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `naranscents-${activeType}-report-${new Date()
+    link.download = `civilmart-${activeType}-report-${new Date()
       .toISOString()
       .split("T")[0]}.csv`;
     document.body.appendChild(link);

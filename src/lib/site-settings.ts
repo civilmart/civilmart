@@ -12,6 +12,7 @@ export type HeroSlide = {
 
 export type SiteSettings = {
   siteName: string;
+  siteDescription: string;
   helpline: string;
   topbarMessages: string[];
   footerText: string;
@@ -24,6 +25,8 @@ export type SiteSettings = {
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   siteName: "Civil Mart",
+  siteDescription:
+    "Building materials, tools and hardware for every project — order online and pay on delivery.",
   helpline: "",
   topbarMessages: [
     "Welcome to Civil Mart",
@@ -69,6 +72,8 @@ export async function getSiteSettings(): Promise<SiteSettings> {
 
   return {
     siteName: map.get("siteName") || DEFAULT_SITE_SETTINGS.siteName,
+    siteDescription:
+      map.get("siteDescription") || DEFAULT_SITE_SETTINGS.siteDescription,
     helpline: map.get("helpline") ?? "",
     footerText: map.get("footerText") || DEFAULT_SITE_SETTINGS.footerText,
     topbarMessages: parseJsonArray(
@@ -96,6 +101,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
 
 export const SITE_SETTING_KEYS = [
   "siteName",
+  "siteDescription",
   "helpline",
   "topbarMessages",
   "footerText",

@@ -32,7 +32,6 @@ export default function SettingsPage() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -114,7 +113,6 @@ export default function SettingsPage() {
       }
 
       setSuccess("Password changed successfully");
-      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch {

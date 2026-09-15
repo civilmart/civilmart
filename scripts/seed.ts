@@ -197,6 +197,118 @@ async function main() {
   });
   console.log("Demo customer ready: demo / demo123");
 
+  // ---------------------------------------------------------------
+  // Demo suppliers + rate lists (so /admin/supplier-catalog has data)
+  // ---------------------------------------------------------------
+  const demoSupplierByEmail = new Map<string, string>(
+    (
+      await prisma.supplier.findMany({
+        select: { id: true, email: true },
+      })
+    ).flatMap((row) => (row.email ? [[row.email, row.id] as const] : []))
+  );
+
+  const DEMO_SUPPLIER_RATE_LISTS: Array<{
+    supplier: {
+      name: string;
+      contactName: string | null;
+      phone: string | null;
+      email: string;
+      address: string | null;
+      notes: string | null;
+    };
+    lines: Array<{
+      code: string;
+      rateListPrice: number;
+      discount: number;
+      retailPrice: number;
+      notes: string | null;
+    }>;
+  }> = [
+    {
+      supplier: {
+        name: "Muzaffar Hardware & Tools",
+        contactName: "Muzaffar Khan",
+        phone: "+92 321 5588990",
+        email: "muzaffar@civilmart.demo",
+        address: "Star City Tower, F-10 Markaz, Islamabad",
+        notes: "Primary supplier for cement, aggregates and steel.",
+      },
+      lines: [
+        { code: "CEM-OPC-001", rateListPrice: 1420, discount: 2, retailPrice: 1450, notes: null },
+        { code: "CEM-PPC-001", rateListPrice: 1350, discount: 2.5, retailPrice: 1380, notes: null },
+        { code: "AGG-010-001", rateListPrice: 168, discount: 3, retailPrice: 175, notes: "Per cft" },
+        { code: "AGG-020-001", rateListPrice: 190, discount: 3.5, retailPrice: 200, notes: "Per cft" },
+        { code: "SND-RAV-001", rateListPrice: 220, discount: 2.5, retailPrice: 230, notes: "Per cft" },
+        { code: "BRK-RED-001", rateListPrice: 58, discount: 4, retailPrice: 62, notes: "Per piece" },
+        { code: "BRK-FLA-001", rateListPrice: 61, discount: 4, retailPrice: 65, notes: "Per piece" },
+      ],
+    },
+    {
+      supplier: {
+        name: "Metro Steel Traders",
+        contactName: "Bilal Sheikh",
+        phone: "+92 300 4466221",
+        email: "metro@civilmart.demo",
+        address: "Sindh Industrial Trading Estate, Karachi",
+        notes: "Steel reinforcement (Deformed & Plain bars).",
+      },
+      lines: [
+        { code: "REB-001", rateListPrice: 265000, discount: 1.5, retailPrice: 275000, notes: "Per ton" },
+        { code: "STL-WIR-001", rateListPrice: 330, discount: 0.5, retailPrice: 345, notes: "Per kg" },
+      ],
+    },
+  ];
+
+  for (const entry of DEMO_SUPPLIER_RATE_LISTS) {
+    let supplierId = demoSupplierByEmail.get(entry.supplier.email);
+    if (!supplierId) {
+      const created = await prisma.supplier.create({
+        data: entry.supplier,
+        select: { id: true },
+      });
+      supplierId = created.id;
+      demoSupplierByEmail.set(entry.supplier.email, supplierId);
+    }
+
+    let linked = 0;
+    for (const line of entry.lines) {
+      const product = byCode.get(line.code);
+      if (!product) {
+        console.log(`  [catalog] skip rate line: ${line.code} (no product)`);
+        continue;
+      }
+      await prisma.supplierProduct.upsert({
+        where: {
+          supplierId_productId: {
+            supplierId,
+            productId: product.id,
+          },
+        },
+        update: {
+          rateListPrice: line.rateListPrice,
+          discount: line.discount,
+          retailPrice: line.retailPrice,
+          notes: line.notes,
+          active: true,
+        },
+        create: {
+          supplierId,
+          productId: product.id,
+          brandId: null,
+          rateListPrice: line.rateListPrice,
+          discount: line.discount,
+          retailPrice: line.retailPrice,
+          notes: line.notes,
+          active: true,
+        },
+      });
+      linked += 1;
+    }
+    console.log(
+      `  Supplier "${entry.supplier.name}": ${linked} rate list line(s) linked.`
+    );
+  }
   // Site settings defaults
   const settings: Record<string, string> = {
     siteName: "Civil Mart",

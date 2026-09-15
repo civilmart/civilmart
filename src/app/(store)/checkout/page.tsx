@@ -32,7 +32,6 @@ export default function CheckoutPage() {
   const { items, subtotal, clear } = useCart();
 
   const [customer, setCustomer] = useState<Customer | null>(null);
-  const [checkingAuth, setCheckingAuth] = useState(true);
 
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -92,7 +91,7 @@ export default function CheckoutPage() {
           setUsername(c.username);
         }
       })
-      .finally(() => setCheckingAuth(false));
+      .catch(() => {});
   }, []);
 
   const shipping = computeShipping(

@@ -2,7 +2,6 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Boxes, ChevronDown, Loader2, Search } from "lucide-react";
-import { formatMoney } from "@/lib/money";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -61,6 +60,13 @@ export default function InventoryPage() {
   const [ledgerProductId, setLedgerProductId] = useState<string | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[] | null>(null);
   const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [adjustingProductId, setAdjustingProductId] = useState<string | null>(null);
+  const [adjustType, setAdjustType] = useState<"ADJUSTMENT_IN" | "ADJUSTMENT_OUT">("ADJUSTMENT_IN");
+  const [adjustQty, setAdjustQty] = useState("");
+  const [adjustReason, setAdjustReason] = useState("");
+  const [adjustSaving, setAdjustSaving] = useState(false);
+  const [editingReorder, setEditingReorder] = useState<string | null>(null);
+  const [reorderValue, setReorderValue] = useState("");
 
   const loadInventory = async () => {
     setLoading(true);
@@ -113,6 +119,65 @@ export default function InventoryPage() {
       console.error("Failed to load ledger:", error);
     } finally {
       setLedgerLoading(false);
+    }
+  };
+
+  const submitAdjustment = async (productId: string, unit: string) => {
+    if (!adjustQty || Number(adjustQty) <= 0 || !adjustReason.trim()) return;
+
+    setAdjustSaving(true);
+
+    try {
+      const response = await fetch("/api/adjustments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId,
+          adjustmentType: adjustType,
+          quantity: Number(adjustQty),
+          unit,
+          reason: adjustReason.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setAdjustingProductId(null);
+        setAdjustQty("");
+        setAdjustReason("");
+        setAdjustType("ADJUSTMENT_IN");
+        loadInventory();
+      } else {
+        alert(data.error || "Failed to record adjustment.");
+      }
+    } catch {
+      alert("Failed to record adjustment.");
+    } finally {
+      setAdjustSaving(false);
+    }
+  };
+
+  const saveReorderLevel = async (productId: string) => {
+    const value = reorderValue.trim();
+    const newValue = value === "" ? null : Number(value);
+
+    if (value !== "" && (Number.isNaN(newValue) || (newValue ?? 0) < 0)) return;
+
+    try {
+      const response = await fetch(`/api/products/${productId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reorderLevel: newValue }),
+      });
+
+      if (response.ok) {
+        setEditingReorder(null);
+        setReorderValue("");
+        loadInventory();
+      }
+    } catch {
+      /* silent */
     }
   };
 
@@ -238,9 +303,39 @@ export default function InventoryPage() {
                         </td>
 
                         <td className="px-3 py-3 text-right text-muted-foreground">
-                          {row.reorderLevel !== null
-                            ? formatNumber(row.reorderLevel)
-                            : "—"}
+                          {editingReorder === row.id ? (
+                            <input
+                              type="number"
+                              className="w-20 rounded border px-2 py-1 text-right text-sm"
+                              value={reorderValue}
+                              onChange={(e) => setReorderValue(e.target.value)}
+                              onBlur={() => saveReorderLevel(row.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveReorderLevel(row.id);
+                                if (e.key === "Escape") {
+                                  setEditingReorder(null);
+                                  setReorderValue("");
+                                }
+                              }}
+                              autoFocus
+                              min={0}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              className="cursor-pointer rounded px-2 py-1 hover:bg-muted"
+                              onClick={() => {
+                                setEditingReorder(row.id);
+                                setReorderValue(
+                                  row.reorderLevel !== null ? String(row.reorderLevel) : ""
+                                );
+                              }}
+                            >
+                              {row.reorderLevel !== null
+                                ? formatNumber(row.reorderLevel)
+                                : "—"}
+                            </button>
+                          )}
                         </td>
 
                         <td className="px-3 py-3">
@@ -253,20 +348,101 @@ export default function InventoryPage() {
                         </td>
 
                         <td className="px-3 py-3">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleLedger(row.id)}
-                          >
-                            <ChevronDown
-                              className={`mr-1 h-4 w-4 transition-transform ${
-                                ledgerProductId === row.id ? "rotate-180" : ""
-                              }`}
-                            />
-                            Ledger
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (adjustingProductId === row.id) {
+                                  setAdjustingProductId(null);
+                                } else {
+                                  setAdjustingProductId(row.id);
+                                  setAdjustType("ADJUSTMENT_IN");
+                                  setAdjustQty("");
+                                  setAdjustReason("");
+                                }
+                              }}
+                            >
+                              Adjust
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleLedger(row.id)}
+                            >
+                              <ChevronDown
+                                className={`mr-1 h-4 w-4 transition-transform ${
+                                  ledgerProductId === row.id ? "rotate-180" : ""
+                                }`}
+                              />
+                              Ledger
+                            </Button>
+                          </div>
                         </td>
                       </tr>
+
+                      {adjustingProductId === row.id && (
+                        <tr key={`${row.id}-adjust`}>
+                          <td colSpan={10} className="bg-muted/30 px-4 py-3">
+                            <div className="flex flex-wrap items-end gap-3">
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                                  Type
+                                </label>
+                                <select
+                                  className="flex h-9 rounded-md border border-input bg-background px-3 text-sm"
+                                  value={adjustType}
+                                  onChange={(e) =>
+                                    setAdjustType(
+                                      e.target.value as "ADJUSTMENT_IN" | "ADJUSTMENT_OUT"
+                                    )
+                                  }
+                                >
+                                  <option value="ADJUSTMENT_IN">Stock In</option>
+                                  <option value="ADJUSTMENT_OUT">Stock Out</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                                  Quantity ({row.unit})
+                                </label>
+                                <input
+                                  type="number"
+                                  className="flex h-9 w-24 rounded-md border border-input bg-background px-3 text-sm"
+                                  value={adjustQty}
+                                  onChange={(e) => setAdjustQty(e.target.value)}
+                                  min={0}
+                                  placeholder="0"
+                                />
+                              </div>
+                              <div className="min-w-[200px]">
+                                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                                  Reason
+                                </label>
+                                <input
+                                  type="text"
+                                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                  value={adjustReason}
+                                  onChange={(e) => setAdjustReason(e.target.value)}
+                                  placeholder="Why this adjustment?"
+                                />
+                              </div>
+                              <Button
+                                size="sm"
+                                disabled={
+                                  adjustSaving ||
+                                  !adjustQty ||
+                                  Number(adjustQty) <= 0 ||
+                                  !adjustReason.trim()
+                                }
+                                onClick={() => submitAdjustment(row.id, row.unit)}
+                              >
+                                {adjustSaving ? "Saving..." : "Save"}
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
 
                       {ledgerProductId === row.id && (
                         <tr key={`${row.id}-ledger`}>

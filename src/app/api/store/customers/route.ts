@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { CUSTOMER_COOKIE } from "@/lib/session";
 import { getCustomerUser } from "@/lib/customer";
 

@@ -53,6 +53,7 @@ export default function SiteSettingsPage() {
   const [success, setSuccess] = useState("");
 
   const [siteName, setSiteName] = useState("");
+  const [siteDescription, setSiteDescription] = useState("");
   const [helpline, setHelpline] = useState("");
   const [footerText, setFooterText] = useState("");
   const [topbarMessages, setTopbarMessages] = useState("");
@@ -79,6 +80,7 @@ export default function SiteSettingsPage() {
       })
       .then((settings) => {
         setSiteName(settings.siteName);
+        setSiteDescription(settings.siteDescription);
         setHelpline(settings.helpline);
         setFooterText(settings.footerText);
         setTopbarMessages(settings.topbarMessages.join("\n"));
@@ -176,7 +178,8 @@ export default function SiteSettingsPage() {
         .filter(Boolean);
 
       const body = {
-        siteName: siteName.trim() || "NaranScents",
+        siteName: siteName.trim() || "Civil Mart",
+        siteDescription: siteDescription.trim(),
         helpline: helpline.trim(),
         footerText: footerText.trim(),
         topbarMessages: messages,
@@ -266,10 +269,23 @@ export default function SiteSettingsPage() {
               <Input
                 value={siteName}
                 onChange={(e) => setSiteName(e.target.value)}
-                placeholder="NaranScents"
+                placeholder="Civil Mart"
               />
               <p className="text-xs text-muted-foreground">
                 Shown in the header, footer and copyright line.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Meta Description</Label>
+              <Textarea
+                value={siteDescription}
+                onChange={(e) => setSiteDescription(e.target.value)}
+                placeholder="Building materials, tools and hardware for every project."
+                className="min-h-16"
+              />
+              <p className="text-xs text-muted-foreground">
+                Used in the browser tab and search results.
               </p>
             </div>
 
@@ -290,7 +306,7 @@ export default function SiteSettingsPage() {
               <Input
                 value={footerText}
                 onChange={(e) => setFooterText(e.target.value)}
-                placeholder="Fresh, long-lasting fragrances at honest prices."
+                placeholder="Quality building materials and hardware for every project."
               />
             </div>
 
@@ -492,7 +508,7 @@ export default function SiteSettingsPage() {
                       onChange={(e) =>
                         updateSlide(slide.id, "heading", e.target.value)
                       }
-                      placeholder="New fragrances in store"
+                      placeholder="New arrivals in store"
                     />
                   </div>
 

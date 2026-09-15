@@ -6,10 +6,12 @@ import {
   ChevronDown,
   ClipboardList,
   PackageCheck,
+  Printer,
   Plus,
   Search,
   Trash2,
 } from "lucide-react";
+import { BarcodePrintArea } from "@/components/barcode-label";
 import { formatMoney } from "@/lib/money";
 import { PRODUCT_UNITS } from "@/lib/catalog";
 
@@ -80,8 +82,8 @@ type POItem = {
   unit: string;
   estimatedCostPerUnit: number | null;
   notes: string | null;
-  product: { id: string; code: string; name: string; unit: string };
-  variant: { id: string; sku: string; name: string } | null;
+  product: { id: string; code: string; name: string; unit: string; barcode: string | null };
+  variant: { id: string; sku: string; name: string; barcode: string | null } | null;
 };
 
 type PurchaseOrder = {
@@ -175,6 +177,7 @@ export default function PurchaseOrdersPage() {
 
   const [receivePO, setReceivePO] = useState<PurchaseOrder | null>(null);
   const [receiveItems, setReceiveItems] = useState<ReceiveFormItem[]>([]);
+  const [printingPOId, setPrintingPOId] = useState<string | null>(null);
 
   async function loadData() {
     try {
@@ -201,8 +204,23 @@ export default function PurchaseOrdersPage() {
   }
 
   useEffect(() => {
-    loadData();
+    void (async () => {
+      await loadData();
+    })();
   }, []);
+
+  function startPrintPO(order: PurchaseOrder) {
+    setPrintingPOId(order.id);
+  }
+
+  useEffect(() => {
+    if (!printingPOId) return;
+    const timer = setTimeout(() => {
+      window.print();
+      setPrintingPOId(null);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [printingPOId]);
 
   function resetForm() {
     setPoNumber(`PO-${new Date().getTime()}`);
@@ -830,16 +848,29 @@ export default function PurchaseOrdersPage() {
                             </Button>
                           </td>
                           <td className="px-3 py-3">
-                            {hasRemaining &&
-                              order.status !== "CANCELLED" &&
-                              order.status !== "RECEIVED" && (
+                            <div className="flex items-center gap-1">
+                              {order.items.some((i) => Number(i.receivedQuantity || 0) > 0) && (
                                 <Button
-                                  onClick={() => openReceiveDialog(order)}
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => startPrintPO(order)}
                                 >
-                                  <PackageCheck className="mr-2 h-4 w-4" />
-                                  Receive
+                                  <Printer className="mr-1 h-3 w-3" />
+                                  Print Barcodes
                                 </Button>
                               )}
+                              {hasRemaining &&
+                                order.status !== "CANCELLED" &&
+                                order.status !== "RECEIVED" && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => openReceiveDialog(order)}
+                                  >
+                                    <PackageCheck className="mr-1 h-3 w-3" />
+                                    Receive
+                                  </Button>
+                                )}
+                            </div>
                           </td>
                         </tr>
 
@@ -1068,6 +1099,29 @@ export default function PurchaseOrdersPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {printingPOId && (
+        <BarcodePrintArea
+          id="po-print-area"
+          items={
+            purchaseOrders
+              .find((o) => o.id === printingPOId)
+              ?.items.flatMap((item) => {
+                const received = Number(item.receivedQuantity || 0);
+                if (received <= 0) return [];
+                const barcode = item.variant?.barcode ?? item.product.barcode;
+                if (!barcode) return [];
+                return Array.from({ length: received }, (_, i) => ({
+                  key: `${item.id}-${i}`,
+                  name: item.product.name,
+                  code: item.product.code,
+                  barcode,
+                  brand: null,
+                }));
+              }) ?? []
+          }
+        />
+      )}
     </div>
   );
 }

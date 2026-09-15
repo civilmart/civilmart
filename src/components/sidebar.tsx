@@ -8,7 +8,6 @@ import {
   Boxes,
   ClipboardList,
   FileText,
-  FolderTree,
   LayoutDashboard,
   LayoutGrid,
   LogOut,
@@ -17,8 +16,6 @@ import {
   Receipt,
   Settings,
   ShoppingCart,
-  SlidersHorizontal,
-  Truck,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -66,9 +63,9 @@ const menuSections: MenuSection[] = [
         href: "/admin/barcodes",
       },
       {
-        name: "Categories",
-        icon: FolderTree,
-        href: "/admin/categories",
+        name: "Catalog",
+        icon: Package,
+        href: "/admin/supplier-catalog",
       },
     ],
   },
@@ -80,21 +77,11 @@ const menuSections: MenuSection[] = [
         icon: Boxes,
         href: "/admin/inventory",
       },
-      {
-        name: "Adjustments",
-        icon: SlidersHorizontal,
-        href: "/admin/adjustments",
-      },
     ],
   },
   {
     title: "PURCHASING",
     items: [
-      {
-        name: "Suppliers",
-        icon: Truck,
-        href: "/admin/suppliers",
-      },
       {
         name: "Purchases",
         icon: ShoppingCart,
@@ -173,6 +160,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [hasCategories, setHasCategories] = useState(false);
 
   useEffect(() => {
     if (pathname === "/admin/login") return;
@@ -181,6 +169,14 @@ export function Sidebar() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.success) setUser(d.data);
+      })
+      .catch(() => {});
+
+    fetch("/api/categories")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        const cats = Array.isArray(data) ? data : (data?.data ?? []);
+        setHasCategories(cats.length > 0);
       })
       .catch(() => {});
   }, [pathname]);
@@ -196,6 +192,23 @@ export function Sidebar() {
 
   const isAdmin = user ? isAdminRole(user.role) : false;
 
+  const navSections: MenuSection[] = menuSections.map((section) => {
+    if (section.title === "CATALOGUE" && hasCategories) {
+      return {
+        ...section,
+        items: [
+          ...section.items,
+          {
+            name: "Categories",
+            icon: LayoutGrid,
+            href: "/admin/categories",
+          },
+        ],
+      };
+    }
+    return section;
+  });
+
   return (
     <aside className="flex h-screen w-64 flex-col border-r bg-background">
       <div className="flex h-16 items-center border-b px-6">
@@ -209,7 +222,7 @@ export function Sidebar() {
 
       <nav className="flex-1 overflow-y-auto p-4">
         <div className="space-y-6">
-          {menuSections.map((section) => (
+          {navSections.map((section) => (
             <div key={section.title || "main"}>
               {section.title && (
                 <p className="mb-2 px-3 text-[11px] font-semibold tracking-wider text-muted-foreground">

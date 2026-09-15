@@ -71,9 +71,12 @@ function TrackPageInner() {
   const [error, setError] = useState("");
   const [touched, setTouched] = useState(false);
 
-  useEffect(() => {
+useEffect(() => {
     const orderParam = searchParams.get("order");
-    if (orderParam) setOrderNumber(orderParam);
+    if (orderParam) {
+      const timer = setTimeout(() => setOrderNumber(orderParam), 0);
+      return () => clearTimeout(timer);
+    }
   }, [searchParams]);
 
   async function handleTrack(e: React.FormEvent) {

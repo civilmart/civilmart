@@ -43,34 +43,30 @@ function parseQuantity(value: number): number {
   return Number(value.toFixed(4));
 }
 
+function readCartStorage(): CartItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as CartItem[];
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // ignore corrupted cart
+  }
+  return [];
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+  const [items, setItems] = useState<CartItem[]>(readCartStorage);
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as CartItem[];
-        if (Array.isArray(parsed)) {
-          setItems(parsed);
-        }
-      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     } catch {
-      // ignore corrupted cart
+      // storage unavailable
     }
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (hydrated) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-      } catch {
-        // storage unavailable
-      }
-    }
-  }, [items, hydrated]);
+  }, [items]);
 
   const addItem = useCallback(
     (item: Omit<CartItem, "quantity">, qty = 1) => {

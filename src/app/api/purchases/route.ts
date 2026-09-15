@@ -138,7 +138,7 @@ export async function POST(request: Request) {
         );
       }
 
-      let variantIdResolved = variantId || null;
+      const variantIdResolved = variantId || null;
 
       if (variantIdResolved) {
         const variant = await prisma.productVariant.findUnique({

@@ -57,7 +57,10 @@ function ProductsPageInner() {
   const group = searchParams.get("group")?.trim() ?? null;
   const subcategory = searchParams.get("subcategory")?.trim() ?? null;
   const brandsKey = searchParams.getAll("brand").filter(Boolean).join("\u0000");
-  const brands = brandsKey ? brandsKey.split("\u0000") : [];
+  const brands = useMemo(
+    () => (brandsKey ? brandsKey.split("\u0000") : []),
+    [brandsKey]
+  );
   const priceMin = searchParams.get("priceMin") ?? "";
   const priceMax = searchParams.get("priceMax") ?? "";
   const inStockOnly = searchParams.get("inStock") === "true";
@@ -162,7 +165,7 @@ function ProductsPageInner() {
     return () => {
       cancelled = true;
     };
-  }, [search, category, group, subcategory, brandsKey, priceMin, priceMax, inStockOnly, sort, page]);
+  }, [search, category, group, subcategory, brands, priceMin, priceMax, inStockOnly, sort, page]);
 
   const filterState: CatalogFilterState = useMemo(
     () => ({
@@ -172,7 +175,7 @@ function ProductsPageInner() {
       priceMax,
       inStockOnly,
     }),
-    [category, brandsKey, priceMin, priceMax, inStockOnly]
+    [category, brands, priceMin, priceMax, inStockOnly]
   );
 
   function buildParams(patch: Record<string, string | string[] | null>) {

@@ -81,6 +81,7 @@ const MODULES: Module[] = [
     shortcuts: [
       { label: "Products", href: "/admin/products" },
       { label: "Categories", href: "/admin/categories" },
+      { label: "Bulk action", href: "/admin/catalogue" },
     ],
   },
   {

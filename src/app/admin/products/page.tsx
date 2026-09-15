@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
+import Image from "next/image";
 import { Package, PackageX, Pencil, Plus, Search, Star, Trash2, Wand2 } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import { PRODUCT_UNITS } from "@/lib/catalog";
@@ -147,12 +148,16 @@ function ProductImage({
   }
 
   return (
-    <img
-      src={src}
-      alt=""
-      className={`rounded-md border object-cover ${className}`}
-      onError={() => setFailed(true)}
-    />
+    <div className={`relative overflow-hidden ${className}`}>
+      <Image
+        src={src}
+        alt=""
+        fill
+        sizes="160px"
+        className="rounded-md object-cover"
+        onError={() => setFailed(true)}
+      />
+    </div>
   );
 }
 

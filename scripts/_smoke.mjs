@@ -152,10 +152,10 @@ const placed = await (
       customer: {
         name: "Administrator",
         username: "admin",
-        email: "admin@naranscents.com",
+        email: "admin@civilmart.com",
         phone: "03221234567",
-        address: "Administrator House, Naran",
-        city: "Naran",
+        address: "Civil Mart Head Office, Main Bazaar",
+        city: "Lahore",
       },
       items: [{ variantId: adminVariant.id, quantity: 1 }],
       shipping: 0,
@@ -165,9 +165,6 @@ const placed = await (
 if (!placed.success) throw new Error("admin order failed: " + JSON.stringify(placed));
 console.log("admin placed order:", placed.data.order.orderNumber, placed.data.order.status);
 
-const stroked = await fetch(`${BASE}/api/users?x=1`, { headers: { cookie: await login() } });
-const users = await stroked.json();
-const adminRecord = users.data.find((u) => u.username === "admin");
 const adminOrders = await (await fetch(`${BASE}/api/store/orders`, { headers: { cookie: adminCustomer } })).json();
 if (!adminOrders.data.some((o) => o.orderNumber === placed.data.order.orderNumber)) {
   throw new Error("admin store order not visible in own history");
