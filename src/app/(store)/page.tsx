@@ -1,6 +1,3 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -8,7 +5,6 @@ import {
   ArrowUpRight,
   Boxes,
   LayoutGrid,
-  Loader2,
   ShieldCheck,
   Truck,
 } from "lucide-react";
@@ -16,79 +12,59 @@ import { Carousel } from "@/components/store/carousel";
 import { ProductCard } from "@/components/store/product-card";
 import { StoreAdBanners } from "@/components/store/ad-banners";
 import { type StoreProduct } from "@/lib/store-front";
-import { type HeroSlide, type SiteSettings } from "@/lib/site-settings";
+import { type HeroSlide, type SiteSettings } from "@/lib/site-settings.types";
 import { type StoreHomeData } from "@/app/api/store/home/route";
+import {
+  getFeaturedProducts,
+  getLatestProducts,
+  getHomeData,
+  getSiteSettingsData,
+} from "@/lib/store-data";
 
-const FALLBACK_HERO_SLIDES = [
+const FALLBACK_HERO_SLIDES: HeroSlide[] = [
   {
-    title: "Building materials & hardware",
-    subtitle:
+    id: "fallback-1",
+    imageUrl: "",
+    heading: "Building materials & hardware",
+    subheading:
       "Cement, steel, timber, tiles, plumbing and tools — everything for your project, at trade-friendly prices.",
     cta: "Browse catalogue",
     href: "/products",
+    active: true,
   },
   {
-    title: "Cash on Delivery",
-    subtitle:
+    id: "fallback-2",
+    imageUrl: "",
+    heading: "Cash on Delivery",
+    subheading:
       "Order online and pay in cash when your order arrives at your site or doorstep.",
     cta: "How it works",
     href: "/track",
+    active: true,
   },
   {
-    title: "Contractors & bulk orders",
-    subtitle:
+    id: "fallback-3",
+    imageUrl: "",
+    heading: "Contractors & bulk orders",
+    subheading:
       "Need project quantities? Contact our desk for bulk pricing and scheduled deliveries.",
     cta: "View all products",
     href: "/products",
+    active: true,
   },
 ];
 
-export default function StoreHomePage() {
-  const [featured, setFeatured] = useState<StoreProduct[]>([]);
-  const [latest, setLatest] = useState<StoreProduct[]>([]);
-  const [homeData, setHomeData] = useState<StoreHomeData | null>(null);
-  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
-  const [loading, setLoading] = useState(true);
+export default async function StoreHomePage() {
+  const settings = await getSiteSettingsData();
+  const [featured, latest, homeData] = await Promise.all([
+    getFeaturedProducts(settings.featuredProductCount ?? 4),
+    getLatestProducts(8),
+    getHomeData(),
+  ]);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [featuredRes, latestRes, homeRes, settingsRes] =
-          await Promise.all([
-            fetch("/api/store/products?featured=true&limit=8"),
-            fetch("/api/store/products?limit=8"),
-            fetch("/api/store/home"),
-            fetch("/api/store/settings"),
-          ]);
-
-        const [featuredData, latestData, homeDataRes, settingsData] =
-          await Promise.all([
-            featuredRes.json(),
-            latestRes.json(),
-            homeRes.json(),
-            settingsRes.json(),
-          ]);
-
-        if (featuredData.success) setFeatured(featuredData.data);
-        if (latestData.success) setLatest(latestData.data);
-        if (homeDataRes.success) setHomeData(homeDataRes.data);
-        if (settingsData.success) {
-          const settings = settingsData.data as SiteSettings;
-          setHeroSlides(
-            settings.heroSlides.filter(
-              (slide) => slide.active && slide.imageUrl
-            )
-          );
-        }
-      } catch (error) {
-        console.error("Failed to load storefront:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    load();
-  }, []);
+  const heroSlides = settings.heroSlides.filter(
+    (slide) => slide.active && slide.imageUrl
+  );
 
   return (
     <div className="space-y-10">
@@ -101,7 +77,7 @@ export default function StoreHomePage() {
             ? heroSlides.map((slide, index) => (
                 <div
                   key={slide.id}
-                  className="relative flex min-h-[320px] items-center bg-slate-900 px-6 py-10 sm:min-h-[380px] sm:px-12"
+                  className="relative flex min-h-[200px] items-center bg-slate-900 px-6 py-10 sm:min-h-[280px] sm:px-12"
                 >
                   <Image
                     src={slide.imageUrl}
@@ -109,7 +85,7 @@ export default function StoreHomePage() {
                     fill
                     priority={index === 0}
                     sizes="100vw"
-                    className="object-cover"
+                    className="object-contain object-right"
                   />
 
                   <div className="absolute inset-0 bg-gradient-to-r from-slate-950/75 via-slate-950/40 to-slate-950/10" />
@@ -143,8 +119,8 @@ export default function StoreHomePage() {
               ))
             : FALLBACK_HERO_SLIDES.map((slide) => (
                 <div
-                  key={slide.title}
-                  className="flex min-h-[320px] items-center bg-slate-900 px-6 py-10 sm:min-h-[380px] sm:px-12"
+                  key={slide.id}
+                  className="flex min-h-[200px] items-center bg-slate-900 px-6 py-10 sm:min-h-[280px] sm:px-12"
                 >
                   <div className="max-w-2xl">
                     <span className="inline-block rounded-sm bg-amber-500 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-slate-950">
@@ -152,11 +128,11 @@ export default function StoreHomePage() {
                     </span>
 
                     <h2 className="mt-3 text-3xl font-bold leading-tight text-white sm:text-4xl">
-                      {slide.title}
+                      {slide.heading}
                     </h2>
 
                     <p className="mt-3 text-sm text-slate-300 sm:text-base">
-                      {slide.subtitle}
+                      {slide.subheading}
                     </p>
 
                     <Link
@@ -179,7 +155,7 @@ export default function StoreHomePage() {
           <h2 className="text-lg font-bold tracking-tight">Featured products</h2>
         </div>
 
-        <ProductShelf loading={loading} products={featured} />
+        <ProductShelf products={featured} />
       </section>
 
       {/* Featured promo tiles */}
@@ -194,12 +170,10 @@ export default function StoreHomePage() {
               <h2 className="text-lg font-bold tracking-tight">
                 What are you looking for?
               </h2>
-              {!loading && homeData && (
-                <p className="text-xs text-muted-foreground">
-                  {homeData.productCount} products across{" "}
-                  {homeData.mainCategories.length} categories
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground">
+                {homeData.productCount} products across{" "}
+                {homeData.mainCategories.length} categories
+              </p>
             </div>
           </div>
 
@@ -211,13 +185,7 @@ export default function StoreHomePage() {
           </Link>
         </div>
 
-        {loading ? (
-          <div className="flex h-48 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <MainCategoryGrid tiles={homeData?.mainCategories ?? []} />
-        )}
+        <MainCategoryGrid tiles={homeData.mainCategories} />
       </section>
 
       {/* Home banners */}
@@ -235,8 +203,38 @@ export default function StoreHomePage() {
           </Link>
         </div>
 
-        <ProductShelf loading={loading} products={latest} />
+        <ProductShelf products={latest} />
       </section>
+
+      {/* Footer CTA */}
+      {settings.footerCta.heading && (
+        <section className="rounded-xl border bg-slate-900 p-8 text-center text-white">
+          <h2 className="text-lg font-bold">{settings.footerCta.heading}</h2>
+          {settings.footerCta.description && (
+            <p className="mt-2 text-sm text-slate-300">
+              {settings.footerCta.description}
+            </p>
+          )}
+          <div className="mt-4 flex items-center justify-center gap-3">
+            {settings.footerCta.buttonText && (
+              <a
+                href={settings.footerCta.buttonHref}
+                className="inline-flex items-center gap-2 rounded-md bg-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-400"
+              >
+                {settings.footerCta.buttonText}
+              </a>
+            )}
+            {settings.footerCta.secondaryText && (
+              <Link
+                href={settings.footerCta.secondaryHref}
+                className="inline-flex items-center gap-2 rounded-md border border-slate-600 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-amber-400 hover:text-white"
+              >
+                {settings.footerCta.secondaryText}
+              </Link>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -256,14 +254,14 @@ function MainCategoryGrid({ tiles }: { tiles: StoreHomeData["mainCategories"] })
         <Link
           key={tile.key}
           href={tile.href}
-          className="group relative flex h-32 flex-col justify-end overflow-hidden rounded-xl border bg-slate-900 p-4 transition hover:shadow-md sm:h-36"
+          className="group relative flex h-28 flex-col justify-end overflow-hidden rounded-xl border bg-slate-900 p-4 transition hover:shadow-md sm:h-32"
         >
           {tile.imageUrl ? (
             <Image
               src={tile.imageUrl}
               alt={tile.name}
               fill
-              sizes="(max-width: 640px) 50vw, 25vw"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className="object-cover transition duration-300 group-hover:scale-105"
             />
           ) : null}
@@ -316,7 +314,6 @@ function PromoTiles({ products }: { products: StoreProduct[] }) {
             {featuredProduct.name}
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            {featuredProduct.brand || "Civil Mart"} ·{" "}
             {featuredProduct.unit.toLowerCase()}
           </p>
           <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-amber-700">
@@ -341,21 +338,7 @@ function PromoTiles({ products }: { products: StoreProduct[] }) {
   );
 }
 
-function ProductShelf({
-  loading,
-  products,
-}: {
-  loading: boolean;
-  products: StoreProduct[];
-}) {
-  if (loading) {
-    return (
-      <div className="flex h-48 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
+function ProductShelf({ products }: { products: StoreProduct[] }) {
   if (products.length === 0) {
     return (
       <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">

@@ -1,60 +1,18 @@
 import { prisma } from "@/lib/prisma";
+import {
+  DEFAULT_SITE_SETTINGS,
+  type HeroSlide,
+  type SiteSettings,
+  parseJsonArray,
+} from "@/lib/site-settings.types";
 
-export type HeroSlide = {
-  id: string;
-  imageUrl: string;
-  heading: string;
-  subheading: string;
-  cta: string;
-  href: string;
-  active: boolean;
-};
-
-export type SiteSettings = {
-  siteName: string;
-  siteDescription: string;
-  helpline: string;
-  topbarMessages: string[];
-  footerText: string;
-  heroSlides: HeroSlide[];
-  currency: string;
-  shippingFee: number;
-  freeShippingThreshold: number;
-  codNote: string;
-};
-
-export const DEFAULT_SITE_SETTINGS: SiteSettings = {
-  siteName: "Civil Mart",
-  siteDescription:
-    "Building materials, tools and hardware for every project — order online and pay on delivery.",
-  helpline: "",
-  topbarMessages: [
-    "Welcome to Civil Mart",
-    "Building materials, tools and hardware for every project",
-    "Cash on Delivery — pay when your order arrives",
-    "Bulk & contractor orders welcome",
-  ],
-  footerText: "Quality building materials and hardware for every project.",
-  heroSlides: [],
-  currency: "Rs",
-  shippingFee: 0,
-  freeShippingThreshold: 0,
-  codNote: "Order online and pay in cash when your order arrives.",
-};
-
-export function parseJsonArray(
-  value: string | undefined,
-  fallback: unknown[]
-): unknown[] {
-  if (!value) return fallback;
-
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : fallback;
-  } catch {
-    return fallback;
-  }
-}
+export {
+  DEFAULT_SITE_SETTINGS,
+  SITE_SETTING_KEYS,
+  type FooterCta,
+  type HeroSlide,
+  type SiteSettings,
+} from "@/lib/site-settings.types";
 
 function readNumber(
   map: Map<string, string>,
@@ -96,18 +54,20 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       DEFAULT_SITE_SETTINGS.freeShippingThreshold
     ),
     codNote: map.get("codNote") || DEFAULT_SITE_SETTINGS.codNote,
+    featuredProductCount: readNumber(
+      map,
+      "featuredProductCount",
+      DEFAULT_SITE_SETTINGS.featuredProductCount
+    ),
+    footerCta: (() => {
+      const raw = map.get("footerCta");
+      if (!raw) return DEFAULT_SITE_SETTINGS.footerCta;
+      try {
+        const parsed = JSON.parse(raw);
+        return { ...DEFAULT_SITE_SETTINGS.footerCta, ...parsed };
+      } catch {
+        return DEFAULT_SITE_SETTINGS.footerCta;
+      }
+    })(),
   };
 }
-
-export const SITE_SETTING_KEYS = [
-  "siteName",
-  "siteDescription",
-  "helpline",
-  "topbarMessages",
-  "footerText",
-  "heroSlides",
-  "currency",
-  "shippingFee",
-  "freeShippingThreshold",
-  "codNote",
-] as const;

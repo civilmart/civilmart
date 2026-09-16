@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
+  Code,
   ImagePlus,
   Megaphone,
   Pencil,
   Plus,
   Trash2,
+  Type,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,7 +27,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AD_SLOTS, AD_SLOT_LABELS, type AdSlot } from "@/lib/ads";
+import {
+  AD_SIZES,
+  AD_SLOTS,
+  AD_SLOT_LABELS,
+  type AdContentType,
+  type AdSlot,
+  type AdSize,
+} from "@/lib/ads";
+import { toast } from "sonner";
 
 type AdItem = {
   id: string;
@@ -34,6 +44,9 @@ type AdItem = {
   subtitle: string | null;
   imageUrl: string | null;
   href: string | null;
+  contentType: string;
+  embedCode: string | null;
+  adSize: string;
   active: boolean;
   sortOrder: number;
 };
@@ -45,6 +58,9 @@ type AdForm = {
   subtitle: string;
   href: string;
   imageUrl: string;
+  contentType: AdContentType;
+  embedCode: string;
+  adSize: AdSize;
   sortOrder: string;
   active: boolean;
 };
@@ -56,6 +72,9 @@ const emptyForm: AdForm = {
   subtitle: "",
   href: "",
   imageUrl: "",
+  contentType: "IMAGE",
+  embedCode: "",
+  adSize: "FULL_WIDTH",
   sortOrder: "0",
   active: true,
 };
@@ -63,6 +82,12 @@ const emptyForm: AdForm = {
 function slotLabel(value: string): string {
   return AD_SLOT_LABELS[value as AdSlot] ?? value;
 }
+
+const CONTENT_TABS: { value: AdContentType; label: string; icon: typeof Megaphone }[] = [
+  { value: "IMAGE", label: "Image", icon: ImagePlus },
+  { value: "TEXT", label: "Text", icon: Type },
+  { value: "EMBED", label: "Embed Code", icon: Code },
+];
 
 export default function AdsPage() {
   const [ads, setAds] = useState<AdItem[]>([]);
@@ -77,27 +102,19 @@ export default function AdsPage() {
   async function fetchAdsList(): Promise<AdItem[]> {
     const response = await fetch("/api/ads");
     const data = await response.json();
-
     return response.ok && data.success ? (data.data as AdItem[]) : [];
   }
 
   useEffect(() => {
     let cancelled = false;
-
     async function init() {
       const list = await fetchAdsList();
-
       if (cancelled) return;
-
       setAds(list);
       setLoading(false);
     }
-
     init();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   function startCreate() {
@@ -113,6 +130,9 @@ export default function AdsPage() {
       subtitle: ad.subtitle ?? "",
       href: ad.href ?? "",
       imageUrl: ad.imageUrl ?? "",
+      contentType: (["IMAGE", "TEXT", "EMBED"].includes(ad.contentType) ? ad.contentType : "IMAGE") as AdContentType,
+      embedCode: ad.embedCode ?? "",
+      adSize: (AD_SIZES.some((s) => s.value === ad.adSize) ? ad.adSize : "FULL_WIDTH") as AdSize,
       sortOrder: String(ad.sortOrder),
       active: ad.active,
     });
@@ -121,7 +141,6 @@ export default function AdsPage() {
 
   function uploadFile(onUrl: (url: string) => void) {
     const file = imageInput.current?.files?.[0];
-
     if (!file) return;
 
     const formData = new FormData();
@@ -130,48 +149,39 @@ export default function AdsPage() {
 
     setUploading(true);
 
-    fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    })
+    fetch("/api/upload", { method: "POST", body: formData })
       .then(async (response) => {
         const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "Upload failed.");
-        }
-
+        if (!response.ok) throw new Error(data.error || "Upload failed.");
         return data.url as string;
       })
       .then((url) => onUrl(url))
       .catch((error) => {
         console.error(error);
-        alert(error.message || "Upload failed.");
+        toast.error(error.message || "Upload failed.");
       })
       .finally(() => {
         setUploading(false);
-
-        if (imageInput.current) {
-          imageInput.current.value = "";
-        }
+        if (imageInput.current) imageInput.current.value = "";
       });
   }
 
   async function saveAd() {
     if (!form.title.trim()) {
-      alert("Title is required.");
+      toast.error("Title is required.");
       return;
     }
-
     setSaving(true);
-
     try {
       const payload = {
         slot: form.slot,
         title: form.title.trim(),
         subtitle: form.subtitle.trim() || null,
         href: form.href.trim() || null,
-        imageUrl: form.imageUrl.trim() || null,
+        imageUrl: form.contentType === "IMAGE" ? form.imageUrl.trim() || null : null,
+        contentType: form.contentType,
+        embedCode: form.contentType === "EMBED" ? form.embedCode.trim() || null : null,
+        adSize: form.adSize,
         sortOrder: Number(form.sortOrder) || 0,
         active: form.active,
       };
@@ -186,18 +196,16 @@ export default function AdsPage() {
       );
 
       const data = await response.json();
-
       if (!response.ok) {
-        alert(data.error || "Failed to save ad.");
+        toast.error(data.error || "Failed to save ad.");
         return;
       }
-
       setShowForm(false);
       const list = await fetchAdsList();
       setAds(list);
     } catch (error) {
       console.error(error);
-      alert("Failed to save ad.");
+      toast.error("Failed to save ad.");
     } finally {
       setSaving(false);
     }
@@ -205,21 +213,17 @@ export default function AdsPage() {
 
   async function deleteAd(id: string) {
     if (!window.confirm("Delete this ad permanently?")) return;
-
     setDeletingId(id);
-
     try {
       const response = await fetch(`/api/ads/${id}`, { method: "DELETE" });
-
       if (!response.ok) {
-        alert("Failed to delete ad.");
+        toast.error("Failed to delete ad.");
         return;
       }
-
       setAds((current) => current.filter((ad) => ad.id !== id));
     } catch (error) {
       console.error(error);
-      alert("Failed to delete ad.");
+      toast.error("Failed to delete ad.");
     } finally {
       setDeletingId(null);
     }
@@ -231,23 +235,27 @@ export default function AdsPage() {
         item.id === ad.id ? { ...item, active: !item.active } : item
       )
     );
-
     try {
       const response = await fetch(`/api/ads/${ad.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ active: !ad.active }),
       });
-
       if (!response.ok) {
-        alert("Failed to update ad.");
+        toast.error("Failed to update ad.");
         const list = await fetchAdsList();
         setAds(list);
       }
     } catch (error) {
       console.error(error);
-      alert("Failed to update ad.");
+      toast.error("Failed to update ad.");
     }
+  }
+
+  function contentBadge(ct: string) {
+    if (ct === "EMBED") return <Badge variant="secondary">Embed</Badge>;
+    if (ct === "TEXT") return <Badge variant="secondary">Text</Badge>;
+    return null;
   }
 
   return (
@@ -259,8 +267,7 @@ export default function AdsPage() {
             <h1 className="text-2xl font-bold">Ads &amp; Banners</h1>
           </div>
           <p className="text-muted-foreground">
-            Place promotion banners on the storefront. Keep only a few per page
-            so shopping stays clean.
+            Place promotion banners on the storefront. Support images, text overlays, or pasted embed codes.
           </p>
         </div>
 
@@ -274,12 +281,9 @@ export default function AdsPage() {
         <CardHeader>
           <CardTitle>Placements</CardTitle>
         </CardHeader>
-
         <CardContent>
           {loading ? (
-            <div className="py-12 text-center text-muted-foreground">
-              Loading ads...
-            </div>
+            <div className="py-12 text-center text-muted-foreground">Loading ads...</div>
           ) : ads.length === 0 ? (
             <div className="py-12 text-center">
               <p className="font-medium text-foreground">No ads yet.</p>
@@ -296,18 +300,12 @@ export default function AdsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left">
-                    <th className="pb-2 pr-4 font-medium text-muted-foreground">
-                      Ad
-                    </th>
-                    <th className="pb-2 pr-4 font-medium text-muted-foreground">
-                      Slot
-                    </th>
-                    <th className="pb-2 pr-4 font-medium text-muted-foreground">
-                      Order
-                    </th>
-                    <th className="pb-2 pr-4 font-medium text-muted-foreground">
-                      Status
-                    </th>
+                    <th className="pb-2 pr-4 font-medium text-muted-foreground">Ad</th>
+                    <th className="pb-2 pr-4 font-medium text-muted-foreground">Slot</th>
+                    <th className="pb-2 pr-4 font-medium text-muted-foreground">Type</th>
+                    <th className="pb-2 pr-4 font-medium text-muted-foreground">Size</th>
+                    <th className="pb-2 pr-4 font-medium text-muted-foreground">Order</th>
+                    <th className="pb-2 pr-4 font-medium text-muted-foreground">Status</th>
                     <th className="pb-2 font-medium text-muted-foreground"></th>
                   </tr>
                 </thead>
@@ -316,7 +314,11 @@ export default function AdsPage() {
                     <tr key={ad.id} className="border-b last:border-0">
                       <td className="py-3 pr-4">
                         <div className="flex items-center gap-3">
-                          {ad.imageUrl ? (
+                          {ad.contentType === "EMBED" ? (
+                            <div className="flex h-12 w-20 items-center justify-center rounded-md bg-muted">
+                              <Code className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          ) : ad.imageUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={ad.imageUrl}
@@ -331,9 +333,7 @@ export default function AdsPage() {
                           <div>
                             <p className="font-medium">{ad.title}</p>
                             {ad.subtitle && (
-                              <p className="text-xs text-muted-foreground">
-                                {ad.subtitle}
-                              </p>
+                              <p className="text-xs text-muted-foreground">{ad.subtitle}</p>
                             )}
                           </div>
                         </div>
@@ -341,9 +341,13 @@ export default function AdsPage() {
                       <td className="py-3 pr-4">
                         <Badge variant="outline">{slotLabel(ad.slot)}</Badge>
                       </td>
-                      <td className="py-3 pr-4 text-muted-foreground">
-                        {ad.sortOrder}
+                      <td className="py-3 pr-4">
+                        {contentBadge(ad.contentType)}
                       </td>
+                      <td className="py-3 pr-4 text-xs text-muted-foreground">
+                        {ad.adSize === "FULL_WIDTH" ? "Full" : ad.adSize}
+                      </td>
+                      <td className="py-3 pr-4 text-muted-foreground">{ad.sortOrder}</td>
                       <td className="py-3 pr-4">
                         <input
                           type="checkbox"
@@ -355,11 +359,7 @@ export default function AdsPage() {
                       </td>
                       <td className="py-3 text-right">
                         <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => startEdit(ad)}
-                          >
+                          <Button variant="outline" size="sm" onClick={() => startEdit(ad)}>
                             <Pencil className="mr-2 h-3 w-3" />
                             Edit
                           </Button>
@@ -383,7 +383,7 @@ export default function AdsPage() {
       </Card>
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{form.id ? "Edit Ad" : "New Ad"}</DialogTitle>
           </DialogHeader>
@@ -395,10 +395,7 @@ export default function AdsPage() {
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={form.slot}
                 onChange={(e) =>
-                  setForm((current) => ({
-                    ...current,
-                    slot: e.target.value as AdSlot,
-                  }))
+                  setForm((c) => ({ ...c, slot: e.target.value as AdSlot }))
                 }
               >
                 {AD_SLOTS.map((slot) => (
@@ -410,13 +407,52 @@ export default function AdsPage() {
             </div>
 
             <div className="space-y-2">
+              <Label>Content Type</Label>
+              <div className="flex gap-1 rounded-lg border p-1">
+                {CONTENT_TABS.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.value}
+                      type="button"
+                      onClick={() => setForm((c) => ({ ...c, contentType: tab.value }))}
+                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                        form.contentType === tab.value
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Ad Size</Label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={form.adSize}
+                onChange={(e) =>
+                  setForm((c) => ({ ...c, adSize: e.target.value as AdSize }))
+                }
+              >
+                {AD_SIZES.map((size) => (
+                  <option key={size.value} value={size.value}>
+                    {size.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
               <Label>Title *</Label>
               <Input
                 placeholder="e.g. Discount on all cement"
                 value={form.title}
-                onChange={(e) =>
-                  setForm((current) => ({ ...current, title: e.target.value }))
-                }
+                onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))}
               />
             </div>
 
@@ -425,12 +461,7 @@ export default function AdsPage() {
               <Input
                 placeholder="e.g. Flat 5% off this week"
                 value={form.subtitle}
-                onChange={(e) =>
-                  setForm((current) => ({
-                    ...current,
-                    subtitle: e.target.value,
-                  }))
-                }
+                onChange={(e) => setForm((c) => ({ ...c, subtitle: e.target.value }))}
               />
             </div>
 
@@ -439,56 +470,88 @@ export default function AdsPage() {
               <Input
                 placeholder="e.g. /products?category=cement-binding"
                 value={form.href}
-                onChange={(e) =>
-                  setForm((current) => ({ ...current, href: e.target.value }))
-                }
+                onChange={(e) => setForm((c) => ({ ...c, href: e.target.value }))}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Banner image</Label>
-              <input
-                ref={imageInput}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={() => uploadFile((url) => setForm((c) => ({ ...c, imageUrl: url })))}
-              />
-              <div className="flex items-center gap-3">
-                {form.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={form.imageUrl}
-                    alt="Ad preview"
-                    className="h-16 w-28 rounded-md object-cover"
-                  />
-                ) : (
-                  <div className="flex h-16 w-28 items-center justify-center rounded-md bg-muted">
-                    <ImagePlus className="h-5 w-5 text-muted-foreground" />
+            {form.contentType === "IMAGE" && (
+              <div className="space-y-2">
+                <Label>Banner image</Label>
+                <input
+                  ref={imageInput}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={() =>
+                    uploadFile((url) => setForm((c) => ({ ...c, imageUrl: url })))
+                  }
+                />
+                <div className="flex items-center gap-3">
+                  {form.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={form.imageUrl}
+                      alt="Ad preview"
+                      className="h-16 w-28 rounded-md object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-16 w-28 items-center justify-center rounded-md bg-muted">
+                      <ImagePlus className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={uploading}
+                    onClick={() => imageInput.current?.click()}
+                  >
+                    {uploading ? "Uploading..." : "Upload image"}
+                  </Button>
+                  {form.imageUrl && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setForm((c) => ({ ...c, imageUrl: "" }))}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Wide banner images work best (e.g. 1920 x 720).
+                </p>
+              </div>
+            )}
+
+            {form.contentType === "EMBED" && (
+              <div className="space-y-2">
+                <Label>Embed Code *</Label>
+                <textarea
+                  placeholder='Paste your embed code here, e.g. &lt;iframe src="..."&gt;&lt;/iframe&gt;'
+                  value={form.embedCode}
+                  onChange={(e) => setForm((c) => ({ ...c, embedCode: e.target.value }))}
+                  rows={6}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Paste an &lt;iframe&gt;, &lt;script&gt;, or any HTML embed code. It will be rendered as-is on the storefront.
+                </p>
+                {form.embedCode && (
+                  <div className="rounded-md border p-2">
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">Preview:</p>
+                    <div
+                      className="overflow-hidden rounded bg-white"
+                      style={{
+                        width: AD_SIZES.find((s) => s.value === form.adSize)?.width ?? "100%",
+                        height: AD_SIZES.find((s) => s.value === form.adSize)?.height ?? "auto",
+                        maxWidth: "100%",
+                      }}
+                      dangerouslySetInnerHTML={{ __html: form.embedCode }}
+                    />
                   </div>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={uploading}
-                  onClick={() => imageInput.current?.click()}
-                >
-                  {uploading ? "Uploading..." : "Upload image"}
-                </Button>
-                {form.imageUrl && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setForm((c) => ({ ...c, imageUrl: "" }))}
-                  >
-                    Remove
-                  </Button>
-                )}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Wide banner images work best (e.g. 1920 x 720).
-              </p>
-            </div>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -497,12 +560,7 @@ export default function AdsPage() {
                   type="number"
                   min={0}
                   value={form.sortOrder}
-                  onChange={(e) =>
-                    setForm((current) => ({
-                      ...current,
-                      sortOrder: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setForm((c) => ({ ...c, sortOrder: e.target.value }))}
                 />
               </div>
               <div className="flex items-end pb-1">
@@ -510,9 +568,7 @@ export default function AdsPage() {
                   <input
                     type="checkbox"
                     checked={form.active}
-                    onChange={(e) =>
-                      setForm((current) => ({ ...current, active: e.target.checked }))
-                    }
+                    onChange={(e) => setForm((c) => ({ ...c, active: e.target.checked }))}
                     className="h-4 w-4 rounded border-input accent-amber-600"
                   />
                   Active

@@ -9,14 +9,12 @@ type WishlistProduct = {
   id: string;
   code: string;
   name: string;
-  brand: string | null;
   description: string | null;
   unit: ProductUnit;
   stockQuantity: Numeric;
   imageUrl: string | null;
   imageUrl2: string | null;
   isFeatured: boolean;
-  price: Numeric | null;
   subcategory: string | null;
   trades: string[];
   category: { id: string; name: string; slug: string } | null;
@@ -26,7 +24,6 @@ type WishlistProduct = {
     name: string;
     sizeValue: Numeric;
     sizeUnit: ProductUnit;
-    price: Numeric | null;
     imageUrl: string | null;
   }>;
 };
@@ -36,7 +33,7 @@ function serializeProduct(p: WishlistProduct) {
     id: p.id,
     code: p.code,
     name: p.name,
-    brand: p.brand,
+    brand: null,
     description: p.description,
     unit: p.unit,
     stockQuantity: Number(p.stockQuantity),
@@ -47,14 +44,14 @@ function serializeProduct(p: WishlistProduct) {
     subcategory: p.subcategory,
     trades: p.trades,
     isFeatured: p.isFeatured,
-    price: p.price !== null ? Number(p.price) : null,
+    price: null,
     variants: p.variants.map((v) => ({
       id: v.id,
       sku: v.sku,
       name: v.name,
       sizeValue: Number(v.sizeValue),
       sizeUnit: v.sizeUnit,
-      price: v.price !== null ? Number(v.price) : null,
+      price: null,
       imageUrl: v.imageUrl,
     })),
   };
@@ -80,14 +77,12 @@ export async function GET() {
           id: true,
           code: true,
           name: true,
-          brand: true,
           description: true,
           unit: true,
           stockQuantity: true,
           imageUrl: true,
           imageUrl2: true,
           isFeatured: true,
-          price: true,
           subcategory: true,
           trades: true,
           category: { select: { id: true, name: true, slug: true } },
@@ -98,7 +93,6 @@ export async function GET() {
               name: true,
               sizeValue: true,
               sizeUnit: true,
-              price: true,
               imageUrl: true,
             },
             orderBy: { sizeValue: "asc" },

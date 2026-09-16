@@ -3,6 +3,7 @@ import { ProductUnit } from "@/generated/prisma/client";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserOrThrow } from "@/lib/auth";
+import type { AdminProductListItem } from "@/types/api";
 import {
   isValidUnit,
   VALID_PRODUCT_STATUSES,
@@ -52,7 +53,6 @@ export async function GET(request: NextRequest) {
           code: true,
           name: true,
           barcode: true,
-          price: true,
           imageUrl: true,
         },
         orderBy: { name: "asc" },
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
           code: label.code,
           name: label.name,
           barcode: label.barcode,
-          price: label.price !== null ? Number(label.price) : null,
+          price: null,
           imageUrl: label.imageUrl,
         }))
       );
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
       orderBy: { name: "asc" },
     });
 
-    return NextResponse.json(products);
+    return NextResponse.json(products as unknown as AdminProductListItem[]);
   } catch (error) {
     console.error("GET products error:", error);
 
@@ -95,19 +95,14 @@ export async function POST(request: NextRequest) {
     const {
       code,
       name,
-      brand,
       description,
       status,
       imageUrl,
       imageUrl2,
-      price,
       categoryId,
       isFeatured,
       unit,
       subcategory,
-      minimumStock,
-      maximumStock,
-      reorderLevel,
       trades,
       stockQuantity,
       barcode,
@@ -133,12 +128,6 @@ export async function POST(request: NextRequest) {
         { error: "A valid selling unit is required" },
         { status: 400 }
       );
-    }
-
-    const productPrice = toNumberOrNull(price);
-
-    if (productPrice !== null && productPrice < 0) {
-      return NextResponse.json({ error: "Invalid price" }, { status: 400 });
     }
 
     if (status !== undefined && !VALID_PRODUCT_STATUSES.includes(status)) {
@@ -190,7 +179,6 @@ export async function POST(request: NextRequest) {
       name: string;
       sizeValue: number;
       sizeUnit: ProductUnit;
-      price: string | null;
       imageUrl: string | null;
       status: "ACTIVE";
       barcode: string | null;
@@ -221,15 +209,6 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const variantPrice = toNumberOrNull(variant.price);
-
-        if (variantPrice !== null && variantPrice < 0) {
-          return NextResponse.json(
-            { error: `Invalid price for variant ${variant.name}` },
-            { status: 400 }
-          );
-        }
-
         const variantBarcode = variant.barcode?.trim() || null;
 
         if (variantBarcode) {
@@ -251,7 +230,6 @@ export async function POST(request: NextRequest) {
           name: variant.name.trim(),
           sizeValue,
           sizeUnit: (variant.sizeUnit || unit) as ProductUnit,
-          price: variantPrice !== null ? String(variantPrice) : null,
           imageUrl: variant.imageUrl?.trim() || null,
           status: "ACTIVE",
           barcode: variantBarcode,
@@ -278,20 +256,14 @@ export async function POST(request: NextRequest) {
       data: {
         code: code.trim(),
         name: name.trim(),
-        brand: brand?.trim() || null,
         description: description?.trim() || null,
         status: status || "ACTIVE",
         imageUrl: imageUrl?.trim() || null,
         imageUrl2: imageUrl2?.trim() || null,
-        price: productPrice !== null ? String(productPrice) : null,
         categoryId: categoryId || null,
         isFeatured: Boolean(isFeatured),
         unit,
         subcategory: subcategory?.trim() || null,
-        minimumStock:
-          toNumberOrNull(minimumStock)?.toString() ?? null,
-        maximumStock: toNumberOrNull(maximumStock)?.toString() ?? null,
-        reorderLevel: toNumberOrNull(reorderLevel)?.toString() ?? null,
         trades: Array.isArray(trades)
           ? trades.map((t) => String(t).trim()).filter(Boolean)
           : [],

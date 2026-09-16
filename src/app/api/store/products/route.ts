@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { type StoreProduct } from "@/lib/store-front";
+import type { StoreProductListItem } from "@/types/api";
 
 type SortKey = "featured" | "newest" | "name_asc" | "price_asc" | "price_desc";
 
@@ -12,17 +13,7 @@ function parseNumber(value: string | null): number | null {
 }
 
 function effectivePriceOf(product: StoreProduct): number | null {
-  if (product.variants.length > 0) {
-    const priced = product.variants
-      .map((v) => v.price)
-      .filter((p): p is number => p !== null);
-
-    if (priced.length > 0) {
-      return Math.min(...priced);
-    }
-  }
-
-  return product.price;
+  return product.retailPrice ?? null;
 }
 
 export async function GET(request: NextRequest) {
@@ -34,7 +25,6 @@ export async function GET(request: NextRequest) {
     const subcategory = searchParams.get("subcategory")?.trim();
     const featuredOnly = searchParams.get("featured") === "true";
     const inStockOnly = searchParams.get("inStock") === "true";
-    const brands = searchParams.getAll("brand").map((b) => b.trim()).filter(Boolean);
     const priceMin = parseNumber(searchParams.get("priceMin"));
     const priceMax = parseNumber(searchParams.get("priceMax"));
     const sort = (searchParams.get("sort") ?? "featured") as SortKey;
@@ -54,14 +44,12 @@ export async function GET(request: NextRequest) {
       ...(Object.keys(categoryFilter).length > 0 ? { category: categoryFilter } : {}),
       ...(subcategory ? { subcategory } : {}),
       ...(featuredOnly ? { isFeatured: true } : {}),
-      ...(brands.length > 0 ? { brand: { in: brands } } : {}),
       ...(inStockOnly ? { stockQuantity: { gt: 0 } } : {}),
       ...(query
         ? {
             OR: [
               { name: { contains: query, mode: "insensitive" as const } },
               { code: { contains: query, mode: "insensitive" as const } },
-              { brand: { contains: query, mode: "insensitive" as const } },
               { subcategory: { contains: query, mode: "insensitive" as const } },
             ],
           }
@@ -76,11 +64,10 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const data: StoreProduct[] = products.map((p) => ({
+    const data = products.map((p) => ({
       id: p.id,
       code: p.code,
       name: p.name,
-      brand: p.brand,
       description: p.description,
       unit: p.unit,
       stockQuantity: Number(p.stockQuantity),
@@ -91,14 +78,13 @@ export async function GET(request: NextRequest) {
       subcategory: p.subcategory,
       trades: p.trades,
       isFeatured: p.isFeatured,
-      price: p.price !== null ? Number(p.price) : null,
+      retailPrice: null,
       variants: p.variants.map((v) => ({
         id: v.id,
         sku: v.sku,
         name: v.name,
         sizeValue: Number(v.sizeValue),
         sizeUnit: v.sizeUnit,
-        price: v.price !== null ? Number(v.price) : null,
         imageUrl: v.imageUrl,
       })),
     }));
@@ -160,7 +146,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (legacyMode) {
-      return NextResponse.json({ success: true, data: filtered.slice(0, limit) });
+      return NextResponse.json({ success: true, data: filtered.slice(0, limit) as unknown as StoreProductListItem[] });
     }
 
     const total = filtered.length;
@@ -175,7 +161,7 @@ export async function GET(request: NextRequest) {
         page: Math.min(page, pages),
         pageSize,
         pages,
-        products: pageData,
+        products: pageData as unknown as StoreProductListItem[],
       },
     });
   } catch (error) {

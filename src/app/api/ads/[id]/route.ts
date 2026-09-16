@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserOrThrow } from "@/lib/auth";
-import { isAdSlot } from "@/lib/ads";
+import { isAdSlot, isAdContentType, isAdSize } from "@/lib/ads";
 
 export async function PATCH(
   request: NextRequest,
@@ -60,6 +60,24 @@ export async function PATCH(
 
     if (typeof body.href === "string") {
       data.href = body.href.trim() || null;
+    }
+
+    if (typeof body.contentType === "string") {
+      const ct = body.contentType.trim();
+      if (isAdContentType(ct)) {
+        data.contentType = ct;
+      }
+    }
+
+    if (typeof body.embedCode === "string") {
+      data.embedCode = body.embedCode.trim() || null;
+    }
+
+    if (typeof body.adSize === "string") {
+      const sz = body.adSize.trim();
+      if (isAdSize(sz)) {
+        data.adSize = sz;
+      }
     }
 
     if (typeof body.active === "boolean") {

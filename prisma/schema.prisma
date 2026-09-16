@@ -213,20 +213,13 @@ model Product {
   code        String        @unique
   barcode     String?       @unique
   name        String
-  brand       String?
   description String?
   status      ProductStatus @default(ACTIVE)
 
-  // Selling unit, price and live stock live on the product itself.
-  // Variants are optional pack-size labels used for quoting/display.
   unit           ProductUnit
-  price          Decimal?    @db.Decimal(14, 2)
   stockQuantity  Decimal     @default(0) @db.Decimal(14, 4)
 
   subcategory   String?
-  minimumStock  Decimal? @db.Decimal(14, 4)
-  maximumStock  Decimal? @db.Decimal(14, 4)
-  reorderLevel  Decimal? @db.Decimal(14, 4)
   trades        String[]
 
   // Storefront fields
@@ -323,7 +316,6 @@ model ProductVariant {
 
   status ProductStatus @default(ACTIVE)
 
-  price    Decimal? @db.Decimal(14, 2)
   imageUrl String?
 
   createdAt DateTime @default(now())
@@ -692,6 +684,9 @@ model AdPlacement {
   subtitle  String?
   imageUrl  String?
   href      String?
+  contentType String  @default("IMAGE")
+  embedCode   String?
+  adSize      String  @default("FULL_WIDTH")
   active    Boolean  @default(true)
   sortOrder Int      @default(0)
 

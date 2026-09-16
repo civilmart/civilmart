@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Pencil, Phone, Plus, Truck } from "lucide-react";
+import { Loader2, Pencil, Phone, Plus, Trash2, Truck } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 type Supplier = {
   id: string;
@@ -53,6 +54,7 @@ export default function SuppliersPage() {
   const [form, setForm] = useState<FormState>({ ...emptyForm });
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadSuppliers = useCallback(async () => {
     setLoading(true);
@@ -102,7 +104,7 @@ export default function SuppliersPage() {
 
   async function saveSupplier() {
     if (!form.name.trim()) {
-      alert("Supplier name is required.");
+      toast.error("Supplier name is required.");
       return;
     }
 
@@ -128,7 +130,7 @@ export default function SuppliersPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error || "Failed to save supplier.");
+        toast.error(data.error || "Failed to save supplier.");
         return;
       }
 
@@ -136,7 +138,7 @@ export default function SuppliersPage() {
       await loadSuppliers();
     } catch (error) {
       console.error(error);
-      alert("Failed to save supplier.");
+      toast.error("Failed to save supplier.");
     } finally {
       setSaving(false);
     }
@@ -157,9 +159,34 @@ export default function SuppliersPage() {
       }
     } catch (error) {
       console.error(error);
-      alert("Failed to update supplier.");
+      toast.error("Failed to update supplier.");
     } finally {
       setTogglingId(null);
+    }
+  }
+
+  async function deleteSupplier(supplier: Supplier) {
+    if (!window.confirm(`Permanently delete "${supplier.name}"? This cannot be undone.`)) {
+      return;
+    }
+    setDeletingId(supplier.id);
+    try {
+      const response = await fetch(`/api/suppliers/${supplier.id}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("Supplier deleted.");
+        await loadSuppliers();
+      } else {
+        toast.error(data.error || "Failed to delete supplier.");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete supplier.");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -322,6 +349,20 @@ export default function SuppliersPage() {
                     <Button variant="outline" size="sm" onClick={() => startEdit(supplier)}>
                       <Pencil className="mr-1 h-3 w-3" />
                       Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive"
+                      onClick={() => deleteSupplier(supplier)}
+                      disabled={deletingId === supplier.id}
+                    >
+                      {deletingId === supplier.id ? (
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="mr-1 h-3 w-3" />
+                      )}
+                      Delete
                     </Button>
                   </div>
                 </div>

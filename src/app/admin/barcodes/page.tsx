@@ -14,14 +14,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { formatMoney } from "@/lib/money";
 
 type LabelProduct = {
   id: string;
   code: string;
   name: string;
   barcode: string | null;
-  price: number | null;
   imageUrl: string | null;
 };
 
@@ -189,7 +187,6 @@ export default function BarcodesPage() {
                     <th className="pb-2 pr-4 font-medium text-muted-foreground">Product</th>
                     <th className="pb-2 pr-4 font-medium text-muted-foreground">Code</th>
                     <th className="pb-2 pr-4 font-medium text-muted-foreground">Barcode</th>
-                    <th className="pb-2 text-right font-medium text-muted-foreground">Price</th>
                     <th className="w-10 pb-2" />
                   </tr>
                 </thead>
@@ -217,9 +214,6 @@ export default function BarcodesPage() {
                       <td className="py-2 pr-4 font-mono text-xs">{product.code}</td>
                       <td className="py-2 pr-4 font-mono text-xs">
                         {product.barcode ?? <span className="text-muted-foreground">—</span>}
-                      </td>
-                      <td className="py-2 pr-4 text-right">
-                        {product.price !== null ? formatMoney(product.price) : "—"}
                       </td>
                       <td className="w-10 py-2" />
                     </tr>

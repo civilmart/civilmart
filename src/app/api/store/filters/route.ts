@@ -8,7 +8,7 @@ function groupLabel(group: string | null): string {
 
 export async function GET() {
   try {
-    const [categories, brandGroups, subcategoryRows] = await Promise.all([
+    const [categories, subcategoryRows] = await Promise.all([
       prisma.category.findMany({
         where: { isActive: true },
         orderBy: [{ group: "asc" }, { name: "asc" }],
@@ -19,12 +19,6 @@ export async function GET() {
             },
           },
         },
-      }),
-      prisma.product.groupBy({
-        by: ["brand"],
-        where: { status: "ACTIVE", brand: { not: null } },
-        _count: { _all: true },
-        orderBy: { brand: "asc" },
       }),
       prisma.product.findMany({
         where: { status: "ACTIVE", subcategory: { not: null } },
@@ -85,12 +79,7 @@ export async function GET() {
       (a, b) => b.count - a.count || a.name.localeCompare(b.name)
     );
 
-    const brands = brandGroups
-      .filter((b) => typeof b.brand === "string")
-      .map((b) => ({
-        name: b.brand as string,
-        count: b._count._all,
-      }));
+    const brands: Array<{ name: string; count: number }> = [];
 
     return NextResponse.json({
       success: true,

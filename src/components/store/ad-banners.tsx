@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Carousel } from "@/components/store/carousel";
-import { type StoreAd } from "@/lib/ads";
+import { type StoreAd, type AdSize, AD_SIZE_MAP } from "@/lib/ads";
 
 async function fetchAds(slot: string): Promise<StoreAd[]> {
   const response = await fetch(`/api/store/ads?slot=${encodeURIComponent(slot)}`);
@@ -16,8 +16,42 @@ async function fetchAds(slot: string): Promise<StoreAd[]> {
   return data.success ? (data.data as StoreAd[]) : [];
 }
 
+function sizeStyles(adSize: AdSize) {
+  const s = AD_SIZE_MAP[adSize] ?? AD_SIZE_MAP.FULL_WIDTH;
+  return { width: s.width, height: s.height };
+}
+
 function AdSlide({ ad, compact }: { ad: StoreAd; compact?: boolean }) {
-  const minHeight = compact ? "min-h-[140px]" : "min-h-[200px] sm:min-h-[240px]";
+  const minH = compact ? "min-h-[140px]" : "min-h-[200px] sm:min-h-[240px]";
+
+  if (ad.contentType === "EMBED" && ad.embedCode) {
+    const sz = sizeStyles(ad.adSize);
+    return (
+      <div
+        className="mx-auto overflow-hidden rounded-xl border"
+        style={{ width: sz.width, maxWidth: "100%", height: sz.height }}
+        dangerouslySetInnerHTML={{ __html: ad.embedCode }}
+      />
+    );
+  }
+
+  if (ad.contentType === "TEXT") {
+    const sz = sizeStyles(ad.adSize);
+    const textBody = (
+      <div className={`relative flex items-center justify-center overflow-hidden rounded-xl border bg-slate-900 px-6 ${minH}`} style={{ width: sz.width, maxWidth: "100%", height: sz.height }}>
+        <div className="text-center">
+          <h3 className="text-2xl font-bold text-white sm:text-3xl">{ad.title}</h3>
+          {ad.subtitle && <p className="mt-2 text-sm text-amber-300">{ad.subtitle}</p>}
+        </div>
+      </div>
+    );
+    if (ad.href) {
+      return <Link href={ad.href} className="block transition hover:shadow-md">{textBody}</Link>;
+    }
+    return textBody;
+  }
+
+  const sz = sizeStyles(ad.adSize);
 
   const body = (
     <>
@@ -51,11 +85,11 @@ function AdSlide({ ad, compact }: { ad: StoreAd; compact?: boolean }) {
     </>
   );
 
+  const wrapClass = `relative flex items-center overflow-hidden rounded-xl border bg-slate-900 px-6 ${minH}`;
+
   if (!ad.href) {
     return (
-      <div
-        className={`relative flex items-center overflow-hidden rounded-xl border bg-slate-900 px-6 ${minHeight}`}
-      >
+      <div className={wrapClass} style={{ width: sz.width, maxWidth: "100%", height: sz.height }}>
         {body}
       </div>
     );
@@ -64,7 +98,8 @@ function AdSlide({ ad, compact }: { ad: StoreAd; compact?: boolean }) {
   return (
     <Link
       href={ad.href}
-      className={`relative flex items-center overflow-hidden rounded-xl border bg-slate-900 px-6 transition hover:shadow-md ${minHeight}`}
+      className={`${wrapClass} transition hover:shadow-md`}
+      style={{ width: sz.width, maxWidth: "100%", height: sz.height }}
     >
       {body}
     </Link>

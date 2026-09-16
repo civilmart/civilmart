@@ -28,6 +28,9 @@ export async function GET(request: NextRequest) {
         imageUrl: true,
         href: true,
         sortOrder: true,
+        contentType: true,
+        embedCode: true,
+        adSize: true,
       },
     });
 

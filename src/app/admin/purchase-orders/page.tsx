@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 type ProductVariant = {
   id: string;
@@ -46,16 +47,13 @@ type ProductVariant = {
   name: string;
   sizeValue: number;
   sizeUnit: string;
-  price: number | null;
 };
 
 type Product = {
   id: string;
   code: string;
   name: string;
-  brand: string | null;
   unit: string;
-  price: number | null;
   stockQuantity: number;
   status: string;
   category: { id: string; name: string } | null;
@@ -270,22 +268,22 @@ export default function PurchaseOrdersPage() {
 
   async function savePurchaseOrder() {
     if (!poNumber.trim()) {
-      alert("PO number is required.");
+      toast.error("PO number is required.");
       return;
     }
 
     if (items.some((item) => !item.productId)) {
-      alert("Please select a product for every item.");
+      toast.error("Please select a product for every item.");
       return;
     }
 
     if (items.some((item) => !item.quantity || Number(item.quantity) <= 0)) {
-      alert("Please enter a valid quantity for every item.");
+      toast.error("Please enter a valid quantity for every item.");
       return;
     }
 
     if (items.some((item) => !item.unit)) {
-      alert("Please select a unit for every item.");
+      toast.error("Please select a unit for every item.");
       return;
     }
 
@@ -297,7 +295,7 @@ export default function PurchaseOrdersPage() {
             !Number.isFinite(Number(item.estimatedCostPerUnit)))
       )
     ) {
-      alert("Estimated cost cannot be negative.");
+      toast.error("Estimated cost cannot be negative.");
       return;
     }
 
@@ -330,18 +328,18 @@ export default function PurchaseOrdersPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error || "Failed to save purchase order.");
+        toast.error(data.error || "Failed to save purchase order.");
         return;
       }
 
-      alert("Purchase order saved successfully.");
+      toast.success("Purchase order saved successfully.");
 
       resetForm();
       setShowForm(false);
       await loadData();
     } catch (error) {
       console.error(error);
-      alert("Failed to save purchase order.");
+      toast.error("Failed to save purchase order.");
     } finally {
       setSaving(false);
     }
@@ -367,7 +365,7 @@ export default function PurchaseOrdersPage() {
       .filter((item): item is ReceiveFormItem => item !== null);
 
     if (remainingItems.length === 0) {
-      alert("Nothing left to receive on this purchase order.");
+      toast.error("Nothing left to receive on this purchase order.");
       return;
     }
 
@@ -395,7 +393,7 @@ export default function PurchaseOrdersPage() {
     );
 
     if (itemsToReceive.length === 0) {
-      alert("Enter a received quantity for at least one item.");
+      toast.error("Enter a received quantity for at least one item.");
       return;
     }
 
@@ -411,7 +409,7 @@ export default function PurchaseOrdersPage() {
       const received = Number(receiveItem.receivedQuantity);
 
       if (received > remaining) {
-        alert(
+        toast.error(
           `${poItem.product.name}: only ${formatNumber(remaining)} ${poItem.unit} remains to be received.`
         );
         return;
@@ -439,18 +437,18 @@ export default function PurchaseOrdersPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error || "Failed to receive purchase order.");
+        toast.error(data.error || "Failed to receive purchase order.");
         return;
       }
 
-      alert(`Receipt saved successfully.\nPurchase: ${data.purchaseNo}`);
+      toast.success(`Receipt saved successfully. Purchase: ${data.purchaseNo}`);
 
       setReceivePO(null);
       setReceiveItems([]);
       await loadData();
     } catch (error) {
       console.error(error);
-      alert("Failed to receive purchase order.");
+      toast.error("Failed to receive purchase order.");
     } finally {
       setReceiving(false);
     }
@@ -572,11 +570,7 @@ export default function PurchaseOrdersPage() {
                           <option value="">Select product</option>
                           {products.map((product) => (
                             <option key={product.id} value={product.id}>
-                              {product.code} — {product.name} ({product.unit}
-                              {product.price !== null
-                                ? ` · ${formatMoney(product.price)}`
-                                : ""}
-                              )
+                              {product.code} — {product.name} ({product.unit})
                             </option>
                           ))}
                         </select>

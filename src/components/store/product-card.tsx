@@ -25,7 +25,7 @@ type Layout = "grid" | "list";
 
 function buildCartItem(product: StoreProduct) {
   const variant = defaultCartVariant(product);
-  const price = variant?.price ?? product.price;
+  const price = effectivePrice(product);
 
   if (price === null) return null;
 
@@ -120,11 +120,6 @@ export function ProductCard({
             ) : (
               <span />
             )}
-            {product.brand && (
-              <span className="shrink-0 rounded-sm bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
-                {product.brand}
-              </span>
-            )}
           </div>
 
           <h3 className="line-clamp-2 text-sm font-semibold leading-snug sm:text-base">
@@ -196,7 +191,7 @@ export function ProductCard({
       href={`/products/${product.id}`}
       className="group flex flex-col overflow-hidden rounded-md border bg-card shadow-sm transition hover:border-amber-400 hover:shadow-md"
     >
-      <div className="relative aspect-square w-full overflow-hidden border-b bg-muted">
+      <div className="relative aspect-[4/3] w-full overflow-hidden border-b bg-muted">
         <Image
           src={mainSrc}
           alt={product.name}
@@ -232,7 +227,7 @@ export function ProductCard({
             onClick={handleAddToCart}
             aria-label={`Add ${product.name} to cart`}
             className={cn(
-              "absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-slate-900/95 py-2.5 text-xs font-bold uppercase tracking-wide text-white backdrop-blur transition-colors hover:bg-amber-600 hover:text-slate-950 translate-y-0 sm:translate-y-full sm:group-hover:translate-y-0"
+              "absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-slate-900/95 py-2.5 text-xs font-bold uppercase tracking-wide text-white backdrop-blur transition-colors hover:bg-amber-600 hover:text-slate-950 sm:translate-y-full sm:group-hover:translate-y-0"
             )}
           >
             {added ? (
@@ -257,14 +252,9 @@ export function ProductCard({
           ) : (
             <span />
           )}
-          {product.brand && (
-            <span className="shrink-0 text-[10px] font-medium text-slate-400">
-              {product.brand}
-            </span>
-          )}
         </div>
 
-        <h3 className="line-clamp-2 text-sm font-semibold leading-snug">
+        <h3 className="line-clamp-1 text-sm font-semibold leading-snug">
           {product.name}
         </h3>
 
@@ -308,7 +298,7 @@ export function ProductCardSkeleton({ layout = "grid" }: { layout?: Layout }) {
 
   return (
     <div className="flex animate-pulse flex-col overflow-hidden rounded-md border bg-card">
-      <div className="aspect-square w-full bg-slate-200" />
+      <div className="aspect-[4/3] w-full bg-slate-200" />
       <div className="space-y-2 p-3">
         <div className="h-3 w-16 rounded bg-slate-200" />
         <div className="h-4 w-full rounded bg-slate-200" />

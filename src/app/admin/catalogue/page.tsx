@@ -2,8 +2,6 @@
 
 import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import { CheckSquare, ChevronDown, ChevronRight, ExternalLink, ListChecks, PackageX, Star, X } from "lucide-react";
-import { formatMoney } from "@/lib/money";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,7 +22,6 @@ type TreeProduct = {
   id: string;
   code: string;
   name: string;
-  price: number | null;
   unit: string;
   stockQuantity: number;
   status: string;
@@ -110,7 +107,6 @@ function toTree(
     id: string;
     code: string;
     name: string;
-    price: number | null;
     unit: string;
     stockQuantity: number;
     status: string;
@@ -214,7 +210,6 @@ function toTreeProduct(product: {
   id: string;
   code: string;
   name: string;
-  price: number | null;
   unit: string;
   stockQuantity: number;
   status: string;
@@ -227,7 +222,6 @@ function toTreeProduct(product: {
     id: product.id,
     code: product.code,
     name: product.name,
-    price: product.price,
     unit: product.unit,
     stockQuantity: Number(product.stockQuantity ?? 0),
     status: product.status,
@@ -245,7 +239,6 @@ export default function CataloguePage() {
       id: string;
       code: string;
       name: string;
-      price: number | null;
       unit: string;
       stockQuantity: number;
       status: string;
@@ -549,9 +542,6 @@ export default function CataloguePage() {
           <td>${escapeHtml(product.code)}</td>
           <td>${escapeHtml(product.name)}</td>
           <td>${escapeHtml(category)}</td>
-          <td class="na">${
-            product.price !== null ? escapeHtml(formatMoney(product.price)) : "&mdash;"
-          }</td>
           <td class="na">${escapeHtml(product.unit)}</td>
           <td class="na">${number.format(Number(product.stockQuantity ?? 0))}</td>
           <td>${escapeHtml(product.status)}</td>
@@ -577,7 +567,7 @@ export default function CataloguePage() {
 </head>
 <body>
   <h1>Civil Mart</h1>
-  <div class="meta">Price list &mdash; ${items.length} ${
+  <div class="meta">Product list &mdash; ${items.length} ${
     items.length === 1 ? "item" : "items"
   } &middot; ${escapeHtml(now)}</div>
   <table>
@@ -586,7 +576,6 @@ export default function CataloguePage() {
         <th>Code</th>
         <th>Name</th>
         <th>Category</th>
-        <th class="na">Price</th>
         <th class="na">Unit</th>
         <th class="na">Stock</th>
         <th>Status</th>
@@ -623,13 +612,12 @@ export default function CataloguePage() {
 
     if (items.length === 0) return;
 
-    const header = ["Code", "Name", "Category", "Price", "Unit", "Stock", "Status"];
+    const header = ["Code", "Name", "Category", "Unit", "Stock", "Status"];
 
     const rows = items.map((product) => [
       product.code,
       product.name,
       product.category?.name ?? "Uncategorised",
-      product.price !== null ? String(product.price) : "",
       product.unit,
       String(Number(product.stockQuantity ?? 0)),
       product.status,
@@ -913,9 +901,7 @@ export default function CataloguePage() {
                                       </button>
 
                                       <span className="ml-auto text-sm text-muted-foreground">
-                                        {product.price !== null
-                                          ? `${formatMoney(product.price)} / ${product.unit.toLowerCase()}`
-                                          : "No price"}
+                                        {product.unit.toLowerCase()}
                                         {product.stockQuantity <= 0 ? (
                                           <span className="ml-2 inline-flex items-center gap-1 font-medium text-red-600">
                                             <PackageX className="h-3.5 w-3.5" />
@@ -997,12 +983,10 @@ export default function CataloguePage() {
             <div className="grid grid-cols-2 gap-x-4 gap-y-3 p-5 text-sm">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Price
+                  Unit
                 </div>
                 <div className="mt-0.5 font-medium">
-                  {detailProduct.price !== null
-                    ? `${formatMoney(detailProduct.price)} / ${detailProduct.unit.toLowerCase()}`
-                    : "No price"}
+                  {detailProduct.unit}
                 </div>
               </div>
               <div>

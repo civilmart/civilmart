@@ -6,9 +6,11 @@ import {
   ImagePlus,
   Pencil,
   Plus,
+  Tag,
   Trash2,
 } from "lucide-react";
 
+import { fetchJson, ApiError } from "@/lib/fetch-json";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +23,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+
+type Brand = {
+  id: string;
+  name: string;
+  categoryId: string | null;
+  category?: { id: string; name: string; group: string | null } | null;
+};
 
 type Trade = {
   id: string;
@@ -190,16 +200,21 @@ export default function CategoriesPage() {
   const [newTradeName, setNewTradeName] = useState("");
   const [savingTrade, setSavingTrade] = useState(false);
 
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [addingBrandCategoryId, setAddingBrandCategoryId] = useState<string | null>(null);
+  const [newBrandName, setNewBrandName] = useState("");
+  const [savingBrand, setSavingBrand] = useState(false);
+
   async function loadData() {
     try {
-      const [tradesRes, catsRes] = await Promise.all([
-        fetch("/api/trades").then((r) => r.json()),
-        fetch("/api/categories?withCounts=true").then((r) => r.json()),
+      const [tradesData, catsData, brandsData] = await Promise.all([
+        fetchJson<Trade[] | { data: Trade[] }>("/api/trades"),
+        fetchJson<Category[] | { data: Category[] }>("/api/categories?withCounts=true"),
+        fetchJson<Brand[] | { data: Brand[] }>("/api/brands"),
       ]);
-      const tradesData = Array.isArray(tradesRes) ? tradesRes : tradesRes?.data ?? [];
-      const catsData = Array.isArray(catsRes) ? catsRes : catsRes?.data ?? [];
-      setTrades(tradesData as Trade[]);
-      setCategories(catsData as Category[]);
+      setTrades(Array.isArray(tradesData) ? tradesData : tradesData?.data ?? []);
+      setCategories(Array.isArray(catsData) ? catsData : catsData?.data ?? []);
+      setBrands(Array.isArray(brandsData) ? brandsData : brandsData?.data ?? []);
     } catch (e) {
       console.error("Failed to load data:", e);
     }
@@ -251,7 +266,7 @@ export default function CategoriesPage() {
       .then((url) => onUrl(url))
       .catch((error) => {
         console.error(error);
-        alert(error.message || "Upload failed.");
+        toast.error(error.message || "Upload failed.");
       })
       .finally(() => {
         setUploading(false);
@@ -261,7 +276,7 @@ export default function CategoriesPage() {
 
   async function saveCategory() {
     if (!form.name.trim()) {
-      alert("Category name is required.");
+      toast.error("Category name is required.");
       return;
     }
 
@@ -284,14 +299,14 @@ export default function CategoriesPage() {
       );
       const data = await response.json();
       if (!response.ok) {
-        alert(data.error || "Failed to save category.");
+        toast.error(data.error || "Failed to save category.");
         return;
       }
       closeForm();
       await loadData();
     } catch (error) {
       console.error(error);
-      alert("Failed to save category.");
+      toast.error("Failed to save category.");
     } finally {
       setSaving(false);
     }
@@ -306,13 +321,13 @@ export default function CategoriesPage() {
       });
       const data = await response.json();
       if (!response.ok) {
-        alert(data.error || "Failed to delete category.");
+        toast.error(data.error || "Failed to delete category.");
         return;
       }
       await loadData();
     } catch (error) {
       console.error(error);
-      alert("Failed to delete category.");
+      toast.error("Failed to delete category.");
     } finally {
       setDeletingId(null);
     }
@@ -330,7 +345,7 @@ export default function CategoriesPage() {
       });
       const data = await response.json();
       if (!response.ok) {
-        alert(data.error || "Failed to create trade.");
+        toast.error(data.error || "Failed to create trade.");
         return;
       }
       setAddingTrade(false);
@@ -338,9 +353,35 @@ export default function CategoriesPage() {
       await loadData();
     } catch (e) {
       console.error(e);
-      alert("Failed to create trade.");
+      toast.error("Failed to create trade.");
     } finally {
       setSavingTrade(false);
+    }
+  }
+
+  async function createBrand() {
+    const trimmed = newBrandName.trim();
+    if (!trimmed || !addingBrandCategoryId) return;
+    setSavingBrand(true);
+    try {
+      const response = await fetch("/api/brands", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed, categoryId: addingBrandCategoryId }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || "Failed to create brand.");
+        return;
+      }
+      setAddingBrandCategoryId(null);
+      setNewBrandName("");
+      await loadData();
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to create brand.");
+    } finally {
+      setSavingBrand(false);
     }
   }
 
@@ -473,60 +514,120 @@ export default function CategoriesPage() {
                       </CardContent>
                     </Card>
                   ) : (
-                    <div
-                      key={category.id}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-3"
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        {category.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={category.imageUrl}
-                            alt={category.name}
-                            className="h-10 w-16 shrink-0 rounded-md object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-10 w-16 shrink-0 items-center justify-center rounded-md bg-muted">
-                            <FolderTree className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-medium">{category.name}</span>
-                            <Badge variant="outline">{category.slug}</Badge>
-                            {!category.isActive && (
-                              <Badge variant="secondary">Inactive</Badge>
+                    <div key={category.id} className="space-y-2">
+                      <div
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-3"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          {category.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={category.imageUrl}
+                              alt={category.name}
+                              className="h-10 w-16 shrink-0 rounded-md object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-10 w-16 shrink-0 items-center justify-center rounded-md bg-muted">
+                              <FolderTree className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-medium">{category.name}</span>
+                              <Badge variant="outline">{category.slug}</Badge>
+                              {!category.isActive && (
+                                <Badge variant="secondary">Inactive</Badge>
+                              )}
+                            </div>
+                            {category.description && (
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                {category.description}
+                              </p>
                             )}
                           </div>
-                          {category.description && (
-                            <p className="mt-1 text-sm text-muted-foreground">
-                              {category.description}
-                            </p>
-                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">
+                            {category._count?.products ?? 0} product
+                            {(category._count?.products ?? 0) === 1 ? "" : "s"}
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => startEdit(category)}
+                          >
+                            <Pencil className="mr-1 h-3 w-3" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteCategory(category)}
+                            disabled={deletingId === category.id}
+                          >
+                            <Trash2 className="mr-1 h-3 w-3" />
+                            {deletingId === category.id ? "..." : "Delete"}
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">
-                          {category._count?.products ?? 0} product
-                          {(category._count?.products ?? 0) === 1 ? "" : "s"}
-                        </Badge>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => startEdit(category)}
-                        >
-                          <Pencil className="mr-1 h-3 w-3" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteCategory(category)}
-                          disabled={deletingId === category.id}
-                        >
-                          <Trash2 className="mr-1 h-3 w-3" />
-                          {deletingId === category.id ? "..." : "Delete"}
-                        </Button>
+                      <div className="ml-6 space-y-1">
+                        {brands.filter((b) => b.categoryId === category.id).length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {brands
+                              .filter((b) => b.categoryId === category.id)
+                              .map((brand) => (
+                                <Badge key={brand.id} variant="secondary" className="text-xs">
+                                  <Tag className="mr-1 h-2.5 w-2.5" />
+                                  {brand.name}
+                                </Badge>
+                              ))}
+                          </div>
+                        )}
+                        {addingBrandCategoryId === category.id ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              autoFocus
+                              value={newBrandName}
+                              onChange={(e) => setNewBrandName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") void createBrand();
+                                if (e.key === "Escape") {
+                                  setAddingBrandCategoryId(null);
+                                  setNewBrandName("");
+                                }
+                              }}
+                              placeholder="Brand name"
+                              className="h-7 text-xs"
+                            />
+                            <Button size="sm" className="h-7 text-xs" disabled={savingBrand} onClick={() => void createBrand()}>
+                              {savingBrand ? "..." : "Add"}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => {
+                                setAddingBrandCategoryId(null);
+                                setNewBrandName("");
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 text-xs text-muted-foreground"
+                            onClick={() => {
+                              setAddingBrandCategoryId(category.id);
+                              setNewBrandName("");
+                            }}
+                          >
+                            <Plus className="mr-1 h-2.5 w-2.5" />
+                            Add Brand
+                          </Button>
+                        )}
                       </div>
                     </div>
                   )
@@ -574,40 +675,100 @@ export default function CategoriesPage() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <div
-                    key={category.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-3"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium">{category.name}</span>
-                          <Badge variant="outline">{category.slug}</Badge>
+                  <div key={category.id} className="space-y-2">
+                    <div
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-3"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium">{category.name}</span>
+                            <Badge variant="outline">{category.slug}</Badge>
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">
+                          {category._count?.products ?? 0} product
+                          {(category._count?.products ?? 0) === 1 ? "" : "s"}
+                        </Badge>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => startEdit(category)}
+                        >
+                          <Pencil className="mr-1 h-3 w-3" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteCategory(category)}
+                          disabled={deletingId === category.id}
+                        >
+                          <Trash2 className="mr-1 h-3 w-3" />
+                          {deletingId === category.id ? "..." : "Delete"}
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">
-                        {category._count?.products ?? 0} product
-                        {(category._count?.products ?? 0) === 1 ? "" : "s"}
-                      </Badge>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => startEdit(category)}
-                      >
-                        <Pencil className="mr-1 h-3 w-3" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteCategory(category)}
-                        disabled={deletingId === category.id}
-                      >
-                        <Trash2 className="mr-1 h-3 w-3" />
-                        {deletingId === category.id ? "..." : "Delete"}
-                      </Button>
+                    <div className="ml-6 space-y-1">
+                      {brands.filter((b) => b.categoryId === category.id).length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {brands
+                            .filter((b) => b.categoryId === category.id)
+                            .map((brand) => (
+                              <Badge key={brand.id} variant="secondary" className="text-xs">
+                                <Tag className="mr-1 h-2.5 w-2.5" />
+                                {brand.name}
+                              </Badge>
+                            ))}
+                        </div>
+                      )}
+                      {addingBrandCategoryId === category.id ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            autoFocus
+                            value={newBrandName}
+                            onChange={(e) => setNewBrandName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") void createBrand();
+                              if (e.key === "Escape") {
+                                setAddingBrandCategoryId(null);
+                                setNewBrandName("");
+                              }
+                            }}
+                            placeholder="Brand name"
+                            className="h-7 text-xs"
+                          />
+                          <Button size="sm" className="h-7 text-xs" disabled={savingBrand} onClick={() => void createBrand()}>
+                            {savingBrand ? "..." : "Add"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              setAddingBrandCategoryId(null);
+                              setNewBrandName("");
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-xs text-muted-foreground"
+                          onClick={() => {
+                            setAddingBrandCategoryId(category.id);
+                            setNewBrandName("");
+                          }}
+                        >
+                          <Plus className="mr-1 h-2.5 w-2.5" />
+                          Add Brand
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 type Customer = {
   id: string;
@@ -120,7 +121,7 @@ useEffect(() => {
 
   async function saveCustomer() {
     if (!form.name.trim()) {
-      alert("Customer name is required.");
+      toast.error("Customer name is required.");
       return;
     }
 
@@ -147,7 +148,7 @@ useEffect(() => {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error || "Failed to save customer.");
+        toast.error(data.error || "Failed to save customer.");
         return;
       }
 
@@ -155,7 +156,7 @@ useEffect(() => {
       await loadCustomers();
     } catch (error) {
       console.error(error);
-      alert("Failed to save customer.");
+      toast.error("Failed to save customer.");
     } finally {
       setSaving(false);
     }

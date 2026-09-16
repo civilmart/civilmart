@@ -24,13 +24,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMoney } from "@/lib/money";
+import { toast } from "sonner";
 
 type PosVariant = {
   id: string;
   sku: string;
   barcode: string | null;
   name: string;
-  price: unknown;
 };
 
 type PosProduct = {
@@ -39,7 +39,6 @@ type PosProduct = {
   barcode: string | null;
   name: string;
   unit: string;
-  price: unknown;
   stockQuantity: unknown;
   variants: PosVariant[];
 };
@@ -210,14 +209,14 @@ useEffect(() => {
       const products = (await response.json()) as PosProduct[];
 
       if (!response.ok || products.length === 0) {
-        alert(`No product found for barcode: ${code}`);
+        toast.error(`No product found for barcode: ${code}`);
         return;
       }
 
       addProduct(products[0], code);
     } catch (error) {
       console.error(error);
-      alert("Failed to look up barcode.");
+      toast.error("Failed to look up barcode.");
     } finally {
       setScanning(false);
       setScan("");
@@ -229,7 +228,7 @@ useEffect(() => {
     const stock = Number(product.stockQuantity);
 
     if (stock <= 0) {
-      alert(`${product.name} is out of stock.`);
+      toast.error(`${product.name} is out of stock.`);
       return;
     }
 
@@ -241,25 +240,7 @@ useEffect(() => {
     }
 
     if (!variant && product.variants.length > 0) {
-      const priced = product.variants.filter((v) => v.price !== null);
-
-      const pool = priced.length > 0 ? priced : product.variants;
-
-      variant = pool.reduce((cheapest, v) =>
-        (Number(v.price || 0) || Number.MAX_SAFE_INTEGER) <
-        (Number(cheapest.price || 0) || Number.MAX_SAFE_INTEGER)
-          ? v
-          : cheapest
-      );
-    }
-
-    const price = variant
-      ? Number(variant.price)
-      : Number(product.price);
-
-    if (!Number.isFinite(price) || price < 0) {
-      alert(`${product.name} has no price set.`);
-      return;
+      variant = product.variants[0];
     }
 
     const lineKey = `${product.id}::${variant?.id ?? "base"}`;
@@ -271,7 +252,7 @@ useEffect(() => {
         const nextQty = existing.quantity + 1;
 
         if (nextQty > stock) {
-          alert(`Only ${stock} in stock for ${product.name}.`);
+          toast.error(`Only ${stock} in stock for ${product.name}.`);
           return current;
         }
 
@@ -290,7 +271,7 @@ useEffect(() => {
           description: product.name,
           unit: product.unit,
           quantity: 1,
-          unitPrice: price,
+          unitPrice: 0,
         },
       ];
     });
@@ -363,7 +344,7 @@ useEffect(() => {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error || "Failed to create customer.");
+        toast.error(data.error || "Failed to create customer.");
         return;
       }
 
@@ -375,13 +356,13 @@ useEffect(() => {
       setShowQuickCustomer(false);
     } catch (error) {
       console.error(error);
-      alert("Failed to create customer.");
+      toast.error("Failed to create customer.");
     }
   }
 
   async function charge() {
     if (items.length === 0) {
-      alert("Scan or add at least one item first.");
+      toast.error("Scan or add at least one item first.");
       return;
     }
 
@@ -414,7 +395,7 @@ useEffect(() => {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error || "Failed to create invoice.");
+        toast.error(data.error || "Failed to create invoice.");
         return;
       }
 
@@ -427,7 +408,7 @@ useEffect(() => {
       scanRef.current?.focus();
     } catch (error) {
       console.error(error);
-      alert("Failed to create invoice.");
+      toast.error("Failed to create invoice.");
     } finally {
       setCharging(false);
     }
@@ -437,7 +418,7 @@ useEffect(() => {
     const amount = paymentAmounts[invoice.id]?.trim();
 
     if (!amount || Number(amount) <= 0) {
-      alert("Enter a payment amount.");
+      toast.error("Enter a payment amount.");
       return;
     }
 
@@ -456,14 +437,14 @@ useEffect(() => {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error || "Failed to record payment.");
+        toast.error(data.error || "Failed to record payment.");
         return;
       }
 
       await loadInvoices();
     } catch (error) {
       console.error(error);
-      alert("Failed to record payment.");
+      toast.error("Failed to record payment.");
     } finally {
       setPayingInvoice(null);
     }
@@ -486,14 +467,14 @@ useEffect(() => {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error || "Failed to void invoice.");
+        toast.error(data.error || "Failed to void invoice.");
         return;
       }
 
       await loadInvoices();
     } catch (error) {
       console.error(error);
-      alert("Failed to void invoice.");
+      toast.error("Failed to void invoice.");
     } finally {
       setVoidingInvoice(null);
     }
@@ -592,11 +573,6 @@ useEffect(() => {
                             {product.code}
                             {product.barcode ? ` · ${product.barcode}` : ""}
                           </p>
-                        </div>
-                        <div className="text-right text-sm">
-                          <span className="font-medium">
-                            {formatMoney(Number(product.price) || 0)}
-                          </span>
                         </div>
                       </button>
                     ))}

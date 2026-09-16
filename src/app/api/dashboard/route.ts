@@ -22,11 +22,8 @@ export async function GET() {
           id: true,
           code: true,
           name: true,
-          brand: true,
           unit: true,
           stockQuantity: true,
-          price: true,
-          reorderLevel: true,
           category: { select: { name: true } },
         },
       }),
@@ -64,40 +61,32 @@ export async function GET() {
       }),
     ]);
 
-    const lowStockItems = [];
-    const outOfStockItems = [];
-    let stockValue = 0;
+    const lowStockItems: Array<{
+      id: string;
+      code: string;
+      name: string;
+      unit: string;
+      currentStock: number;
+    }> = [];
+    const outOfStockItems: Array<{
+      id: string;
+      code: string;
+      name: string;
+      unit: string;
+      currentStock: number;
+    }> = [];
+    const stockValue = 0;
 
     for (const product of products) {
       const stock = Number(product.stockQuantity);
-      const price = product.price ? Number(product.price) : 0;
-
-      if (price >= 0 && stock > 0) {
-        stockValue += stock * price;
-      }
 
       if (stock <= 0) {
         outOfStockItems.push({
           id: product.id,
           code: product.code,
           name: product.name,
-          brand: product.brand,
           unit: product.unit,
           currentStock: stock,
-          reorderLevel: Number(product.reorderLevel ?? 0) || null,
-        });
-      } else if (
-        product.reorderLevel !== null &&
-        stock <= Number(product.reorderLevel)
-      ) {
-        lowStockItems.push({
-          id: product.id,
-          code: product.code,
-          name: product.name,
-          brand: product.brand,
-          unit: product.unit,
-          currentStock: stock,
-          reorderLevel: Number(product.reorderLevel),
         });
       }
     }

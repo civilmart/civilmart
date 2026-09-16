@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserOrThrow } from "@/lib/auth";
-import { AD_SLOTS, isAdSlot } from "@/lib/ads";
+import { AD_SLOTS, isAdSlot, isAdContentType, isAdSize } from "@/lib/ads";
 
 export async function GET() {
   try {
@@ -39,6 +39,12 @@ export async function POST(request: Request) {
       ? Math.max(0, Math.trunc(sortOrderRaw))
       : 0;
 
+    const contentTypeRaw = String(body.contentType ?? "IMAGE").trim();
+    const contentType = isAdContentType(contentTypeRaw) ? contentTypeRaw : "IMAGE";
+    const embedCode = contentType === "EMBED" ? String(body.embedCode ?? "").trim() || null : null;
+    const adSizeRaw = String(body.adSize ?? "FULL_WIDTH").trim();
+    const adSize = isAdSize(adSizeRaw) ? adSizeRaw : "FULL_WIDTH";
+
     if (!title) {
       return NextResponse.json(
         { success: false, error: "Title is required" },
@@ -57,7 +63,7 @@ export async function POST(request: Request) {
     }
 
     const ad = await prisma.adPlacement.create({
-      data: { title, slot, subtitle, imageUrl, href, active, sortOrder },
+      data: { title, slot, subtitle, imageUrl, href, active, sortOrder, contentType, embedCode, adSize },
     });
 
     return NextResponse.json({ success: true, data: ad });

@@ -1,8 +1,10 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Boxes, ChevronDown, Loader2, Search } from "lucide-react";
 
+import { fetchJson, ApiError } from "@/lib/fetch-json";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,13 +14,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 type InventoryRow = {
   id: string;
   code: string;
   name: string;
   unit: string;
-  brand: string | null;
   category: string | null;
   categoryId: string | null;
   minimumStock: number | null;
@@ -53,10 +55,51 @@ const statusClasses: Record<string, string> = {
 };
 
 export default function InventoryPage() {
+  return (
+    <Suspense>
+      <InventoryContent />
+    </Suspense>
+  );
+}
+
+function InventoryContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const search = searchParams.get("search") ?? "";
+  const status = searchParams.get("status") ?? "";
+  const currentPage = Math.max(1, Number(searchParams.get("page") ?? "1"));
+
+  const createQueryString = useCallback(
+    (name: string, value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value) {
+        params.set(name, value);
+      } else {
+        params.delete(name);
+      }
+      return params.toString();
+    },
+    [searchParams]
+  );
+
+  const setSearch = (value: string) => {
+    router.push(`${pathname}?${createQueryString("search", value)}`);
+  };
+
+  const setStatus = (value: string) => {
+    router.push(`${pathname}?${createQueryString("status", value)}`);
+  };
+
+  const setPage = (value: number) => {
+    router.push(`${pathname}?${createQueryString("page", value > 1 ? String(value) : "")}`);
+  };
+
   const [rows, setRows] = useState<InventoryRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
+
+  const ITEMS_PER_PAGE = 20;
   const [ledgerProductId, setLedgerProductId] = useState<string | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[] | null>(null);
   const [ledgerLoading, setLedgerLoading] = useState(false);
@@ -68,7 +111,7 @@ export default function InventoryPage() {
   const [editingReorder, setEditingReorder] = useState<string | null>(null);
   const [reorderValue, setReorderValue] = useState("");
 
-  const loadInventory = async () => {
+  const loadInventory = useCallback(async () => {
     setLoading(true);
 
     try {
@@ -76,8 +119,9 @@ export default function InventoryPage() {
       if (search.trim()) params.set("q", search.trim());
       if (status) params.set("status", status);
 
-      const response = await fetch(`/api/inventory?${params.toString()}`);
-      const data = await response.json();
+      const data = await fetchJson<{ success: boolean; data?: InventoryRow[] }>(
+        `/api/inventory?${params.toString()}`
+      );
 
       if (data.success) {
         setRows(data.data ?? []);
@@ -87,13 +131,12 @@ export default function InventoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [search, status]);
 
   useEffect(() => {
     const timer = setTimeout(loadInventory, search.trim() ? 300 : 0);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, status]);
+  }, [loadInventory, search]);
 
   const toggleLedger = async (productId: string) => {
     if (ledgerProductId === productId) {
@@ -149,10 +192,10 @@ export default function InventoryPage() {
         setAdjustType("ADJUSTMENT_IN");
         loadInventory();
       } else {
-        alert(data.error || "Failed to record adjustment.");
+        toast.error(data.error || "Failed to record adjustment.");
       }
     } catch {
-      alert("Failed to record adjustment.");
+      toast.error("Failed to record adjustment.");
     } finally {
       setAdjustSaving(false);
     }
@@ -190,11 +233,17 @@ export default function InventoryPage() {
       return (
         row.name.toLowerCase().includes(term) ||
         row.code.toLowerCase().includes(term) ||
-        (row.category ?? "").toLowerCase().includes(term) ||
-        (row.brand ?? "").toLowerCase().includes(term)
+        (row.category ?? "").toLowerCase().includes(term)
       );
     });
   }, [rows, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / ITEMS_PER_PAGE));
+
+  const paginatedRows = useMemo(
+    () => filteredRows.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE),
+    [filteredRows, currentPage]
+  );
 
   const formatNumber = (value: number) =>
     new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value);
@@ -269,14 +318,13 @@ export default function InventoryPage() {
                 </thead>
 
                 <tbody>
-                  {filteredRows.map((row) => (
+                  {paginatedRows.map((row) => (
                     <Fragment key={row.id}>
                       <tr className="border-b hover:bg-muted/40">
                         <td className="px-3 py-3">
                           <div className="font-medium">{row.name}</div>
                           <div className="text-xs text-muted-foreground">
                             {row.code}
-                            {row.brand ? ` · ${row.brand}` : ""}
                           </div>
                         </td>
 
@@ -528,6 +576,35 @@ export default function InventoryPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {filteredRows.length > ITEMS_PER_PAGE && (
+            <div className="mt-6 flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredRows.length)}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredRows.length)} of {filteredRows.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage <= 1}
+                  onClick={() => setPage(currentPage - 1)}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setPage(currentPage + 1)}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

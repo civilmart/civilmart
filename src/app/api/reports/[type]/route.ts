@@ -96,27 +96,16 @@ async function getStockReport() {
 
   const rows = products.map((product) => {
     const stock = Number(product.stockQuantity);
-    const price = product.price ? Number(product.price) : null;
-    const value = price !== null ? stock * price : 0;
-    totalValue += value;
-
-    const stockStatus =
-      stock <= 0
-        ? "OUT_OF_STOCK"
-        : product.reorderLevel !== null && stock <= Number(product.reorderLevel)
-          ? "LOW_STOCK"
-          : "IN_STOCK";
 
     return [
       product.code,
       product.name,
       product.category?.name ?? "",
-      product.brand ?? "",
       product.unit,
       stock.toFixed(2),
-      stockStatus,
-      price !== null ? price.toFixed(2) : "",
-      value.toFixed(2),
+      stock <= 0 ? "OUT_OF_STOCK" : "IN_STOCK",
+      "",
+      "",
       product.status,
     ];
   });
@@ -126,7 +115,6 @@ async function getStockReport() {
       "Code",
       "Product",
       "Category",
-      "Brand",
       "Unit",
       "Current Stock",
       "Stock Status",

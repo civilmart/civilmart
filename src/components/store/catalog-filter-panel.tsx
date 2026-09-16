@@ -3,11 +3,10 @@
 import { useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { cn } from "cn";
-import { type BrandCount, type CatalogueGroup } from "@/lib/store-front";
+import { type CatalogueGroup } from "@/lib/store-front";
 
 export type CatalogFilterState = {
   category: string | null;
-  brands: string[];
   priceMin: string;
   priceMax: string;
   inStockOnly: boolean;
@@ -15,7 +14,6 @@ export type CatalogFilterState = {
 
 const EMPTY_STATE: CatalogFilterState = {
   category: null,
-  brands: [],
   priceMin: "",
   priceMax: "",
   inStockOnly: false,
@@ -35,14 +33,12 @@ function commitPrice(onChange: (patch: Partial<CatalogFilterState>) => void) {
 
 export function CatalogFilterPanel({
   groups,
-  brands,
   active,
   activeCount,
   onChange,
   className,
 }: {
   groups: CatalogueGroup[];
-  brands: BrandCount[];
   active: CatalogFilterState;
   activeCount: number;
   onChange: (patch: Partial<CatalogFilterState>) => void;
@@ -51,9 +47,6 @@ export function CatalogFilterPanel({
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(groups.map((g) => g.name))
   );
-  const [showAllBrands, setShowAllBrands] = useState(false);
-
-  const visibleBrands = showAllBrands ? brands : brands.slice(0, 8);
 
   function toggleGroup(name: string) {
     setExpanded((prev) => {
@@ -64,15 +57,6 @@ export function CatalogFilterPanel({
         next.add(name);
       }
       return next;
-    });
-  }
-
-  function toggleBrand(name: string) {
-    const isActive = active.brands.includes(name);
-    onChange({
-      brands: isActive
-        ? active.brands.filter((b) => b !== name)
-        : [...active.brands, name],
     });
   }
 
@@ -168,49 +152,6 @@ export function CatalogFilterPanel({
             );
           })}
         </section>
-
-        {brands.length > 0 && (
-          <section>
-            <h3 className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-              Brand
-            </h3>
-            <div className="mt-1.5 space-y-0.5">
-              {visibleBrands.map((brand) => {
-                const isActive = active.brands.includes(brand.name);
-
-                return (
-                  <label
-                    key={brand.name}
-                    className={cn(
-                      "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition hover:bg-slate-100",
-                      isActive && "text-amber-900"
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isActive}
-                      onChange={() => toggleBrand(brand.name)}
-                      className="h-4 w-4 shrink-0 accent-amber-600"
-                    />
-                    <span className="truncate font-medium">{brand.name}</span>
-                    <span className="ml-auto shrink-0 text-[10px] font-semibold text-slate-400">
-                      {brand.count}
-                    </span>
-                  </label>
-                );
-              })}
-              {brands.length > 8 && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllBrands((v) => !v)}
-                  className="px-2 pt-1 text-xs font-semibold text-amber-700 hover:underline"
-                >
-                  {showAllBrands ? "Show less" : `Show all (${brands.length})`}
-                </button>
-              )}
-            </div>
-          </section>
-        )}
 
         <section>
           <h3 className="px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">

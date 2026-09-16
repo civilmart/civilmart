@@ -94,7 +94,7 @@ async function main() {
 
   // Products (bulk create for missing, targeted update without clobbering prices)
   const existingProducts = await prisma.product.findMany({
-    select: { id: true, code: true, price: true },
+    select: { id: true, code: true },
   });
   const byCode = new Map(existingProducts.map((p) => [p.code, p]));
 
@@ -110,7 +110,6 @@ async function main() {
       SAMPLE_PRICES,
       item.code
     );
-    const price = hasPrice ? SAMPLE_PRICES[item.code] : null;
     const openingStock =
       !hasPrice || item.maximumStock == null
         ? Math.max(item.minimumStock ?? 0, 0)
@@ -119,17 +118,12 @@ async function main() {
     return {
       code: item.code,
       name: item.name,
-      brand: item.brand,
       unit: item.unit as never,
       description: item.description,
       status: "ACTIVE" as const,
       subcategory: item.subcategory,
-      minimumStock: item.minimumStock,
-      maximumStock: item.maximumStock,
-      reorderLevel: item.reorderLevel,
       trades: item.trades,
       categoryId: categoryBySlug.get(slugify(item.category)) ?? null,
-      price,
       isFeatured: hasPrice,
       stockQuantity: openingStock,
     };
@@ -143,24 +137,22 @@ async function main() {
     console.log(`Created products: ${toCreate.length} (new)`);
   }
 
-  // For existing products, only fill in null prices / stock for the sample
+  // For existing products, only fill in stock for the sample
   // set without overwriting admin-set values.
-  const needPriceUpdate = toUpdate.filter(
+  const needStockUpdate = toUpdate.filter(
     (item) =>
-      Object.prototype.hasOwnProperty.call(SAMPLE_PRICES, item.code) &&
-      byCode.get(item.code)?.price == null
+      Object.prototype.hasOwnProperty.call(SAMPLE_PRICES, item.code)
   );
-  for (const item of needPriceUpdate) {
-    const price = SAMPLE_PRICES[item.code];
+  for (const item of needStockUpdate) {
     const openingStock =
       item.maximumStock != null ? Math.max(item.maximumStock, 0) : 0;
     await prisma.product.update({
       where: { code: item.code },
-      data: { price, stockQuantity: openingStock, isFeatured: true },
+      data: { stockQuantity: openingStock, isFeatured: true },
     });
   }
   console.log(
-    `Existing products: ${toUpdate.length} kept, ${needPriceUpdate.length} given sample prices`
+    `Existing products: ${toUpdate.length} kept, ${needStockUpdate.length} given sample stock`
   );
 
   // Admin user (only when no staff users exist yet)

@@ -41,6 +41,9 @@ export type AdPlacementMinAggregateOutputType = {
   subtitle: string | null
   imageUrl: string | null
   href: string | null
+  contentType: string | null
+  embedCode: string | null
+  adSize: string | null
   active: boolean | null
   sortOrder: number | null
   createdAt: Date | null
@@ -54,6 +57,9 @@ export type AdPlacementMaxAggregateOutputType = {
   subtitle: string | null
   imageUrl: string | null
   href: string | null
+  contentType: string | null
+  embedCode: string | null
+  adSize: string | null
   active: boolean | null
   sortOrder: number | null
   createdAt: Date | null
@@ -67,6 +73,9 @@ export type AdPlacementCountAggregateOutputType = {
   subtitle: number
   imageUrl: number
   href: number
+  contentType: number
+  embedCode: number
+  adSize: number
   active: number
   sortOrder: number
   createdAt: number
@@ -90,6 +99,9 @@ export type AdPlacementMinAggregateInputType = {
   subtitle?: true
   imageUrl?: true
   href?: true
+  contentType?: true
+  embedCode?: true
+  adSize?: true
   active?: true
   sortOrder?: true
   createdAt?: true
@@ -103,6 +115,9 @@ export type AdPlacementMaxAggregateInputType = {
   subtitle?: true
   imageUrl?: true
   href?: true
+  contentType?: true
+  embedCode?: true
+  adSize?: true
   active?: true
   sortOrder?: true
   createdAt?: true
@@ -116,6 +131,9 @@ export type AdPlacementCountAggregateInputType = {
   subtitle?: true
   imageUrl?: true
   href?: true
+  contentType?: true
+  embedCode?: true
+  adSize?: true
   active?: true
   sortOrder?: true
   createdAt?: true
@@ -216,6 +234,9 @@ export type AdPlacementGroupByOutputType = {
   subtitle: string | null
   imageUrl: string | null
   href: string | null
+  contentType: string
+  embedCode: string | null
+  adSize: string
   active: boolean
   sortOrder: number
   createdAt: Date
@@ -252,6 +273,9 @@ export type AdPlacementWhereInput = {
   subtitle?: Prisma.StringNullableFilter<"AdPlacement"> | string | null
   imageUrl?: Prisma.StringNullableFilter<"AdPlacement"> | string | null
   href?: Prisma.StringNullableFilter<"AdPlacement"> | string | null
+  contentType?: Prisma.StringFilter<"AdPlacement"> | string
+  embedCode?: Prisma.StringNullableFilter<"AdPlacement"> | string | null
+  adSize?: Prisma.StringFilter<"AdPlacement"> | string
   active?: Prisma.BoolFilter<"AdPlacement"> | boolean
   sortOrder?: Prisma.IntFilter<"AdPlacement"> | number
   createdAt?: Prisma.DateTimeFilter<"AdPlacement"> | Date | string
@@ -265,6 +289,9 @@ export type AdPlacementOrderByWithRelationInput = {
   subtitle?: Prisma.SortOrderInput | Prisma.SortOrder
   imageUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   href?: Prisma.SortOrderInput | Prisma.SortOrder
+  contentType?: Prisma.SortOrder
+  embedCode?: Prisma.SortOrderInput | Prisma.SortOrder
+  adSize?: Prisma.SortOrder
   active?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -281,6 +308,9 @@ export type AdPlacementWhereUniqueInput = Prisma.AtLeast<{
   subtitle?: Prisma.StringNullableFilter<"AdPlacement"> | string | null
   imageUrl?: Prisma.StringNullableFilter<"AdPlacement"> | string | null
   href?: Prisma.StringNullableFilter<"AdPlacement"> | string | null
+  contentType?: Prisma.StringFilter<"AdPlacement"> | string
+  embedCode?: Prisma.StringNullableFilter<"AdPlacement"> | string | null
+  adSize?: Prisma.StringFilter<"AdPlacement"> | string
   active?: Prisma.BoolFilter<"AdPlacement"> | boolean
   sortOrder?: Prisma.IntFilter<"AdPlacement"> | number
   createdAt?: Prisma.DateTimeFilter<"AdPlacement"> | Date | string
@@ -294,6 +324,9 @@ export type AdPlacementOrderByWithAggregationInput = {
   subtitle?: Prisma.SortOrderInput | Prisma.SortOrder
   imageUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   href?: Prisma.SortOrderInput | Prisma.SortOrder
+  contentType?: Prisma.SortOrder
+  embedCode?: Prisma.SortOrderInput | Prisma.SortOrder
+  adSize?: Prisma.SortOrder
   active?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -315,6 +348,9 @@ export type AdPlacementScalarWhereWithAggregatesInput = {
   subtitle?: Prisma.StringNullableWithAggregatesFilter<"AdPlacement"> | string | null
   imageUrl?: Prisma.StringNullableWithAggregatesFilter<"AdPlacement"> | string | null
   href?: Prisma.StringNullableWithAggregatesFilter<"AdPlacement"> | string | null
+  contentType?: Prisma.StringWithAggregatesFilter<"AdPlacement"> | string
+  embedCode?: Prisma.StringNullableWithAggregatesFilter<"AdPlacement"> | string | null
+  adSize?: Prisma.StringWithAggregatesFilter<"AdPlacement"> | string
   active?: Prisma.BoolWithAggregatesFilter<"AdPlacement"> | boolean
   sortOrder?: Prisma.IntWithAggregatesFilter<"AdPlacement"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"AdPlacement"> | Date | string
@@ -328,6 +364,9 @@ export type AdPlacementCreateInput = {
   subtitle?: string | null
   imageUrl?: string | null
   href?: string | null
+  contentType?: string
+  embedCode?: string | null
+  adSize?: string
   active?: boolean
   sortOrder?: number
   createdAt?: Date | string
@@ -341,6 +380,9 @@ export type AdPlacementUncheckedCreateInput = {
   subtitle?: string | null
   imageUrl?: string | null
   href?: string | null
+  contentType?: string
+  embedCode?: string | null
+  adSize?: string
   active?: boolean
   sortOrder?: number
   createdAt?: Date | string
@@ -354,6 +396,9 @@ export type AdPlacementUpdateInput = {
   subtitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   href?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentType?: Prisma.StringFieldUpdateOperationsInput | string
+  embedCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adSize?: Prisma.StringFieldUpdateOperationsInput | string
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -367,6 +412,9 @@ export type AdPlacementUncheckedUpdateInput = {
   subtitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   href?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentType?: Prisma.StringFieldUpdateOperationsInput | string
+  embedCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adSize?: Prisma.StringFieldUpdateOperationsInput | string
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -380,6 +428,9 @@ export type AdPlacementCreateManyInput = {
   subtitle?: string | null
   imageUrl?: string | null
   href?: string | null
+  contentType?: string
+  embedCode?: string | null
+  adSize?: string
   active?: boolean
   sortOrder?: number
   createdAt?: Date | string
@@ -393,6 +444,9 @@ export type AdPlacementUpdateManyMutationInput = {
   subtitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   href?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentType?: Prisma.StringFieldUpdateOperationsInput | string
+  embedCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adSize?: Prisma.StringFieldUpdateOperationsInput | string
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -406,6 +460,9 @@ export type AdPlacementUncheckedUpdateManyInput = {
   subtitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   href?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  contentType?: Prisma.StringFieldUpdateOperationsInput | string
+  embedCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adSize?: Prisma.StringFieldUpdateOperationsInput | string
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -419,6 +476,9 @@ export type AdPlacementCountOrderByAggregateInput = {
   subtitle?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
   href?: Prisma.SortOrder
+  contentType?: Prisma.SortOrder
+  embedCode?: Prisma.SortOrder
+  adSize?: Prisma.SortOrder
   active?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -436,6 +496,9 @@ export type AdPlacementMaxOrderByAggregateInput = {
   subtitle?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
   href?: Prisma.SortOrder
+  contentType?: Prisma.SortOrder
+  embedCode?: Prisma.SortOrder
+  adSize?: Prisma.SortOrder
   active?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -449,6 +512,9 @@ export type AdPlacementMinOrderByAggregateInput = {
   subtitle?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
   href?: Prisma.SortOrder
+  contentType?: Prisma.SortOrder
+  embedCode?: Prisma.SortOrder
+  adSize?: Prisma.SortOrder
   active?: Prisma.SortOrder
   sortOrder?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -468,6 +534,9 @@ export type AdPlacementSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   subtitle?: boolean
   imageUrl?: boolean
   href?: boolean
+  contentType?: boolean
+  embedCode?: boolean
+  adSize?: boolean
   active?: boolean
   sortOrder?: boolean
   createdAt?: boolean
@@ -481,6 +550,9 @@ export type AdPlacementSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   subtitle?: boolean
   imageUrl?: boolean
   href?: boolean
+  contentType?: boolean
+  embedCode?: boolean
+  adSize?: boolean
   active?: boolean
   sortOrder?: boolean
   createdAt?: boolean
@@ -494,6 +566,9 @@ export type AdPlacementSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   subtitle?: boolean
   imageUrl?: boolean
   href?: boolean
+  contentType?: boolean
+  embedCode?: boolean
+  adSize?: boolean
   active?: boolean
   sortOrder?: boolean
   createdAt?: boolean
@@ -507,13 +582,16 @@ export type AdPlacementSelectScalar = {
   subtitle?: boolean
   imageUrl?: boolean
   href?: boolean
+  contentType?: boolean
+  embedCode?: boolean
+  adSize?: boolean
   active?: boolean
   sortOrder?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type AdPlacementOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "slot" | "title" | "subtitle" | "imageUrl" | "href" | "active" | "sortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["adPlacement"]>
+export type AdPlacementOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "slot" | "title" | "subtitle" | "imageUrl" | "href" | "contentType" | "embedCode" | "adSize" | "active" | "sortOrder" | "createdAt" | "updatedAt", ExtArgs["result"]["adPlacement"]>
 
 export type $AdPlacementPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "AdPlacement"
@@ -525,6 +603,9 @@ export type $AdPlacementPayload<ExtArgs extends runtime.Types.Extensions.Interna
     subtitle: string | null
     imageUrl: string | null
     href: string | null
+    contentType: string
+    embedCode: string | null
+    adSize: string
     active: boolean
     sortOrder: number
     createdAt: Date
@@ -958,6 +1039,9 @@ export interface AdPlacementFieldRefs {
   readonly subtitle: Prisma.FieldRef<"AdPlacement", 'String'>
   readonly imageUrl: Prisma.FieldRef<"AdPlacement", 'String'>
   readonly href: Prisma.FieldRef<"AdPlacement", 'String'>
+  readonly contentType: Prisma.FieldRef<"AdPlacement", 'String'>
+  readonly embedCode: Prisma.FieldRef<"AdPlacement", 'String'>
+  readonly adSize: Prisma.FieldRef<"AdPlacement", 'String'>
   readonly active: Prisma.FieldRef<"AdPlacement", 'Boolean'>
   readonly sortOrder: Prisma.FieldRef<"AdPlacement", 'Int'>
   readonly createdAt: Prisma.FieldRef<"AdPlacement", 'DateTime'>

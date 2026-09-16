@@ -40,7 +40,7 @@ export function StoreHeader({
         <button
           type="button"
           aria-label="Open menu"
-          className="rounded-md p-2 hover:bg-slate-100 lg:hidden"
+          className="rounded-md p-2 hover:bg-slate-100 sm:hidden"
           onClick={() => setOpen((v) => !v)}
         >
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -53,7 +53,7 @@ export function StoreHeader({
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-1 lg:flex">
+        <nav className="hidden items-center gap-1 sm:flex">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
@@ -117,7 +117,7 @@ export function StoreHeader({
       </div>
 
       {open && (
-        <div className="border-t border-slate-200 bg-white px-4 py-3 lg:hidden">
+        <div className="border-t border-slate-200 bg-white px-4 py-3 sm:hidden">
           <form onSubmit={submitSearch} className="mb-3 flex items-center rounded-md border bg-slate-50 px-3">
             <Search className="h-4 w-4 text-slate-400" />
             <input

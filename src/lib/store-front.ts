@@ -44,7 +44,6 @@ export type StoreVariant = {
   name: string;
   sizeValue: number;
   sizeUnit: string;
-  price: number | null;
   imageUrl: string | null;
 };
 
@@ -52,7 +51,6 @@ export type StoreProduct = {
   id: string;
   code: string;
   name: string;
-  brand: string | null;
   description: string | null;
   unit: string;
   stockQuantity: number;
@@ -63,22 +61,12 @@ export type StoreProduct = {
   subcategory: string | null;
   trades: string[];
   isFeatured: boolean;
-  price: number | null;
+  retailPrice: number | null;
   variants: StoreVariant[];
 };
 
 export function effectivePrice(product: StoreProduct): number | null {
-  if (product.variants.length > 0) {
-    const priced = product.variants
-      .map((v) => v.price)
-      .filter((p): p is number => p !== null);
-
-    if (priced.length > 0) {
-      return Math.min(...priced);
-    }
-  }
-
-  return product.price;
+  return product.retailPrice ?? null;
 }
 
 export function isInStock(product: StoreProduct): boolean {
@@ -176,13 +164,5 @@ export function defaultCartVariant(
 ): StoreVariant | null {
   if (product.variants.length === 0) return null;
 
-  const priced = product.variants.filter((v) => v.price !== null);
-  const pool = priced.length > 0 ? priced : product.variants;
-
-  return pool.reduce((cheapest, v) =>
-    (v.price ?? Number.POSITIVE_INFINITY) <
-    (cheapest.price ?? Number.POSITIVE_INFINITY)
-      ? v
-      : cheapest
-  );
+  return product.variants[0];
 }

@@ -35,7 +35,6 @@ type StockAlertItem = {
   id: string;
   code: string;
   name: string;
-  brand: string | null;
   unit: string;
   currentStock: number;
   reorderLevel: number | null;
@@ -321,7 +320,6 @@ useEffect(() => {
                             <span className="font-medium">{item.name}</span>
                             <div className="text-xs text-muted-foreground">
                               {item.code}
-                              {item.brand ? ` · ${item.brand}` : ""}
                             </div>
                           </div>
                         </div>

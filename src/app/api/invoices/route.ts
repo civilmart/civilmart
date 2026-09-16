@@ -147,12 +147,7 @@ export async function POST(request: NextRequest) {
 
       const unit = (item.unit ?? product.unit) as ProductUnit;
 
-      const fallback =
-        variant?.price !== null && variant?.price !== undefined
-          ? Number(variant.price)
-          : product.price !== null && product.price !== undefined
-            ? Number(product.price)
-            : null;
+      const fallback = null;
 
       const unitPrice =
         item.unitPrice !== undefined ? Number(item.unitPrice) : fallback;

@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      const unitPrice = variant?.price ?? product.price;
+      const unitPrice = null;
 
       if (unitPrice === null || unitPrice === undefined) {
         return NextResponse.json(

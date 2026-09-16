@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import type { InventoryRow } from "@/types/api";
 
 const OUTGOING = new Set([
   "SALE",
@@ -84,20 +85,13 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const minimumStock =
-        product.minimumStock !== null ? Number(product.minimumStock) : null;
-      const reorderLevel =
-        product.reorderLevel !== null ? Number(product.reorderLevel) : null;
+      const minimumStock = null;
+      const reorderLevel = null;
 
       let stockStatus = "IN_STOCK";
 
       if (currentStock <= 0) {
         stockStatus = "OUT_OF_STOCK";
-      } else if (
-        reorderLevel !== null &&
-        currentStock <= reorderLevel
-      ) {
-        stockStatus = "LOW_STOCK";
       }
 
       if (status && stockStatus !== status) {
@@ -109,15 +103,12 @@ export async function GET(request: NextRequest) {
         code: product.code,
         name: product.name,
         unit: product.unit,
-        brand: product.brand,
+        brand: null,
         category: product.category?.name ?? null,
         categoryId: product.categoryId,
-        minimumStock,
-        maximumStock:
-          product.maximumStock !== null
-            ? Number(product.maximumStock)
-            : null,
-        reorderLevel,
+        minimumStock: null,
+        maximumStock: null,
+        reorderLevel: null,
         currentStock,
         totalPurchased,
         totalSold,
@@ -128,7 +119,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: inventory.filter((row): row is NonNullable<typeof row> => row !== null),
+      data: inventory.filter((row): row is NonNullable<typeof row> => row !== null) as unknown as InventoryRow[],
     });
   } catch (error) {
     console.error("Failed to fetch inventory:", error);

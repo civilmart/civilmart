@@ -44,21 +44,18 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       code: product.code,
       barcode: product.barcode,
       name: product.name,
-      brand: product.brand,
+      brand: null,
       description: product.description,
       status: product.status,
       imageUrl: product.imageUrl,
       imageUrl2: product.imageUrl2,
-      price: product.price !== null ? Number(product.price) : null,
+      price: null,
       isFeatured: product.isFeatured,
       unit: product.unit,
       subcategory: product.subcategory,
-      minimumStock:
-        product.minimumStock !== null ? Number(product.minimumStock) : null,
-      maximumStock:
-        product.maximumStock !== null ? Number(product.maximumStock) : null,
-      reorderLevel:
-        product.reorderLevel !== null ? Number(product.reorderLevel) : null,
+      minimumStock: null,
+      maximumStock: null,
+      reorderLevel: null,
       trades: product.trades,
       stockQuantity: Number(product.stockQuantity),
       categoryId: product.categoryId,
@@ -72,7 +69,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         name: v.name,
         sizeValue: Number(v.sizeValue),
         sizeUnit: v.sizeUnit,
-        price: v.price !== null ? Number(v.price) : null,
+        price: null,
         imageUrl: v.imageUrl,
       })),
       supplierProducts: product.supplierProducts.map((sp) => ({
@@ -115,19 +112,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const {
       code,
       name,
-      brand,
       description,
       status,
       imageUrl,
       imageUrl2,
-      price,
       categoryId,
       isFeatured,
       unit,
       subcategory,
-      minimumStock,
-      maximumStock,
-      reorderLevel,
       trades,
       stockQuantity,
       barcode,
@@ -189,10 +181,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       data.name = String(name).trim();
     }
 
-    if (brand !== undefined) {
-      data.brand = String(brand).trim() || null;
-    }
-
     if (description !== undefined) {
       data.description = String(description).trim() || null;
     }
@@ -233,13 +221,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       data.subcategory = String(subcategory).trim() || null;
     }
 
-    if (minimumStock !== undefined)
-      data.minimumStock = toNumberOrNull(minimumStock)?.toString() ?? null;
-    if (maximumStock !== undefined)
-      data.maximumStock = toNumberOrNull(maximumStock)?.toString() ?? null;
-    if (reorderLevel !== undefined)
-      data.reorderLevel = toNumberOrNull(reorderLevel)?.toString() ?? null;
-
     if (trades !== undefined) {
       data.trades = Array.isArray(trades)
         ? trades.map((t) => String(t).trim()).filter(Boolean)
@@ -256,19 +237,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           data.stockQuantity = String(n);
         }
       }
-    }
-
-    if (price !== undefined) {
-      const numeric = toNumberOrNull(price);
-
-      if (numeric !== null && numeric < 0) {
-        return NextResponse.json(
-          { error: "Invalid price" },
-          { status: 400 }
-        );
-      }
-
-      data.price = numeric !== null ? String(numeric) : null;
     }
 
     if (isFeatured !== undefined) {
@@ -301,7 +269,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           const sku = String(v.sku ?? "").trim();
           const name = String(v.name ?? "").trim();
           const sizeValue = Number(v.sizeValue);
-          const variantPrice = toNumberOrNull(v.price);
 
           if (!sku || !name) {
             throw new Error("Every variant requires an SKU and name");
@@ -309,10 +276,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
           if (!Number.isFinite(sizeValue) || sizeValue <= 0) {
             throw new Error(`Invalid size for variant ${name}`);
-          }
-
-          if (variantPrice !== null && variantPrice < 0) {
-            throw new Error(`Invalid price for variant ${name}`);
           }
 
           if (v.sizeUnit && !isValidUnit(String(v.sizeUnit))) {
@@ -343,7 +306,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             name,
             sizeValue,
             sizeUnit: v.sizeUnit || data.unit || "PIECE",
-            price: variantPrice !== null ? String(variantPrice) : null,
             imageUrl: v.imageUrl?.trim() || null,
             barcode: variantBarcode,
           };
@@ -388,28 +350,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       code: updatedProduct.code,
       barcode: updatedProduct.barcode,
       name: updatedProduct.name,
-      brand: updatedProduct.brand,
+      brand: null,
       description: updatedProduct.description,
       status: updatedProduct.status,
       imageUrl: updatedProduct.imageUrl,
       imageUrl2: updatedProduct.imageUrl2,
-      price:
-        updatedProduct.price !== null ? Number(updatedProduct.price) : null,
+      price: null,
       isFeatured: updatedProduct.isFeatured,
       unit: updatedProduct.unit,
       subcategory: updatedProduct.subcategory,
-      minimumStock:
-        updatedProduct.minimumStock !== null
-          ? Number(updatedProduct.minimumStock)
-          : null,
-      maximumStock:
-        updatedProduct.maximumStock !== null
-          ? Number(updatedProduct.maximumStock)
-          : null,
-      reorderLevel:
-        updatedProduct.reorderLevel !== null
-          ? Number(updatedProduct.reorderLevel)
-          : null,
+      minimumStock: null,
+      maximumStock: null,
+      reorderLevel: null,
       trades: updatedProduct.trades,
       stockQuantity: Number(updatedProduct.stockQuantity),
       categoryId: updatedProduct.categoryId,
@@ -421,7 +373,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         name: v.name,
         sizeValue: Number(v.sizeValue),
         sizeUnit: v.sizeUnit,
-        price: v.price !== null ? Number(v.price) : null,
+        price: null,
         imageUrl: v.imageUrl,
       })),
     });

@@ -25,9 +25,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  DEFAULT_SITE_SETTINGS,
+  type FooterCta,
   type HeroSlide,
   type SiteSettings,
-} from "@/lib/site-settings";
+} from "@/lib/site-settings.types";
 
 type HeroSlideForm = HeroSlide;
 
@@ -63,6 +65,13 @@ export default function SiteSettingsPage() {
   const [freeShippingThreshold, setFreeShippingThreshold] =
     useState("0");
   const [codNote, setCodNote] = useState("");
+  const [featuredProductCount, setFeaturedProductCount] = useState("4");
+  const [ctaHeading, setCtaHeading] = useState("");
+  const [ctaDescription, setCtaDescription] = useState("");
+  const [ctaButtonText, setCtaButtonText] = useState("");
+  const [ctaButtonHref, setCtaButtonHref] = useState("");
+  const [ctaSecondaryText, setCtaSecondaryText] = useState("");
+  const [ctaSecondaryHref, setCtaSecondaryHref] = useState("");
 
   const heroInput = useRef<HTMLInputElement>(null);
   const [uploadingSlideId, setUploadingSlideId] = useState<string | null>(
@@ -89,6 +98,14 @@ export default function SiteSettingsPage() {
         setShippingFee(String(settings.shippingFee));
         setFreeShippingThreshold(String(settings.freeShippingThreshold));
         setCodNote(settings.codNote);
+        setFeaturedProductCount(String(settings.featuredProductCount ?? 4));
+        const cta = settings.footerCta ?? DEFAULT_SITE_SETTINGS.footerCta;
+        setCtaHeading(cta.heading);
+        setCtaDescription(cta.description);
+        setCtaButtonText(cta.buttonText);
+        setCtaButtonHref(cta.buttonHref);
+        setCtaSecondaryText(cta.secondaryText);
+        setCtaSecondaryHref(cta.secondaryHref);
       })
       .catch((e) => {
         setError(e.message || "Failed to load settings");
@@ -191,6 +208,18 @@ export default function SiteSettingsPage() {
             ? 0
             : Number(freeShippingThreshold),
         codNote: codNote.trim(),
+        featuredProductCount:
+          featuredProductCount.trim() === ""
+            ? 4
+            : Math.max(1, Math.min(20, Number(featuredProductCount))),
+        footerCta: {
+          heading: ctaHeading.trim(),
+          description: ctaDescription.trim(),
+          buttonText: ctaButtonText.trim(),
+          buttonHref: ctaButtonHref.trim(),
+          secondaryText: ctaSecondaryText.trim(),
+          secondaryHref: ctaSecondaryHref.trim(),
+        },
       };
 
       const response = await fetch("/api/settings", {
@@ -362,6 +391,21 @@ export default function SiteSettingsPage() {
                 />
                 <p className="text-xs text-muted-foreground">
                   Shown in the footer contact box. Empty hides it.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Featured Products Count</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={featuredProductCount}
+                  onChange={(e) => setFeaturedProductCount(e.target.value)}
+                  placeholder="4"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Number of featured products shown on the homepage (1–20).
                 </p>
               </div>
             </div>
@@ -569,6 +613,74 @@ export default function SiteSettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Footer Call to Action</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Shown above the footer on the homepage. Leave heading empty to hide
+            the section.
+          </p>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Heading</Label>
+              <Input
+                value={ctaHeading}
+                onChange={(e) => setCtaHeading(e.target.value)}
+                placeholder="Need help with your order?"
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label>Description</Label>
+              <Input
+                value={ctaDescription}
+                onChange={(e) => setCtaDescription(e.target.value)}
+                placeholder="Call our helpline or chat with us on WhatsApp..."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Primary Button Text</Label>
+              <Input
+                value={ctaButtonText}
+                onChange={(e) => setCtaButtonText(e.target.value)}
+                placeholder="Call Now"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Primary Button Link</Label>
+              <Input
+                value={ctaButtonHref}
+                onChange={(e) => setCtaButtonHref(e.target.value)}
+                placeholder="tel:"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Secondary Button Text</Label>
+              <Input
+                value={ctaSecondaryText}
+                onChange={(e) => setCtaSecondaryText(e.target.value)}
+                placeholder="Browse Products"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Secondary Button Link</Label>
+              <Input
+                value={ctaSecondaryHref}
+                onChange={(e) => setCtaSecondaryHref(e.target.value)}
+                placeholder="/products"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

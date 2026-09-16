@@ -110,7 +110,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const [existingProducts, existingLinks, genericBrand] = await Promise.all([
       prisma.product.findMany({
         where: { id: { in: productIds } },
-        select: { id: true, price: true },
+        select: { id: true },
       }),
       prisma.supplierProduct.findMany({
         where: { supplierId },
@@ -125,15 +125,11 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const existingByProduct = new Map(
       existingLinks.map((link) => [link.productId, link.id])
     );
-    const productPrices = new Map(
-      existingProducts.map((p) => [p.id, p.price?.toNumber() ?? null])
-    );
     const genericBrandId = genericBrand?.id ?? null;
 
     let created = 0;
     let updated = 0;
     let deleted = 0;
-    let priceUpdated = 0;
 
     for (const rawItem of items) {
       const productId = String(rawItem.productId ?? "");
@@ -183,14 +179,6 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         });
         updated += 1;
       }
-
-      if (retailPrice !== null && retailPrice !== productPrices.get(productId)) {
-        await prisma.product.update({
-          where: { id: productId },
-          data: { price: retailPrice },
-        });
-        priceUpdated += 1;
-      }
     }
 
     for (const link of existingLinks) {
@@ -205,7 +193,6 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       created,
       updated,
       deleted,
-      priceUpdated,
       genericBrandId,
     });
   } catch (error) {

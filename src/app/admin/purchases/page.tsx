@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 type ProductVariant = {
   id: string;
@@ -37,16 +38,13 @@ type ProductVariant = {
   name: string;
   sizeValue: number;
   sizeUnit: string;
-  price: number | null;
 };
 
 type Product = {
   id: string;
   code: string;
   name: string;
-  brand: string | null;
   unit: string;
-  price: number | null;
   stockQuantity: number;
   status: string;
   category: { id: string; name: string } | null;
@@ -226,12 +224,12 @@ export default function PurchasesPage() {
 
   async function handleSave() {
     if (!purchaseNo.trim()) {
-      alert("Purchase number is required.");
+      toast.error("Purchase number is required.");
       return;
     }
 
     if (items.some((item) => !item.productId)) {
-      alert("Please select a product for every item.");
+      toast.error("Please select a product for every item.");
       return;
     }
 
@@ -245,12 +243,12 @@ export default function PurchasesPage() {
           Number(item.costPerUnit) < 0
       )
     ) {
-      alert("Please enter valid quantity, unit, and cost for every item.");
+      toast.error("Please enter valid quantity, unit, and cost for every item.");
       return;
     }
 
     if ((Number(tax) || 0) < 0 || (Number(discount) || 0) < 0) {
-      alert("Tax and discount cannot be negative.");
+      toast.error("Tax and discount cannot be negative.");
       return;
     }
 
@@ -284,14 +282,14 @@ export default function PurchasesPage() {
         throw new Error(result.error || "Failed to create purchase");
       }
 
-      alert("Purchase saved successfully.");
+      toast.success("Purchase saved successfully.");
 
       setOpen(false);
       resetForm();
       await loadData();
     } catch (error) {
       console.error("Failed to save purchase:", error);
-      alert(
+      toast.error(
         error instanceof Error ? error.message : "Failed to save purchase."
       );
     } finally {
@@ -420,9 +418,6 @@ export default function PurchasesPage() {
                                   <option key={product.id} value={product.id}>
                                     {product.code} — {product.name} (
                                     {product.unit}
-                                    {product.price !== null
-                                      ? ` · ${formatMoney(product.price)}`
-                                      : ""}
                                     )
                                   </option>
                                 ))}

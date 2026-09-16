@@ -9,11 +9,13 @@ import {
   LayoutGrid,
   List,
   Loader2,
+  Package,
   Search,
   SlidersHorizontal,
   X,
 } from "lucide-react";
 import { cn } from "cn";
+import { Button } from "@/components/ui/button";
 import {
   CatalogFilterPanel,
   type CatalogFilterState,
@@ -56,11 +58,6 @@ function ProductsPageInner() {
   const category = searchParams.get("category");
   const group = searchParams.get("group")?.trim() ?? null;
   const subcategory = searchParams.get("subcategory")?.trim() ?? null;
-  const brandsKey = searchParams.getAll("brand").filter(Boolean).join("\u0000");
-  const brands = useMemo(
-    () => (brandsKey ? brandsKey.split("\u0000") : []),
-    [brandsKey]
-  );
   const priceMin = searchParams.get("priceMin") ?? "";
   const priceMax = searchParams.get("priceMax") ?? "";
   const inStockOnly = searchParams.get("inStock") === "true";
@@ -71,7 +68,6 @@ function ProductsPageInner() {
     (group ? 1 : 0) +
     (subcategory ? 1 : 0) +
     (category ? 1 : 0) +
-    brands.length +
     (priceMin || priceMax ? 1 : 0) +
     (inStockOnly ? 1 : 0);
 
@@ -136,7 +132,6 @@ function ProductsPageInner() {
       if (category) params.set("category", category);
       if (group) params.set("group", group);
       if (subcategory) params.set("subcategory", subcategory);
-      brands.forEach((brand) => params.append("brand", brand));
       if (priceMin) params.set("priceMin", priceMin);
       if (priceMax) params.set("priceMax", priceMax);
       if (inStockOnly) params.set("inStock", "true");
@@ -165,17 +160,16 @@ function ProductsPageInner() {
     return () => {
       cancelled = true;
     };
-  }, [search, category, group, subcategory, brands, priceMin, priceMax, inStockOnly, sort, page]);
+  }, [search, category, group, subcategory, priceMin, priceMax, inStockOnly, sort, page]);
 
   const filterState: CatalogFilterState = useMemo(
     () => ({
       category,
-      brands,
       priceMin,
       priceMax,
       inStockOnly,
     }),
-    [category, brands, priceMin, priceMax, inStockOnly]
+    [category, priceMin, priceMax, inStockOnly]
   );
 
   function buildParams(patch: Record<string, string | string[] | null>) {
@@ -213,7 +207,6 @@ function ProductsPageInner() {
 
     commit({
       category: next.category || null,
-      brand: next.brands || null,
       priceMin: next.priceMin || null,
       priceMax: next.priceMax || null,
       inStock: next.inStockOnly ? "true" : null,
@@ -226,7 +219,6 @@ function ProductsPageInner() {
       group: null,
       subcategory: null,
       category: null,
-      brand: null,
       priceMin: null,
       priceMax: null,
       inStock: null,
@@ -255,13 +247,6 @@ function ProductsPageInner() {
       remove: () => commit({ category: null }),
     });
   }
-  brands.forEach((brand) =>
-    chipItems.push({
-      key: `brand-${brand}`,
-      label: brand,
-      remove: () => commit({ brand: brands.filter((b) => b !== brand) }),
-    })
-  );
   if (priceMin || priceMax) {
     chipItems.push({
       key: "price",
@@ -314,6 +299,12 @@ function ProductsPageInner() {
         )}
       </nav>
 
+      <SearchBox
+        key={search}
+        defaultValue={search}
+        onCommit={(value) => commit({ search: value || null })}
+      />
+
       <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
@@ -323,7 +314,7 @@ function ProductsPageInner() {
                 "All products")}
             {search && (
               <span className="ml-2 text-base font-medium text-muted-foreground">
-                for “{search}”
+                for "{search}"
               </span>
             )}
           </h1>
@@ -333,14 +324,6 @@ function ProductsPageInner() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-0 sm:min-w-56">
-            <SearchBox
-              key={search}
-              defaultValue={search}
-              onCommit={(value) => commit({ search: value || null })}
-            />
-          </div>
-
           <div className="flex items-center gap-1.5">
             <select
               value={sort}
@@ -454,7 +437,6 @@ function ProductsPageInner() {
           <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-lg border border-slate-200 bg-white p-4">
             <CatalogFilterPanel
               groups={scopedGroups}
-              brands={filters?.brands ?? []}
               active={filterState}
               activeCount={activeFilterCount}
               onChange={handleFiltersChange}
@@ -507,21 +489,20 @@ function ProductsPageInner() {
               ))}
             </div>
           ) : products.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-12 text-center">
-              <p className="text-sm font-semibold text-slate-900">
-                No products found
-              </p>
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed p-12 text-center">
+              <Package className="h-12 w-12 text-muted-foreground/50" />
+              <h3 className="mt-4 text-lg font-semibold">No products found</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Try removing some filters or searching for something else.
+                Try adjusting your search or filters.
               </p>
-              <button
-                type="button"
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
                 onClick={clearAll}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
               >
-                <X className="h-4 w-4" />
                 Clear all filters
-              </button>
+              </Button>
             </div>
           ) : (
             <div
@@ -555,7 +536,6 @@ function ProductsPageInner() {
           <div className="px-4 pb-6">
             <CatalogFilterPanel
               groups={scopedGroups}
-              brands={filters?.brands ?? []}
               active={filterState}
               activeCount={activeFilterCount}
               onChange={(patch) => handleFiltersChange(patch)}
@@ -584,19 +564,19 @@ function SearchBox({
   const [value, setValue] = useState(defaultValue);
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        onCommit(value);
-      }}
-      className="flex items-center rounded-md border border-slate-200 bg-white px-3 focus-within:border-amber-400 focus-within:ring-1 focus-within:ring-amber-300"
-    >
-      <Search className="h-4 w-4 shrink-0 text-slate-400" />
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Search products…"
-        className="w-full bg-transparent px-2 py-2 text-sm outline-none"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            onCommit(value);
+          }
+        }}
+        placeholder="Search products..."
+        className="w-full rounded-md border border-slate-200 bg-white py-2 pl-9 pr-9 text-sm outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-300"
       />
       {value && (
         <button
@@ -606,12 +586,12 @@ function SearchBox({
             setValue("");
             onCommit("");
           }}
-          className="text-slate-400 transition hover:text-slate-900"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-slate-900"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-4 w-4" />
         </button>
       )}
-    </form>
+    </div>
   );
 }
 

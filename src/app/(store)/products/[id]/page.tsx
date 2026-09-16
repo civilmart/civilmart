@@ -1,425 +1,86 @@
-"use client";
-
-import { useEffect, use, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-  Check,
-  ChevronLeft,
-  Heart,
-  Loader2,
-  Minus,
-  Plus,
-  ShoppingCart,
-  Truck,
-} from "lucide-react";
-import { Carousel } from "@/components/store/carousel";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { useCart } from "@/context/cart-context";
-import { useWishlist } from "@/context/wishlist-context";
-import {
-  effectivePrice,
-  formatPrice,
-  isInStock,
-  maybeInt,
-  placeholderImage,
-  productUnitLabel,
-  type StoreProduct,
-  type StoreVariant,
-} from "@/lib/store-front";
+import { ChevronRight, PackageX } from "lucide-react";
+import { getProductById, getRelatedProducts } from "@/lib/store-data";
+import { ProductDetailClient } from "@/components/store/product-detail-client";
+import { ProductCard } from "@/components/store/product-card";
 
-function StockBadge({ inStock }: { inStock: boolean }) {
-  return inStock ? (
-    <span className="flex items-center gap-1 text-sm font-medium text-green-700">
-      <Check className="h-4 w-4" /> In stock
-    </span>
-  ) : (
-    <span className="flex items-center gap-1 text-sm font-medium text-red-600">
-      <span className="h-2 w-2 rounded-full bg-red-600" /> Out of stock
-    </span>
-  );
-}
-
-export default function ProductDetailPage({
+export default async function ProductDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = use(params);
-  const router = useRouter();
-  const { addItem } = useCart();
-  const { loggedIn, wishlistedIds, toggle } = useWishlist();
+  const { id } = await params;
+  const product = await getProductById(id);
 
-  const [product, setProduct] = useState<StoreProduct | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [selectedVariant, setSelectedVariant] = useState<StoreVariant | null>(null);
-  const [quantity, setQuantity] = useState(1);
-  const [added, setAdded] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      try {
-        const res = await fetch(`/api/store/products/${id}`);
-        const data = await res.json();
-
-        if (!cancelled) {
-          if (data.success) {
-            setProduct(data.data);
-          } else {
-            setError(data.error || "Product not found");
-          }
-        }
-      } catch {
-        if (!cancelled) setError("Something went wrong");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
-
-  if (loading) {
+  if (!product) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (error || !product) {
-    return (
-      <div className="flex flex-col items-center gap-4 py-20 text-center">
-        <p className="text-sm text-muted-foreground">
-          {error || "Product not found"}
+      <div className="flex flex-col items-center justify-center p-20 text-center">
+        <PackageX className="h-16 w-16 text-muted-foreground/50" />
+        <h2 className="mt-4 text-xl font-bold">Product not found</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          This product may have been removed or is no longer available.
         </p>
         <Link
           href="/products"
-          className="text-sm font-semibold text-amber-700 underline"
+          className="mt-6 inline-flex items-center gap-2 rounded-md bg-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-950"
         >
-          Back to shop
+          Browse Products
         </Link>
       </div>
     );
   }
 
-  const wishlisted = wishlistedIds.has(product.id);
+  const relatedProducts = await getRelatedProducts(
+    product.id,
+    product.category,
+    4
+  );
 
-  const currentVariant =
-    product.variants.find((v) => v.id === selectedVariant?.id) ??
-    product.variants[0] ??
-    null;
-  const unitPrice = currentVariant?.price ?? effectivePrice(product);
-  const inStock = isInStock(product);
-
-  const images: React.ReactNode[] = [];
-  if (currentVariant?.imageUrl) {
-    images.push(
-      <Image
-        key="variant"
-        src={currentVariant.imageUrl}
-        alt={product.name}
-        width={640}
-        height={640}
-        className="aspect-square w-full object-cover"
-      />
-    );
-  }
-  if (product.imageUrl && product.imageUrl !== currentVariant?.imageUrl) {
-    images.push(
-      <Image
-        key="product"
-        src={product.imageUrl}
-        alt={product.name}
-        width={640}
-        height={640}
-        className="aspect-square w-full object-cover"
-      />
-    );
-  }
-  if (
-    product.imageUrl2 &&
-    product.imageUrl2 !== currentVariant?.imageUrl &&
-    product.imageUrl2 !== product.imageUrl
-  ) {
-    images.push(
-      <Image
-        key="product2"
-        src={product.imageUrl2}
-        alt={`${product.name} — additional photo`}
-        width={640}
-        height={640}
-        className="aspect-square w-full object-cover"
-      />
-    );
-  }
-  if (images.length === 0) {
-    images.push(
-      <Image
-        key="placeholder"
-        src={placeholderImage(product.name)}
-        alt={product.name}
-        width={640}
-        height={640}
-        className="aspect-square w-full object-cover"
-      />
-    );
-  }
-
-  function handleAddToCart() {
-    if (!product) return;
-
-    addItem(
-      {
-        id: currentVariant?.id ?? product.id,
-        productId: product.id,
-        variantId: currentVariant?.id ?? null,
-        sku: currentVariant?.sku ?? product.code,
-        productName: product.name,
-        variantName: currentVariant?.name ?? null,
-        unit: currentVariant?.sizeUnit ?? product.unit,
-        unitPrice: unitPrice ?? 0,
-        imageUrl: currentVariant?.imageUrl ?? product.imageUrl,
-        stockQuantity: Number(product.stockQuantity),
-      },
-      quantity
-    );
-
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
-  }
-
-  const specRows: Array<{ label: string; value: string }> = [
-    { label: "Product code", value: product.code },
-    { label: "Category", value: product.category ?? "—" },
-    { label: "Brand", value: product.brand ?? "—" },
-    { label: "Unit", value: product.unit.toLowerCase() },
+  const breadcrumbs = [
+    { label: "Home", href: "/" },
+    { label: "Products", href: "/products" },
+    ...(product.category
+      ? [
+          {
+            label: product.category,
+            href: `/products?category=${encodeURIComponent(product.category)}`,
+          },
+        ]
+      : []),
+    { label: product.name, href: null },
   ];
 
-  if (product.subcategory) {
-    specRows.push({ label: "Subcategory", value: product.subcategory });
-  }
-  if (product.trades.length > 0) {
-    specRows.push({ label: "Trade", value: product.trades.join(", ") });
-  }
-  if (product.stockQuantity > 0) {
-    specRows.push({
-      label: "Available",
-      value: `${formatQuantity(product.stockQuantity)} ${productUnitLabel(product)}`,
-    });
-  }
-
   return (
-    <div className="space-y-8">
-      <Link
-        href="/products"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-slate-900"
-      >
-        <ChevronLeft className="h-4 w-4" />
-        Back to all products
-      </Link>
+    <>
+      <nav className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+        {breadcrumbs.map((crumb, i) => (
+          <span key={i} className="flex items-center gap-1">
+            {i > 0 && <ChevronRight className="h-3 w-3 shrink-0" />}
+            {crumb.href ? (
+              <Link href={crumb.href} className="hover:text-slate-900">
+                {crumb.label}
+              </Link>
+            ) : (
+              <span className="text-slate-900">{crumb.label}</span>
+            )}
+          </span>
+        ))}
+      </nav>
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        <div className="space-y-3">
-          <Carousel
-            slides={images}
-            className="overflow-hidden rounded-md border"
-            autoAdvanceMs={images.length > 1 ? 5000 : undefined}
-            showArrows={images.length > 1}
-          />
+      <ProductDetailClient product={product} />
 
-          {product.variants.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {product.variants.map((v) => (
-                <button
-                  key={v.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedVariant(v);
-                    setQuantity(1);
-                    setAdded(false);
-                  }}
-                  className={`rounded-md border px-3 py-1.5 text-sm font-medium transition ${
-                    currentVariant?.id === v.id
-                      ? "border-amber-500 bg-amber-50 text-amber-900"
-                      : "bg-white text-slate-700 hover:border-slate-400"
-                  }`}
-                >
-                  {maybeInt(v.sizeValue)} {v.sizeUnit.toLowerCase()}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              {product.category && (
-                <Badge
-                  variant="secondary"
-                  className="w-fit rounded-sm text-[11px] uppercase tracking-wide"
-                >
-                  {product.category}
-                </Badge>
-              )}
-
-              <h1 className="mt-2 text-3xl font-bold tracking-tight">
-                {product.name}
-              </h1>
-
-              <p className="mt-1 text-sm text-muted-foreground">
-                Code {product.code}
-                {product.brand ? ` · ${product.brand}` : ""}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
-              onClick={async () => {
-                if (!loggedIn) {
-                  router.push("/account");
-                  return;
-                }
-                await toggle(product.id);
-              }}
-              className={`rounded-md border p-2.5 transition ${
-                wishlisted
-                  ? "border-amber-300 bg-amber-50 text-amber-700"
-                  : "bg-white text-slate-500 hover:border-amber-300 hover:text-amber-700"
-              }`}
-            >
-              <Heart
-                className={`h-5 w-5 ${wishlisted ? "fill-amber-600 text-amber-600" : ""}`}
-              />
-            </button>
+      {relatedProducts.length > 0 && (
+        <section className="space-y-4">
+          <h2 className="text-xl font-bold tracking-tight">
+            {product.category ? "Related Products" : "You may also like"}
+          </h2>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            {relatedProducts.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
           </div>
-
-          {unitPrice !== null ? (
-            <p className="font-bold text-slate-900">
-              <span className="text-3xl">{formatPrice(unitPrice)}</span>{" "}
-              <span className="text-sm font-medium text-muted-foreground">
-                / {currentVariant ? currentVariant.sizeUnit.toLowerCase() : productUnitLabel(product)}
-              </span>
-            </p>
-          ) : (
-            <p className="text-sm font-medium text-muted-foreground">
-              Price on request
-            </p>
-          )}
-
-          <StockBadge inStock={inStock} />
-
-          {product.description && (
-            <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600">
-              {product.description}
-            </p>
-          )}
-
-          <div className="mt-2 flex flex-wrap items-center gap-3">
-            <div className="flex items-center rounded-md border">
-              <button
-                type="button"
-                aria-label="Decrease quantity"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="p-2.5 text-slate-600 hover:text-slate-900 disabled:opacity-40"
-                disabled={!inStock}
-              >
-                <Minus className="h-4 w-4" />
-              </button>
-              <input
-                aria-label="Quantity"
-                type="number"
-                min={1}
-                step={product.unit === "KG" || product.unit === "LITER" ? 0.5 : 1}
-                value={quantity}
-                onChange={(e) => {
-                  const next = Number(e.target.value);
-                  if (Number.isFinite(next) && next > 0) {
-                    setQuantity(
-                      Math.min(next, Number(product.stockQuantity) || 9999)
-                    );
-                  }
-                }}
-                className="w-16 border-x bg-transparent py-2 text-center text-sm font-semibold outline-none"
-              />
-              <button
-                type="button"
-                aria-label="Increase quantity"
-                onClick={() =>
-                  setQuantity((q) =>
-                    Math.min(
-                      q + (product.unit === "KG" || product.unit === "LITER" ? 0.5 : 1),
-                      Number(product.stockQuantity) || 9999
-                    )
-                  )
-                }
-                className="p-2.5 text-slate-600 hover:text-slate-900 disabled:opacity-40"
-                disabled={!inStock}
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
-
-            <Button
-              size="lg"
-              className="flex-1 rounded-md sm:flex-none"
-              onClick={handleAddToCart}
-              disabled={!inStock}
-            >
-              {added ? (
-                <Check className="mr-2 h-4 w-4" />
-              ) : (
-                <ShoppingCart className="mr-2 h-4 w-4" />
-              )}
-              {added ? "Added to cart" : inStock ? "Add to cart" : "Out of stock"}
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-            <Truck className="h-5 w-5 shrink-0 text-amber-700" />
-            Cash on delivery — pay when your order arrives.
-          </div>
-
-          <button
-            onClick={() => router.push("/cart")}
-            className="mt-1 w-fit text-sm font-semibold text-amber-700 underline"
-          >
-            Go to cart
-          </button>
-        </div>
-      </div>
-
-      <section className="rounded-md border">
-        <h2 className="border-b bg-slate-50 px-4 py-3 text-sm font-bold uppercase tracking-wide">
-          Product details
-        </h2>
-        <dl className="divide-y">
-          {specRows.map((row) => (
-            <div
-              key={row.label}
-              className="grid grid-cols-2 gap-4 px-4 py-2.5 text-sm"
-            >
-              <dt className="text-muted-foreground">{row.label}</dt>
-              <dd className="font-medium">{row.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </section>
-    </div>
+        </section>
+      )}
+    </>
   );
-}
-
-function formatQuantity(value: number): string {
-  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(2)));
 }
