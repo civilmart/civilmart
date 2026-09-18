@@ -30,9 +30,20 @@ export async function GET(request: NextRequest, context: RouteContext) {
             category: {
               select: { id: true, name: true, group: true, tradeId: true },
             },
+            variants: {
+              select: { id: true, name: true, sku: true, sizeValue: true, sizeUnit: true },
+              orderBy: { sizeValue: "asc" },
+            },
           },
         },
         brand: { select: { id: true, name: true } },
+        variantPrices: {
+          include: {
+            productVariant: {
+              select: { id: true, name: true, sku: true, sizeValue: true, sizeUnit: true },
+            },
+          },
+        },
       },
       orderBy: [
         { product: { category: { group: "asc" } } },
@@ -71,6 +82,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
 // ============================================================
 
 type Decimal = number;
+type SupplierProductVariantInput = {
+  variantId: string;
+  rate?: unknown;
+  discount?: unknown;
+  wholesalePrice?: unknown;
+  retailPrice?: unknown;
+};
+
 type SupplierProductItem = {
   action?: string;
   productId?: string;
@@ -80,6 +99,7 @@ type SupplierProductItem = {
   wholesalePrice?: unknown;
   retailPrice?: unknown;
   notes?: string;
+  variants?: SupplierProductVariantInput[];
 };
 
 export async function PUT(request: NextRequest, context: RouteContext) {
@@ -158,7 +178,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       const retailPrice = toDecimalOrNull(rawItem.retailPrice);
 
       if (!existingByProduct.has(productId)) {
-        await prisma.supplierProduct.create({
+        const sp = await prisma.supplierProduct.create({
           data: {
             supplierId,
             productId,
@@ -170,6 +190,9 @@ export async function PUT(request: NextRequest, context: RouteContext) {
             notes: rawItem.notes?.trim() || null,
           },
         });
+        if (Array.isArray(rawItem.variants)) {
+          await saveVariantPrices(sp.id, rawItem.variants);
+        }
         created += 1;
       } else {
         const id = existingByProduct.get(productId)!;
@@ -177,6 +200,9 @@ export async function PUT(request: NextRequest, context: RouteContext) {
           where: { id },
           data: { brandId, rateListPrice: rate, discount, wholesalePrice, retailPrice },
         });
+        if (Array.isArray(rawItem.variants)) {
+          await saveVariantPrices(id, rawItem.variants);
+        }
         updated += 1;
       }
     }
@@ -202,6 +228,54 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       { error: "Failed to save supplier rate list" },
       { status: 500 }
     );
+  }
+}
+
+// ============================================================
+// Variant price helpers
+// ============================================================
+
+async function saveVariantPrices(
+  supplierProductId: string,
+  variants: SupplierProductVariantInput[]
+) {
+  const existing = await prisma.supplierProductVariant.findMany({
+    where: { supplierProductId },
+    select: { id: true, productVariantId: true },
+  });
+  const existingByVariant = new Map(
+    existing.map((v) => [v.productVariantId, v.id])
+  );
+
+  const submittedVariantIds = new Set(
+    variants.map((v) => v.variantId).filter(Boolean)
+  );
+
+  for (const rv of variants) {
+    if (!rv.variantId) continue;
+    const data = {
+      rateListPrice: toDecimalOrNull(rv.rate),
+      discount: toDecimalOrZero(rv.discount),
+      wholesalePrice: toDecimalOrNull(rv.wholesalePrice),
+      retailPrice: toDecimalOrNull(rv.retailPrice),
+    };
+
+    if (existingByVariant.has(rv.variantId)) {
+      await prisma.supplierProductVariant.update({
+        where: { id: existingByVariant.get(rv.variantId)! },
+        data,
+      });
+    } else {
+      await prisma.supplierProductVariant.create({
+        data: { supplierProductId, productVariantId: rv.variantId, ...data },
+      });
+    }
+  }
+
+  for (const [variantId, id] of existingByVariant) {
+    if (!submittedVariantIds.has(variantId)) {
+      await prisma.supplierProductVariant.delete({ where: { id } });
+    }
   }
 }
 

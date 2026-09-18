@@ -82,6 +82,11 @@ export type SupplierProduct = Prisma.SupplierProductModel
  */
 export type ProductVariant = Prisma.ProductVariantModel
 /**
+ * Model SupplierProductVariant
+ * 
+ */
+export type SupplierProductVariant = Prisma.SupplierProductVariantModel
+/**
  * Model InventoryTransaction
  * 
  */

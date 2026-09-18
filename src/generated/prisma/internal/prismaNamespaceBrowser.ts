@@ -59,6 +59,7 @@ export const ModelName = {
   Brand: 'Brand',
   SupplierProduct: 'SupplierProduct',
   ProductVariant: 'ProductVariant',
+  SupplierProductVariant: 'SupplierProductVariant',
   InventoryTransaction: 'InventoryTransaction',
   Purchase: 'Purchase',
   PurchaseItem: 'PurchaseItem',
@@ -223,6 +224,21 @@ export const ProductVariantScalarFieldEnum = {
 } as const
 
 export type ProductVariantScalarFieldEnum = (typeof ProductVariantScalarFieldEnum)[keyof typeof ProductVariantScalarFieldEnum]
+
+
+export const SupplierProductVariantScalarFieldEnum = {
+  id: 'id',
+  supplierProductId: 'supplierProductId',
+  productVariantId: 'productVariantId',
+  rateListPrice: 'rateListPrice',
+  discount: 'discount',
+  wholesalePrice: 'wholesalePrice',
+  retailPrice: 'retailPrice',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SupplierProductVariantScalarFieldEnum = (typeof SupplierProductVariantScalarFieldEnum)[keyof typeof SupplierProductVariantScalarFieldEnum]
 
 
 export const InventoryTransactionScalarFieldEnum = {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ProductUnit } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserOrThrow } from "@/lib/auth";
 import {
@@ -149,7 +150,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     if (barcode !== undefined) {
-      const trimmed = String(barcode).trim();
+      const trimmed = barcode != null ? String(barcode).trim() : "";
 
       if (trimmed) {
         const owner = await prisma.product.findUnique({
@@ -263,7 +264,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         });
 
         const existingVariantIds = new Set(saved.variants.map((v) => v.id));
+        const incomingIds = new Set<string>();
         const seenSkus = new Set<string>();
+
+        const prepared: Array<{
+          sku: string;
+          name: string;
+          sizeValue: number;
+          sizeUnit: string;
+          imageUrl: string | null;
+          barcode: string | null;
+          existingId: string | null;
+        }> = [];
 
         for (const v of variants) {
           const sku = String(v.sku ?? "").trim();
@@ -291,40 +303,35 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           const variantBarcode = v.barcode?.trim() || null;
 
           if (variantBarcode) {
-            const barcodeOwner = await tx.productVariant.findUnique({
-              where: { barcode: variantBarcode },
+            const barcodeOwner = await tx.productVariant.findFirst({
+              where: { barcode: variantBarcode, id: { not: v.id ?? "" } },
               select: { id: true },
             });
 
-            if (barcodeOwner && barcodeOwner.id !== v.id) {
+            if (barcodeOwner) {
               throw new Error(`Barcode already in use: ${variantBarcode}`);
             }
           }
 
-          const variantData = {
+          const existingId = v.id && existingVariantIds.has(v.id) ? v.id : null;
+          if (existingId) incomingIds.add(existingId);
+
+          prepared.push({
             sku,
             name,
             sizeValue,
             sizeUnit: v.sizeUnit || data.unit || "PIECE",
             imageUrl: v.imageUrl?.trim() || null,
             barcode: variantBarcode,
-          };
-
-          if (v.id && existingVariantIds.has(v.id)) {
-            await tx.productVariant.update({
-              where: { id: v.id },
-              data: variantData,
-            });
-            existingVariantIds.delete(v.id);
-          } else {
-            await tx.productVariant.create({
-              data: { ...variantData, productId: id },
-            });
-          }
+            existingId,
+          });
         }
 
-        if (existingVariantIds.size > 0) {
-          const idsToDelete = Array.from(existingVariantIds);
+        const idsToDelete = Array.from(existingVariantIds).filter(
+          (vid) => !incomingIds.has(vid)
+        );
+
+        if (idsToDelete.length > 0) {
           const linked = await tx.inventoryTransaction.count({
             where: { variantId: { in: idsToDelete } },
           });
@@ -336,6 +343,34 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           await tx.productVariant.deleteMany({
             where: { id: { in: idsToDelete } },
           });
+        }
+
+        for (const p of prepared) {
+          if (p.existingId) {
+            await tx.productVariant.update({
+              where: { id: p.existingId },
+              data: {
+                sku: p.sku,
+                name: p.name,
+                sizeValue: p.sizeValue,
+                sizeUnit: p.sizeUnit as ProductUnit,
+                imageUrl: p.imageUrl,
+                barcode: p.barcode,
+              },
+            });
+          } else {
+            await tx.productVariant.create({
+              data: {
+                sku: p.sku,
+                name: p.name,
+                sizeValue: p.sizeValue,
+                sizeUnit: p.sizeUnit as ProductUnit,
+                imageUrl: p.imageUrl,
+                barcode: p.barcode,
+                productId: id,
+              },
+            });
+          }
         }
       }
 
@@ -381,11 +416,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const message =
       error instanceof Error ? error.message : "Failed to update product";
 
+    console.error("PATCH product error:", message, error);
+
     if (/SKU|variant|Invalid|required|Duplicate|ledger|barcode/i.test(message)) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
-
-    console.error("PATCH product error:", error);
 
     return NextResponse.json(
       { error: "Failed to update product" },
@@ -408,9 +443,43 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       );
     }
 
-    await prisma.product.update({
-      where: { id },
-      data: { status: "DISCONTINUED" },
+    const invoiceCount = await prisma.invoiceItem.count({
+      where: { productId: id },
+    });
+    const purchaseCount = await prisma.purchaseItem.count({
+      where: { productId: id },
+    });
+    const purchaseOrderCount = await prisma.purchaseOrderItem.count({
+      where: { productId: id },
+    });
+    const orderCount = await prisma.customerOrderItem.count({
+      where: { productId: id },
+    });
+    const inventoryCount = await prisma.inventoryTransaction.count({
+      where: { productId: id },
+    });
+
+    if (invoiceCount > 0) {
+      return NextResponse.json({ error: `Cannot delete: ${invoiceCount} invoice(s) reference this product` }, { status: 409 });
+    }
+    if (purchaseCount > 0) {
+      return NextResponse.json({ error: `Cannot delete: ${purchaseCount} purchase(s) reference this product` }, { status: 409 });
+    }
+    if (purchaseOrderCount > 0) {
+      return NextResponse.json({ error: `Cannot delete: ${purchaseOrderCount} purchase order(s) reference this product` }, { status: 409 });
+    }
+    if (orderCount > 0) {
+      return NextResponse.json({ error: `Cannot delete: ${orderCount} customer order(s) reference this product` }, { status: 409 });
+    }
+    if (inventoryCount > 0) {
+      return NextResponse.json({ error: `Cannot delete: ${inventoryCount} inventory transaction(s) reference this product` }, { status: 409 });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.supplierProduct.deleteMany({ where: { productId: id } });
+      await tx.customerWishlistItem.deleteMany({ where: { productId: id } });
+      await tx.productVariant.deleteMany({ where: { productId: id } });
+      await tx.product.delete({ where: { id } });
     });
 
     return NextResponse.json({ success: true });

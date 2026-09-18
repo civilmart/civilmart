@@ -291,6 +291,7 @@ model SupplierProduct {
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   brand    Brand?   @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  variantPrices SupplierProductVariant[]
 
   @@unique([supplierId, productId])
   @@index([productId])
@@ -322,6 +323,7 @@ model ProductVariant {
   updatedAt DateTime @updatedAt
 
   product            Product             @relation(fields: [productId], references: [id])
+  supplierPrices     SupplierProductVariant[]
   inventoryTransactions InventoryTransaction[]
   customerOrderItems CustomerOrderItem[]
   purchaseItems      PurchaseItem[]
@@ -330,6 +332,31 @@ model ProductVariant {
 
   @@index([productId])
   @@map("product_variants")
+}
+
+// ============================================================
+// SUPPLIER PRODUCT VARIANT PRICING (optional per-variant prices)
+// ============================================================
+
+model SupplierProductVariant {
+  id               String  @id @default(cuid())
+  supplierProductId String
+  productVariantId  String
+
+  rateListPrice   Decimal?  @db.Decimal(14, 2)
+  discount        Decimal   @default(0) @db.Decimal(5, 2)
+  wholesalePrice  Decimal?  @db.Decimal(14, 2)
+  retailPrice     Decimal?  @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  supplierProduct SupplierProduct @relation(fields: [supplierProductId], references: [id], onDelete: Cascade)
+  productVariant  ProductVariant  @relation(fields: [productVariantId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierProductId, productVariantId])
+  @@index([productVariantId])
+  @@map("supplier_product_variants")
 }
 
 // ============================================================

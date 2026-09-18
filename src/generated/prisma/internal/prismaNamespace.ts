@@ -405,6 +405,7 @@ export const ModelName = {
   Brand: 'Brand',
   SupplierProduct: 'SupplierProduct',
   ProductVariant: 'ProductVariant',
+  SupplierProductVariant: 'SupplierProductVariant',
   InventoryTransaction: 'InventoryTransaction',
   Purchase: 'Purchase',
   PurchaseItem: 'PurchaseItem',
@@ -435,7 +436,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "trade" | "supplier" | "category" | "product" | "brand" | "supplierProduct" | "productVariant" | "inventoryTransaction" | "purchase" | "purchaseItem" | "purchaseOrder" | "purchaseOrderItem" | "customer" | "customerWishlistItem" | "customerOrder" | "customerOrderItem" | "customerOrderStatusEvent" | "invoice" | "invoiceItem" | "invoicePayment" | "siteSetting" | "adPlacement"
+    modelProps: "user" | "trade" | "supplier" | "category" | "product" | "brand" | "supplierProduct" | "productVariant" | "supplierProductVariant" | "inventoryTransaction" | "purchase" | "purchaseItem" | "purchaseOrder" | "purchaseOrderItem" | "customer" | "customerWishlistItem" | "customerOrder" | "customerOrderItem" | "customerOrderStatusEvent" | "invoice" | "invoiceItem" | "invoicePayment" | "siteSetting" | "adPlacement"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1028,6 +1029,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.ProductVariantCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.ProductVariantCountAggregateOutputType> | number
+        }
+      }
+    }
+    SupplierProductVariant: {
+      payload: Prisma.$SupplierProductVariantPayload<ExtArgs>
+      fields: Prisma.SupplierProductVariantFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SupplierProductVariantFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SupplierProductVariantPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SupplierProductVariantFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SupplierProductVariantPayload>
+        }
+        findFirst: {
+          args: Prisma.SupplierProductVariantFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SupplierProductVariantPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SupplierProductVariantFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SupplierProductVariantPayload>
+        }
+        findMany: {
+          args: Prisma.SupplierProductVariantFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SupplierProductVariantPayload>[]
+        }
+        create: {
+          args: Prisma.SupplierProductVariantCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SupplierProductVariantPayload>
+        }
+        createMany: {
+          args: Prisma.SupplierProductVariantCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SupplierProductVariantCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SupplierProductVariantPayload>[]
+        }
+        delete: {
+          args: Prisma.SupplierProductVariantDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SupplierProductVariantPayload>
+        }
+        update: {
+          args: Prisma.SupplierProductVariantUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SupplierProductVariantPayload>
+        }
+        deleteMany: {
+          args: Prisma.SupplierProductVariantDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SupplierProductVariantUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SupplierProductVariantUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SupplierProductVariantPayload>[]
+        }
+        upsert: {
+          args: Prisma.SupplierProductVariantUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SupplierProductVariantPayload>
+        }
+        aggregate: {
+          args: Prisma.SupplierProductVariantAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSupplierProductVariant>
+        }
+        groupBy: {
+          args: Prisma.SupplierProductVariantGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SupplierProductVariantGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SupplierProductVariantCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SupplierProductVariantCountAggregateOutputType> | number
         }
       }
     }
@@ -2313,6 +2388,21 @@ export const ProductVariantScalarFieldEnum = {
 export type ProductVariantScalarFieldEnum = (typeof ProductVariantScalarFieldEnum)[keyof typeof ProductVariantScalarFieldEnum]
 
 
+export const SupplierProductVariantScalarFieldEnum = {
+  id: 'id',
+  supplierProductId: 'supplierProductId',
+  productVariantId: 'productVariantId',
+  rateListPrice: 'rateListPrice',
+  discount: 'discount',
+  wholesalePrice: 'wholesalePrice',
+  retailPrice: 'retailPrice',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SupplierProductVariantScalarFieldEnum = (typeof SupplierProductVariantScalarFieldEnum)[keyof typeof SupplierProductVariantScalarFieldEnum]
+
+
 export const InventoryTransactionScalarFieldEnum = {
   id: 'id',
   productId: 'productId',
@@ -2928,6 +3018,7 @@ export type GlobalOmitConfig = {
   brand?: Prisma.BrandOmit
   supplierProduct?: Prisma.SupplierProductOmit
   productVariant?: Prisma.ProductVariantOmit
+  supplierProductVariant?: Prisma.SupplierProductVariantOmit
   inventoryTransaction?: Prisma.InventoryTransactionOmit
   purchase?: Prisma.PurchaseOmit
   purchaseItem?: Prisma.PurchaseItemOmit

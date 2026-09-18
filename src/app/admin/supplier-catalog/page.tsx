@@ -1,11 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import jsPDF from "jspdf";
 import {
   ChevronDown,
   ChevronRight,
+  Copy,
+  Download,
   FileText,
+  GripVertical,
   Loader2,
   Pencil,
   Plus,
@@ -17,6 +20,8 @@ import {
   Truck,
   Upload,
   X,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { BarcodePrintArea } from "@/components/barcode-label";
@@ -36,6 +41,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -96,6 +102,20 @@ type TreeProduct = {
   stockQuantity: number;
   reorderLevel: number | null;
   barcode: string | null;
+  variants: Array<{
+    id: string;
+    name: string;
+    sku: string;
+    sizeValue: number;
+    sizeUnit: string;
+  }>;
+};
+
+type VariantPriceEntry = {
+  rateListPrice: number | null;
+  discount: number;
+  wholesalePrice: number | null;
+  retailPrice: number | null;
 };
 
 type SupplierProductLine = {
@@ -107,6 +127,7 @@ type SupplierProductLine = {
   wholesalePrice: number | null;
   retailPrice: number | null;
   notes: string | null;
+  variantPrices: Record<string, VariantPriceEntry>;
 };
 
 type SupplierProductItem = {
@@ -118,6 +139,21 @@ type SupplierProductItem = {
   wholesalePrice?: unknown;
   retailPrice?: unknown;
   notes?: string | null;
+  variants?: Array<{
+    variantId: string;
+    rate?: unknown;
+    discount?: unknown;
+    wholesalePrice?: unknown;
+    retailPrice?: unknown;
+  }>;
+  variantPrices?: Array<{
+    productVariantId?: string;
+    productVariant?: { id?: string } | null;
+    rateListPrice?: unknown;
+    discount?: unknown;
+    wholesalePrice?: unknown;
+    retailPrice?: unknown;
+  }>;
 };
 
 type BrandOption = {
@@ -136,6 +172,7 @@ const EMPTY_FORM: SupplierProductLine = {
   wholesalePrice: null,
   retailPrice: null,
   notes: null,
+  variantPrices: {},
 };
 
 function toDecimalOrNull(value: unknown): number | null {
@@ -210,61 +247,6 @@ function TradeSkeletonCard() {
   );
 }
 
-function VariantForm({
-  form,
-  setForm,
-  onUpload,
-  saving,
-  onSave,
-  onCancel,
-  productUnit,
-}: {
-  form: { name: string; sku: string; barcode: string; sizeValue: string; sizeUnit: string; imageUrl: string };
-  setForm: React.Dispatch<React.SetStateAction<{ name: string; sku: string; barcode: string; sizeValue: string; sizeUnit: string; imageUrl: string }>>;
-  onUpload: () => void;
-  saving: boolean;
-  onSave: () => void;
-  onCancel: () => void;
-  productUnit?: string;
-}) {
-  return (
-    <div className="space-y-2">
-      <Input autoFocus placeholder="Variant name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="h-7 text-xs" />
-      <div className="grid grid-cols-2 gap-2">
-        <Input placeholder="SKU" value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} className="h-7 text-xs" />
-        <Input placeholder="Barcode (optional)" value={form.barcode} onChange={(e) => setForm((f) => ({ ...f, barcode: e.target.value }))} className="h-7 text-xs" />
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Input placeholder="Size value" inputMode="decimal" value={form.sizeValue} onChange={(e) => setForm((f) => ({ ...f, sizeValue: e.target.value }))} className="h-7 text-xs" />
-        <Select value={form.sizeUnit} onValueChange={(val) => setForm((f) => ({ ...f, sizeUnit: val }))}>
-          <SelectTrigger className="h-7 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PRODUCT_UNITS.map((u) => (
-              <SelectItem key={u} value={u}>{u}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" className="h-7 text-xs" type="button" onClick={onUpload}>
-          {form.imageUrl ? "Change Image" : "Upload Image"}
-        </Button>
-        {form.imageUrl && (
-          <img src={form.imageUrl} alt="Preview" className="h-7 w-7 rounded object-cover" />
-        )}
-      </div>
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onCancel}>Cancel</Button>
-        <Button size="sm" className="h-7 text-xs" disabled={saving} onClick={onSave}>
-          {saving ? "Saving…" : "Save"}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export default function SupplierCatalogPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [supplierId, setSupplierId] = useState("");
@@ -298,10 +280,6 @@ export default function SupplierCatalogPage() {
     address: "",
   });
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [addProductCategoryId, setAddProductCategoryId] = useState("");
-  const [newProductCode, setNewProductCode] = useState("");
-  const [newProductName, setNewProductName] = useState("");
-  const [newProductUnit, setNewProductUnit] = useState("PIECE");
   const [printingBarcodes, setPrintingBarcodes] = useState(false);
   const [advancedMode, setAdvancedMode] = useState(false);
   const [error, setError] = useState("");
@@ -311,19 +289,17 @@ export default function SupplierCatalogPage() {
   const [importResults, setImportResults] = useState<{success: number; errors: string[]}>({ success: 0, errors: [] });
   const [importPreview, setImportPreview] = useState<Record<string, string>[]>([]);
 
-  const [variantProductId, setVariantProductId] = useState<string | null>(null);
-  const [variantProduct, setVariantProduct] = useState<TreeProduct | null>(null);
-  const [variantList, setVariantList] = useState<Array<{
-    id: string; name: string; sku: string; barcode: string | null;
-    sizeValue: number; sizeUnit: string; imageUrl: string | null;
+  const [expandedVariantPricing, setExpandedVariantPricing] = useState<Set<string>>(new Set());
+
+  const [productDialogMode, setProductDialogMode] = useState<"add" | "edit" | null>(null);
+  const [productDialogCategoryId, setProductDialogCategoryId] = useState("");
+  const [productForm, setProductForm] = useState({
+    id: "", name: "", code: "", description: "", unit: "PIECE", barcode: "",
+    categoryId: "", imageUrl: "", isFeatured: false, status: "ACTIVE",
+  });
+  const [productVariants, setProductVariants] = useState<Array<{
+    id: string; name: string; sizeValue: string; sizeUnit: string; sku?: string;
   }>>([]);
-  const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
-  const [variantForm, setVariantForm] = useState<{
-    name: string; sku: string; barcode: string; sizeValue: string;
-    sizeUnit: string; imageUrl: string;
-  }>({ name: "", sku: "", barcode: "", sizeValue: "", sizeUnit: "UNIT", imageUrl: "" });
-  const [savingVariant, setSavingVariant] = useState(false);
-  const variantFileRef = useRef<HTMLInputElement>(null);
 
   const fetchInitial = useCallback(async () => {
     try {
@@ -359,6 +335,15 @@ export default function SupplierCatalogPage() {
             stockQuantity: Number(p.stockQuantity ?? 0),
             reorderLevel: p.reorderLevel != null ? Number(p.reorderLevel) : null,
             barcode: p.barcode != null ? String(p.barcode) : null,
+            variants: Array.isArray(p.variants)
+              ? (p.variants as Array<Record<string, unknown>>).map((v) => ({
+                  id: String(v.id),
+                  name: String(v.name),
+                  sku: String(v.sku),
+                  sizeValue: Number(v.sizeValue ?? 0),
+                  sizeUnit: String(v.sizeUnit ?? "UNIT"),
+                }))
+              : [],
           }))
       );
       setBrands(
@@ -417,16 +402,33 @@ export default function SupplierCatalogPage() {
 
         if (!cancelled) {
           setLines(
-            items.map((item: SupplierProductItem) => ({
-              productId: item.productId,
-              brandId: item.brandId ?? null,
-              brandName: item.brand?.name ?? null,
-              rateListPrice: toDecimalOrNull(item.rateListPrice),
-              discount: toDecimalOrZero(item.discount),
-              wholesalePrice: toDecimalOrNull(item.wholesalePrice),
-              retailPrice: toDecimalOrNull(item.retailPrice),
-              notes: item.notes ?? null,
-            }))
+            items.map((item: SupplierProductItem) => {
+              const variantPrices: Record<string, VariantPriceEntry> = {};
+              if (Array.isArray(item.variantPrices)) {
+                for (const vp of item.variantPrices) {
+                  const vid = String(vp.productVariant?.id ?? vp.productVariantId ?? "");
+                  if (vid) {
+                    variantPrices[vid] = {
+                      rateListPrice: toDecimalOrNull(vp.rateListPrice),
+                      discount: toDecimalOrZero(vp.discount),
+                      wholesalePrice: toDecimalOrNull(vp.wholesalePrice),
+                      retailPrice: toDecimalOrNull(vp.retailPrice),
+                    };
+                  }
+                }
+              }
+              return {
+                productId: item.productId,
+                brandId: item.brandId ?? null,
+                brandName: item.brand?.name ?? null,
+                rateListPrice: toDecimalOrNull(item.rateListPrice),
+                discount: toDecimalOrZero(item.discount),
+                wholesalePrice: toDecimalOrNull(item.wholesalePrice),
+                retailPrice: toDecimalOrNull(item.retailPrice),
+                notes: item.notes ?? null,
+                variantPrices,
+              };
+            })
           );
 
           const linked = new Set<string>(
@@ -485,6 +487,28 @@ export default function SupplierCatalogPage() {
       return productMatch;
     });
   }, [categories, products, search]);
+
+  const gridProducts = useMemo(() => {
+    const catIds = new Set(filteredTree.map((c) => c.id));
+    return products
+      .filter((p) => p.categoryId && catIds.has(p.categoryId))
+      .sort((a, b) => {
+        const catA = categories.find((c) => c.id === a.categoryId)?.name ?? "";
+        const catB = categories.find((c) => c.id === b.categoryId)?.name ?? "";
+        if (catA !== catB) return catA.localeCompare(catB);
+        return a.name.localeCompare(b.name);
+      });
+  }, [products, filteredTree, categories]);
+
+  const gridCategories = useMemo(() => {
+    const seen = new Set<string>();
+    return filteredTree.filter((c) => {
+      if (seen.has(c.id)) return false;
+      if (!gridProducts.some((p) => p.categoryId === c.id)) return false;
+      seen.add(c.id);
+      return true;
+    });
+  }, [filteredTree, gridProducts]);
 
   const selectedCount = products.filter((p) => selected.has(p.id)).length;
 
@@ -567,6 +591,35 @@ export default function SupplierCatalogPage() {
     });
   }
 
+  function setVariantPrice(productId: string, variantId: string, patch: Partial<VariantPriceEntry>) {
+    setLines((current) => {
+      const next = [...current];
+      const index = next.findIndex((l) => l.productId === productId);
+      const line = index >= 0 ? next[index] : { ...EMPTY_FORM, productId };
+
+      const vp = { ...(line.variantPrices[variantId] ?? { rateListPrice: null, discount: 0, wholesalePrice: null, retailPrice: null }), ...patch };
+
+      const updated = { ...line, variantPrices: { ...line.variantPrices, [variantId]: vp } };
+
+      if (index === -1) {
+        next.push(updated);
+      } else {
+        next[index] = updated;
+      }
+
+      return next;
+    });
+  }
+
+  function toggleVariantPricing(productId: string) {
+    setExpandedVariantPricing((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+  }
+
   function selectedProducts(): TreeProduct[] {
     return products.filter((p) => selected.has(p.id));
   }
@@ -584,16 +637,26 @@ export default function SupplierCatalogPage() {
 
     const items = selectedProducts().map((product) => {
       const line = getLine(product.id);
+      const hasVariants = product.variants.length > 0;
 
       return {
         action: "set",
         productId: product.id,
         brandId: line.brandId ?? "generic",
-        rate: line.rateListPrice,
-        discount: line.discount,
-        wholesalePrice: line.wholesalePrice,
-        retailPrice: line.retailPrice,
+        rate: hasVariants ? null : line.rateListPrice,
+        discount: hasVariants ? 0 : line.discount,
+        wholesalePrice: hasVariants ? null : line.wholesalePrice,
+        retailPrice: hasVariants ? null : line.retailPrice,
         notes: line.notes,
+        variants: hasVariants
+          ? product.variants.map((v) => ({
+              variantId: v.id,
+              rate: line.variantPrices[v.id]?.rateListPrice ?? null,
+              discount: line.variantPrices[v.id]?.discount ?? 0,
+              wholesalePrice: line.variantPrices[v.id]?.wholesalePrice ?? null,
+              retailPrice: line.variantPrices[v.id]?.retailPrice ?? null,
+            }))
+          : [],
       };
     });
 
@@ -630,6 +693,65 @@ export default function SupplierCatalogPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function exportCsv() {
+    const supplier = suppliers.find((s) => s.id === supplierId);
+    if (!supplier) {
+      toast.error("Select a supplier first.");
+      return;
+    }
+
+    const rows: Record<string, string>[] = [];
+    for (const product of gridProducts) {
+      const line = getLine(product.id);
+      const hasVariants = product.variants.length > 0;
+
+      if (hasVariants) {
+        for (const v of product.variants) {
+          const vp = line.variantPrices[v.id] ?? { rateListPrice: null, discount: 0, wholesalePrice: null, retailPrice: null };
+          rows.push({
+            productName: product.name,
+            productCode: product.code,
+            unit: product.unit,
+            category: product.categoryName ?? "",
+            variantName: v.name,
+            variantSku: v.sku,
+            sizeValue: String(v.sizeValue),
+            sizeUnit: v.sizeUnit,
+            rateListPrice: String(vp.rateListPrice ?? ""),
+            discount: String(vp.discount || ""),
+            wholesalePrice: String(vp.wholesalePrice ?? ""),
+            retailPrice: String(vp.retailPrice ?? ""),
+          });
+        }
+      } else {
+        rows.push({
+          productName: product.name,
+          productCode: product.code,
+          unit: product.unit,
+          category: product.categoryName ?? "",
+          variantName: "",
+          variantSku: "",
+          sizeValue: "",
+          sizeUnit: "",
+          rateListPrice: String(line.rateListPrice ?? ""),
+          discount: String(line.discount || ""),
+          wholesalePrice: String(line.wholesalePrice ?? ""),
+          retailPrice: String(line.retailPrice ?? ""),
+        });
+      }
+    }
+
+    const csv = Papa.unparse(rows);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `rate-list-${supplier.name.replace(/\s+/g, "-").toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${rows.length} rows to CSV.`);
   }
 
   function isTradeChecked(trade: Trade): boolean {
@@ -768,44 +890,256 @@ export default function SupplierCatalogPage() {
     }
   }
 
-  async function createProduct(categoryId: string) {
-    const code = newProductCode.trim();
-    const name = newProductName.trim();
-    if (!code || !name) {
-      setNotice("Product code and name are required.");
-      toast.error("Product code and name are required.");
+  function generateProductCode(name: string): string {
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 30);
+    if (!slug) return "";
+    const rand = Math.random().toString(36).slice(2, 6);
+    return `${slug}-${rand}`;
+  }
+
+  function generateSku(productCode: string, index: number): string {
+    return `${productCode}-V${index + 1}`;
+  }
+
+  function openAddProduct(categoryId: string) {
+    setProductDialogMode("add");
+    setProductDialogCategoryId(categoryId);
+    setProductForm({
+      id: "", name: "", code: "", description: "", unit: "PIECE",
+      barcode: "", categoryId, imageUrl: "", isFeatured: false, status: "ACTIVE",
+    });
+    setProductVariants([]);
+  }
+
+  async function openEditProduct(product: TreeProduct) {
+    setProductDialogMode("edit");
+    setProductDialogCategoryId(product.categoryId ?? "");
+    setProductForm({
+      id: product.id, name: product.name, code: product.code,
+      description: "", unit: product.unit, barcode: product.barcode ?? "",
+      categoryId: product.categoryId ?? "", imageUrl: "",
+      isFeatured: product.isFeatured, status: product.status,
+    });
+    setProductVariants([]);
+    try {
+      const res = await fetch(`/api/products/${product.id}`);
+      const data = await res.json();
+      if (res.ok) {
+        setProductForm((f) => ({
+          ...f,
+          description: data.description ?? "",
+          imageUrl: data.imageUrl ?? "",
+          barcode: data.barcode ?? "",
+        }));
+        if (Array.isArray(data.variants)) {
+          setProductVariants(data.variants.map((v: { id: string; name: string; sizeValue: number; sizeUnit: string; sku?: string }) => ({
+            id: v.id, name: v.name, sizeValue: String(v.sizeValue), sizeUnit: v.sizeUnit, sku: v.sku,
+          })));
+        }
+      }
+    } catch {
+      toast.error("Failed to load product details.");
+    }
+  }
+
+  function addVariantRow() {
+    setProductVariants((prev) => [
+      ...prev,
+      { id: `__new_${Date.now()}_${prev.length}`, name: "", sizeValue: "", sizeUnit: productForm.unit },
+    ]);
+  }
+
+  function updateVariantRow(id: string, patch: Partial<typeof productVariants[number]>) {
+    setProductVariants((prev) => prev.map((v) => (v.id === id ? { ...v, ...patch } : v)));
+  }
+
+  function removeVariantRow(id: string) {
+    setProductVariants((prev) => prev.filter((v) => v.id !== id));
+  }
+
+  function moveVariant(id: string, direction: "up" | "down") {
+    setProductVariants((prev) => {
+      const idx = prev.findIndex((v) => v.id === id);
+      if (idx === -1) return prev;
+      const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[targetIdx]] = [next[targetIdx], next[idx]];
+      return next;
+    });
+  }
+
+  async function saveProductDialog() {
+    const { name, unit, categoryId } = productForm;
+    if (!name.trim()) {
+      toast.error("Product name is required.");
       return;
     }
     setSaving(true);
     try {
-      const response = await fetch("/api/products", {
+      const isEdit = productDialogMode === "edit" && productForm.id;
+      const code = productForm.code.trim() || generateProductCode(name);
+
+      const existingSkus = productVariants
+        .filter((v) => !v.id.startsWith("__new_") && v.sku)
+        .map((v) => v.sku!);
+      const maxExistingIndex = existingSkus.reduce((max, sku) => {
+        const match = sku.match(/-V(\d+)$/i);
+        return match ? Math.max(max, parseInt(match[1], 10)) : max;
+      }, 0);
+      let newIndex = maxExistingIndex;
+
+      const variantsPayload = productVariants
+        .filter((v) => v.name.trim())
+        .map((v) => {
+          const isNew = v.id.startsWith("__new_");
+          if (isNew) newIndex++;
+          return {
+            id: isNew ? undefined : v.id,
+            name: v.name.trim(),
+            sku: isNew ? generateSku(code, newIndex - 1) : (v.sku || generateSku(code, 0)),
+            sizeValue: parseFloat(v.sizeValue) || 1,
+            sizeUnit: v.sizeUnit,
+          };
+        });
+
+      if (isEdit) {
+        const res = await fetch(`/api/products/${productForm.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: name.trim(),
+            code,
+            description: productForm.description.trim() || null,
+            unit,
+            barcode: productForm.barcode.trim() || null,
+            categoryId: categoryId || null,
+            imageUrl: productForm.imageUrl.trim() || null,
+            isFeatured: productForm.isFeatured,
+            status: productForm.status,
+            variants: variantsPayload,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          toast.error(data.error || "Failed to update product.");
+          return;
+        }
+        toast.success("Product updated.");
+      } else {
+        const res = await fetch("/api/products", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code,
+            name: name.trim(),
+            unit,
+            categoryId: categoryId || null,
+            status: productForm.status,
+            description: productForm.description.trim() || null,
+            imageUrl: productForm.imageUrl.trim() || null,
+            isFeatured: productForm.isFeatured,
+            variants: variantsPayload,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          toast.error(data.error || "Failed to create product.");
+          return;
+        }
+        toast.success(`Product "${name.trim()}" created.`);
+      }
+      setProductDialogMode(null);
+      await fetchInitial();
+    } catch (err) {
+      console.error("Save product error:", err);
+      toast.error("Failed to save product.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function duplicateProduct(product: TreeProduct) {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/products/${product.id}`);
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Failed to load product.");
+        return;
+      }
+
+      const original = data;
+
+      setProductDialogMode("add");
+      setProductDialogCategoryId(product.categoryId ?? "");
+      setProductForm({
+        id: "",
+        name: product.name + " (copy)",
+        code: "",
+        description: original.description ?? "",
+        unit: product.unit,
+        barcode: "",
+        categoryId: product.categoryId ?? "",
+        imageUrl: original.imageUrl ?? "",
+        isFeatured: product.isFeatured,
+        status: "ACTIVE",
+      });
+
+      if (Array.isArray(original.variants)) {
+        setProductVariants(
+          original.variants.map((v: { id: string; name: string; sizeValue: number; sizeUnit: string }) => ({
+            id: `__new_${Date.now()}_${Math.random()}`,
+            name: v.name,
+            sizeValue: String(v.sizeValue),
+            sizeUnit: v.sizeUnit,
+          }))
+        );
+      } else {
+        setProductVariants([]);
+      }
+
+      toast.info("Review the duplicated product and save.");
+    } catch {
+      toast.error("Failed to duplicate product.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function duplicateCategory(category: Category) {
+    const catsInTrade = products.filter((p) => p.categoryId === category.id);
+    if (catsInTrade.length === 0) {
+      toast.error("Category has no products to copy.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const copyName = category.name + " (copy)";
+      const catRes = await fetch("/api/categories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          code,
-          name,
-          unit: newProductUnit,
-          categoryId,
-          status: "ACTIVE",
+          name: copyName,
+          group: category.group ?? "General",
+          tradeId: category.tradeId,
         }),
       });
-      const data = await response.json();
-      if (!response.ok) {
-        setNotice(data.error || "Failed to create product.");
-        toast.error(data.error || "Failed to create product.");
+      const catData = await catRes.json();
+      if (!catRes.ok) {
+        toast.error(catData.error || "Failed to create category.");
         return;
       }
-      setAddProductCategoryId("");
-      setNewProductCode("");
-      setNewProductName("");
-      setNewProductUnit("PIECE");
-      setNotice(`Product "${name}" created.`);
-      toast.success(`Product "${name}" created.`);
+
+      toast.success(`Category "${copyName}" created. Add products via the + button.`);
       await fetchInitial();
-    } catch (e) {
-      console.error("Failed to create product:", e);
-      setNotice("Failed to create product.");
-      toast.error("Failed to create product.");
+    } catch {
+      toast.error("Failed to duplicate category.");
     } finally {
       setSaving(false);
     }
@@ -1064,150 +1398,6 @@ export default function SupplierCatalogPage() {
     });
   }
 
-  async function openVariants(product: TreeProduct) {
-    setVariantProductId(product.id);
-    setVariantProduct(product);
-    setEditingVariantId(null);
-    setVariantForm({ name: "", sku: "", barcode: "", sizeValue: "", sizeUnit: "UNIT", imageUrl: "" });
-    try {
-      const res = await fetch(`/api/products/${product.id}`);
-      const data = await res.json();
-      if (res.ok && Array.isArray(data.variants)) {
-        setVariantList(data.variants.map((v: { id: string; name: string; sku: string; barcode: string | null; sizeValue: number; sizeUnit: string; imageUrl: string | null }) => ({
-          id: v.id,
-          name: v.name,
-          sku: v.sku,
-          barcode: v.barcode,
-          sizeValue: v.sizeValue,
-          sizeUnit: v.sizeUnit,
-          imageUrl: v.imageUrl,
-        })));
-      }
-    } catch {
-      toast.error("Failed to load variants.");
-    }
-  }
-
-  function startEditVariant(v: typeof variantList[number]) {
-    setEditingVariantId(v.id);
-    setVariantForm({
-      name: v.name,
-      sku: v.sku,
-      barcode: v.barcode ?? "",
-      sizeValue: String(v.sizeValue),
-      sizeUnit: v.sizeUnit,
-      imageUrl: v.imageUrl ?? "",
-    });
-  }
-
-  function startAddVariant() {
-    setEditingVariantId("__new__");
-    setVariantForm({ name: "", sku: "", barcode: "", sizeValue: "", sizeUnit: variantProduct?.unit ?? "UNIT", imageUrl: "" });
-  }
-
-  async function handleVariantImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("purpose", "product");
-    try {
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      if (res.ok && data.url) {
-        setVariantForm((f) => ({ ...f, imageUrl: data.url }));
-      } else {
-        toast.error(data.error || "Upload failed.");
-      }
-    } catch {
-      toast.error("Image upload failed.");
-    }
-    if (variantFileRef.current) variantFileRef.current.value = "";
-  }
-
-  async function saveVariant() {
-    if (!variantProductId) return;
-    const { name, sku, barcode, sizeValue, sizeUnit, imageUrl } = variantForm;
-    const sv = parseFloat(sizeValue);
-    if (!name.trim() || !sku.trim()) {
-      toast.error("Name and SKU are required.");
-      return;
-    }
-    if (!Number.isFinite(sv) || sv <= 0) {
-      toast.error("Size must be a positive number.");
-      return;
-    }
-
-    setSavingVariant(true);
-    const variants = variantList.map((v) => ({
-      id: v.id === editingVariantId ? v.id : v.id,
-      name: v.name,
-      sku: v.sku,
-      barcode: v.barcode ?? undefined,
-      sizeValue: v.sizeValue,
-      sizeUnit: v.sizeUnit,
-      imageUrl: v.imageUrl ?? undefined,
-    }));
-
-    if (editingVariantId === "__new__") {
-      variants.push({ id: undefined as unknown as string, name: name.trim(), sku: sku.trim(), barcode: barcode.trim() || undefined, sizeValue: sv, sizeUnit, imageUrl: imageUrl || undefined });
-    } else if (editingVariantId) {
-      const idx = variants.findIndex((v) => v.id === editingVariantId);
-      if (idx !== -1) {
-        variants[idx] = { ...variants[idx], name: name.trim(), sku: sku.trim(), barcode: barcode.trim() || undefined, sizeValue: sv, sizeUnit, imageUrl: imageUrl || undefined };
-      }
-    }
-
-    try {
-      const res = await fetch(`/api/products/${variantProductId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ variants }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || "Failed to save variant.");
-        return;
-      }
-      toast.success("Variant saved.");
-      setEditingVariantId(null);
-      await openVariants(variantProduct!);
-      await fetchInitial();
-    } catch {
-      toast.error("Failed to save variant.");
-    } finally {
-      setSavingVariant(false);
-    }
-  }
-
-  async function deleteVariant(variantId: string) {
-    if (!variantProductId) return;
-    const variants = variantList
-      .filter((v) => v.id !== variantId)
-      .map((v) => ({ id: v.id, name: v.name, sku: v.sku, barcode: v.barcode ?? undefined, sizeValue: v.sizeValue, sizeUnit: v.sizeUnit, imageUrl: v.imageUrl ?? undefined }));
-    setSavingVariant(true);
-    try {
-      const res = await fetch(`/api/products/${variantProductId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ variants }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || "Failed to delete variant.");
-        return;
-      }
-      toast.success("Variant deleted.");
-      setEditingVariantId(null);
-      await openVariants(variantProduct!);
-      await fetchInitial();
-    } catch {
-      toast.error("Failed to delete variant.");
-    } finally {
-      setSavingVariant(false);
-    }
-  }
-
   return (
     <div className="space-y-6 p-6 lg:p-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1276,56 +1466,7 @@ export default function SupplierCatalogPage() {
         </div>
       )}
 
-      {selectedCount > 0 && catalogSupplierId && (
-        <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background p-3 shadow-md">
-          <div className="flex items-center gap-3">
-            <Badge variant="secondary" className="tabular-nums">
-              {selectedCount} selected
-            </Badge>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSelected(new Set())}
-            >
-              <X className="mr-1 h-3 w-3" />
-              Deselect All
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowImport(true)}><Upload className="mr-1 h-4 w-4" />Import CSV</Button>
-            {(() => {
-              const reorderCount = selectedProducts().filter(
-                (p) => p.reorderLevel != null && p.reorderLevel > p.stockQuantity
-              ).length;
-              return reorderCount > 0 ? (
-                <Badge variant="outline" className="tabular-nums text-amber-600">
-                  {reorderCount} need reorder
-                </Badge>
-              ) : null;
-            })()}
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" disabled={saving}>
-                <ShoppingCart className="mr-1 h-4 w-4" />
-                Actions
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => void createPurchaseOrder()}>
-                <ShoppingCart className="mr-2 h-4 w-4" />
-                Create Purchase Order
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={generateWholesalePdf}>
-                <FileText className="mr-2 h-4 w-4" />
-                Wholesale Rates PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={printSelectedBarcodes}>
-                <Printer className="mr-2 h-4 w-4" />
-                Print Barcodes
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      )}
+      {/* Sticky action bar removed — grid has its own toolbar */}
 
       <div className="space-y-4">
         {trades
@@ -1670,173 +1811,310 @@ export default function SupplierCatalogPage() {
                       </div>
 
                       {catalogSupplierId === supplier.id && (
-                        <div className="border-t px-3 py-3 space-y-3">
+                        <div className="border-t divide-y">
                           {advancedMode && (supplier.contactName || supplier.phone || supplier.email || supplier.address || supplier.notes) && (
-                            <div className="rounded-md border bg-muted/50 px-3 py-2 text-xs space-y-1">
-                              {supplier.contactName && (
-                                <p><span className="text-muted-foreground">Contact:</span> {supplier.contactName}</p>
-                              )}
-                              {supplier.phone && (
-                                <p><span className="text-muted-foreground">Phone:</span> {supplier.phone}</p>
-                              )}
-                              {supplier.email && (
-                                <p><span className="text-muted-foreground">Email:</span> {supplier.email}</p>
-                              )}
-                              {supplier.address && (
-                                <p><span className="text-muted-foreground">Address:</span> {supplier.address}</p>
-                              )}
-                              {supplier.notes && (
-                                <p><span className="text-muted-foreground">Notes:</span> {supplier.notes}</p>
-                              )}
+                            <div className="px-3 py-2 text-xs space-y-1 bg-muted/30">
+                              {supplier.contactName && <p><span className="text-muted-foreground">Contact:</span> {supplier.contactName}</p>}
+                              {supplier.phone && <p><span className="text-muted-foreground">Phone:</span> {supplier.phone}</p>}
+                              {supplier.email && <p><span className="text-muted-foreground">Email:</span> {supplier.email}</p>}
+                              {supplier.address && <p><span className="text-muted-foreground">Address:</span> {supplier.address}</p>}
+                              {supplier.notes && <p><span className="text-muted-foreground">Notes:</span> {supplier.notes}</p>}
                             </div>
                           )}
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs text-muted-foreground">
-                              Select products supplied by {supplier.name}:
-                            </p>
-                            <Button
-                              size="sm"
-                              onClick={saveRateList}
-                              disabled={saving || selectedCount === 0}
-                            >
-                              <Save className="mr-1 h-3 w-3" />
-                              {saving ? "Saving…" : "Save"}
-                            </Button>
-                          </div>
-                          <div className="relative">
+
+                          {/* Toolbar */}
+                          <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-muted/20">
                             <Input
-                              placeholder="Search products."
+                              placeholder="Search products..."
                               value={search}
                               onChange={(e) => setSearch(e.target.value)}
-                              className="h-8 text-xs"
+                              className="h-8 text-xs max-w-[200px]"
                             />
+                            <Badge variant="secondary" className="tabular-nums text-[10px]">
+                              {gridProducts.length} products
+                            </Badge>
+                            <div className="flex-1" />
+                            <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={exportCsv}>
+                              <Download className="mr-1 h-3 w-3" />
+                              Export CSV
+                            </Button>
+                            <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => setShowImport(true)}>
+                              <Upload className="mr-1 h-3 w-3" />
+                              Import CSV
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-7 text-[11px]"
+                              disabled={saving || selectedCount === 0}
+                              onClick={saveRateList}
+                            >
+                              <Save className="mr-1 h-3 w-3" />
+                              {saving ? "Saving…" : `Save (${selectedCount})`}
+                            </Button>
                           </div>
 
+                          {/* Spreadsheet Grid */}
                           {loadingLines ? (
-                            <div className="space-y-3 max-h-96 overflow-auto">
-                              {[1, 2, 3].map((i) => (
-                                <div key={i} className="space-y-2 rounded-lg border p-2">
-                                  <div className="flex items-center gap-2">
-                                    <div className="h-3 w-3 animate-pulse rounded bg-muted" />
-                                    <div className="h-3 w-24 animate-pulse rounded bg-muted" />
-                                    <div className="h-3 w-8 animate-pulse rounded bg-muted" />
-                                  </div>
-                                  {[1, 2, 3].map((j) => (
-                                    <div key={j} className="ml-5 flex items-center gap-2">
-                                      <div className="h-3 w-3 animate-pulse rounded bg-muted" />
-                                      <div className="h-3 flex-1 animate-pulse rounded bg-muted" />
-                                      <div className="h-3 w-12 animate-pulse rounded bg-muted" />
-                                    </div>
-                                  ))}
-                                </div>
-                              ))}
+                            <div className="px-3 py-8 text-center text-xs text-muted-foreground">
+                              <Loader2 className="mx-auto h-4 w-4 animate-spin mb-2" />
+                              Loading rate list…
                             </div>
-                          ) : filteredTree.length === 0 ? (
-                            <p className="py-4 text-center text-xs text-muted-foreground">
-                              No products match.
-                            </p>
+                          ) : gridProducts.length === 0 ? (
+                            <div className="px-3 py-8 text-center text-xs text-muted-foreground">
+                              No products match your search.
+                            </div>
                           ) : (
-                            <div className="space-y-3 max-h-96 overflow-auto">
-                              <div className="rounded-lg border p-2 space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <TriCheckbox
-                                    checked={isTradeChecked(trade)}
-                                    indeterminate={isTradeIndeterminate(trade)}
-                                    disabled={filteredTree.filter((c) => c.tradeId === trade.id && products.some((p) => p.categoryId === c.id)).length === 0}
-                                    onChange={() => toggleTrade(trade)}
-                                    label={<span className="font-semibold text-xs">{trade.name}</span>}
-                                  />
-                                  <Badge variant="outline" className="text-[10px]">
-                                    {filteredTree.filter((c) => c.tradeId === trade.id && products.some((p) => p.categoryId === c.id)).length}
-                                  </Badge>
-                                </div>
-                                {filteredTree
-                                  .filter((c) => c.tradeId === trade.id)
-                                  .map((category) => (
-                                    <div key={category.id} className="ml-4 space-y-1">
-                                      <div className="flex items-center gap-2">
-                                        <TriCheckbox
-                                          checked={isLeafChecked(category)}
-                                          indeterminate={isLeafIndeterminate(category)}
-                                          disabled={productsForCategory(category.id).length === 0}
-                                          onChange={() => toggleLeaf(category)}
-                                          label={<span className="text-xs text-muted-foreground">{category.name}</span>}
-                                        />
-                                        <Badge variant="outline" className="text-[10px]">{productsForCategory(category.id).length}</Badge>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-5 px-1.5 text-[10px]"
-                                          onClick={() => setAddProductCategoryId(category.id)}
-                                        >
-                                          <Plus className="mr-0.5 h-2.5 w-2.5" />
-                                          Add Product
-                                        </Button>
-                                      </div>
-                                      {productsForCategory(category.id).map((product) => {
-                                        const line = getLine(product.id);
-                                        const checked = selected.has(product.id);
-                                        return (
-                                          <div key={product.id} className="ml-6">
-                                            <div className="flex items-center gap-2">
-                                              <input
-                                                type="checkbox"
-                                                checked={checked}
-                                                onChange={() => toggleSingle(product.id)}
-                                                className="h-3 w-3 rounded border-input accent-amber-600"
-                                              />
-                                              <span className="text-xs">{product.name}</span>
-                                              <Badge variant="outline" className="text-[10px]">{product.code}</Badge>
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-5 px-1.5 text-[10px]"
-                                                onClick={() => void openVariants(product)}
-                                              >
-                                                Variants
-                                              </Button>
-                                            </div>
-                                            {checked && (
-                                              <div className={`ml-5 mt-1 grid gap-1 ${advancedMode ? "grid-cols-2 lg:grid-cols-6" : "grid-cols-2 lg:grid-cols-3"}`}>
-                                                {advancedMode && (
-                                                  <select
-                                                    value={line.brandId ?? "generic"}
-                                                    onChange={(e) => setLine(product.id, { brandId: e.target.value === "generic" ? null : e.target.value, brandName: undefined })}
-                                                    className="rounded border px-1 py-0.5 text-[11px]"
-                                                  >
-                                                    <option value="generic">Generic</option>
-                                                    {brands.filter((b) => !b.inCategory || b.categoryId === product.categoryId).map((brand) => (
-                                                      <option key={brand.id} value={brand.id}>{brand.name}</option>
-                                                    ))}
-                                                  </select>
-                                                )}
-                                                <Input value={line.rateListPrice ?? ""} onChange={(e) => setLine(product.id, { rateListPrice: toDecimalOrNull(e.target.value) })} placeholder="List Price" inputMode="decimal" className="h-6 text-[11px]" />
-                                                <Input value={line.discount ?? 0} onChange={(e) => setLine(product.id, { discount: toDecimalOrZero(e.target.value) })} placeholder="Discount %" inputMode="decimal" className="h-6 text-[11px]" />
-                                                <Input
-                                                  value={
-                                                    line.rateListPrice != null && line.discount != null
-                                                      ? Math.round(line.rateListPrice * (1 - line.discount / 100) * 100) / 100
-                                                      : ""
-                                                  }
-                                                  readOnly
-                                                  placeholder="Purchase Price"
-                                                  inputMode="decimal"
-                                                  className="h-6 text-[11px] bg-muted"
-                                                />
-                                                {advancedMode && (
-                                                  <>
-                                                    <Input value={line.wholesalePrice ?? ""} onChange={(e) => setLine(product.id, { wholesalePrice: toDecimalOrNull(e.target.value) })} placeholder="Wholesale" inputMode="decimal" className="h-6 text-[11px]" />
-                                                    <Input value={line.retailPrice ?? ""} onChange={(e) => setLine(product.id, { retailPrice: toDecimalOrNull(e.target.value) })} placeholder="Retail" inputMode="decimal" className="h-6 text-[11px]" />
-                                                  </>
-                                                )}
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-[11px] border-collapse min-w-[700px]">
+                                <thead className="sticky top-0 z-10">
+                                  <tr className="border-b bg-muted/60">
+                                    <th className="px-2 py-1.5 text-left font-medium text-muted-foreground min-w-[180px]">Product</th>
+                                    <th className="px-2 py-1.5 text-left font-medium text-muted-foreground w-24">Code</th>
+                                    {advancedMode && <th className="px-2 py-1.5 text-left font-medium text-muted-foreground w-24">Brand</th>}
+                                    <th className="px-2 py-1.5 text-right font-medium text-muted-foreground w-20">List Price</th>
+                                    <th className="px-2 py-1.5 text-right font-medium text-muted-foreground w-16">Disc %</th>
+                                    <th className="px-2 py-1.5 text-right font-medium text-muted-foreground w-20">Purchase</th>
+                                    {advancedMode && <th className="px-2 py-1.5 text-right font-medium text-muted-foreground w-20">Wholesale</th>}
+                                    {advancedMode && <th className="px-2 py-1.5 text-right font-medium text-muted-foreground w-20">Retail</th>}
+                                    <th className="px-2 py-1.5 w-8" />
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {gridCategories.map((category) => {
+                                    const catProducts = gridProducts.filter((p) => p.categoryId === category.id);
+                                    return (
+                                      <Fragment key={category.id}>
+                                        <tr>
+                                          <td
+                                            colSpan={advancedMode ? 9 : 7}
+                                            className="px-2 py-1 bg-muted/40 font-semibold text-[11px] border-t border-b"
+                                          >
+                                            <div className="flex items-center justify-between">
+                                              <span>{category.name}</span>
+                                              <div className="flex items-center gap-1">
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="h-5 px-1.5 text-[9px]"
+                                                  onClick={() => void duplicateCategory(category)}
+                                                >
+                                                  <Copy className="mr-0.5 h-2.5 w-2.5" />Copy
+                                                </Button>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="h-5 px-1.5 text-[9px]"
+                                                  onClick={() => openAddProduct(category.id)}
+                                                >
+                                                  <Plus className="mr-0.5 h-2.5 w-2.5" />Add
+                                                </Button>
                                               </div>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  ))}
-                              </div>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                        {catProducts.map((product) => {
+                                          const line = getLine(product.id);
+                                          const hasVariants = product.variants.length > 0;
+                                          return (
+                                            <Fragment key={product.id}>
+                                              <tr className="border-b hover:bg-muted/20 group">
+                                                <td className="px-2 py-1">
+                                                  <div className="flex items-center gap-1.5">
+                                                    <button
+                                                      type="button"
+                                                      className="text-muted-foreground hover:text-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                      onClick={() => void openEditProduct(product)}
+                                                      title="Edit product"
+                                                    >
+                                                      <Pencil className="h-3 w-3" />
+                                                    </button>
+                                                    <button
+                                                      type="button"
+                                                      className="text-muted-foreground hover:text-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                      onClick={() => void duplicateProduct(product)}
+                                                      title="Duplicate product"
+                                                    >
+                                                      <Copy className="h-3 w-3" />
+                                                    </button>
+                                                    <span className="truncate font-medium">{product.name}</span>
+                                                    {product.variants.length > 0 && (
+                                                      <Badge variant="outline" className="text-[9px] shrink-0 py-0">
+                                                        {product.variants.length}v
+                                                      </Badge>
+                                                    )}
+                                                  </div>
+                                                </td>
+                                                <td className="px-2 py-1 font-mono text-muted-foreground">{product.code}</td>
+                                                {advancedMode && (
+                                                  <td className="px-2 py-1">
+                                                    <select
+                                                      value={line.brandId ?? "generic"}
+                                                      onChange={(e) => {
+                                                        setLine(product.id, { brandId: e.target.value === "generic" ? null : e.target.value });
+                                                        setSelected((prev) => new Set([...prev, product.id]));
+                                                      }}
+                                                      className="w-full rounded border bg-background px-1 py-0.5 text-[11px]"
+                                                    >
+                                                      <option value="generic">Generic</option>
+                                                      {brands.filter((b) => !b.inCategory || b.categoryId === product.categoryId).map((brand) => (
+                                                        <option key={brand.id} value={brand.id}>{brand.name}</option>
+                                                      ))}
+                                                    </select>
+                                                  </td>
+                                                )}
+                                                <td className="px-1 py-0.5">
+                                                  <input
+                                                    type="number"
+                                                    value={line.rateListPrice ?? ""}
+                                                    onChange={(e) => {
+                                                      setLine(product.id, { rateListPrice: toDecimalOrNull(e.target.value) });
+                                                      setSelected((prev) => new Set([...prev, product.id]));
+                                                    }}
+                                                    placeholder="—"
+                                                    className="w-full text-right rounded border bg-background px-1 py-0.5 text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                                  />
+                                                </td>
+                                                <td className="px-1 py-0.5">
+                                                  <input
+                                                    type="number"
+                                                    value={line.discount || ""}
+                                                    onChange={(e) => {
+                                                      setLine(product.id, { discount: toDecimalOrZero(e.target.value) });
+                                                      setSelected((prev) => new Set([...prev, product.id]));
+                                                    }}
+                                                    placeholder="0"
+                                                    className="w-full text-right rounded border bg-background px-1 py-0.5 text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                                  />
+                                                </td>
+                                                <td className="px-2 py-1 text-right tabular-nums text-muted-foreground bg-muted/20">
+                                                  {line.rateListPrice != null && line.discount != null
+                                                    ? Math.round(line.rateListPrice * (1 - line.discount / 100) * 100) / 100
+                                                    : ""}
+                                                </td>
+                                                {advancedMode && (
+                                                  <td className="px-1 py-0.5">
+                                                    <input
+                                                      type="number"
+                                                      value={line.wholesalePrice ?? ""}
+                                                      onChange={(e) => {
+                                                        setLine(product.id, { wholesalePrice: toDecimalOrNull(e.target.value) });
+                                                        setSelected((prev) => new Set([...prev, product.id]));
+                                                      }}
+                                                      placeholder="—"
+                                                      className="w-full text-right rounded border bg-background px-1 py-0.5 text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                                    />
+                                                  </td>
+                                                )}
+                                                {advancedMode && (
+                                                  <td className="px-1 py-0.5">
+                                                    <input
+                                                      type="number"
+                                                      value={line.retailPrice ?? ""}
+                                                      onChange={(e) => {
+                                                        setLine(product.id, { retailPrice: toDecimalOrNull(e.target.value) });
+                                                        setSelected((prev) => new Set([...prev, product.id]));
+                                                      }}
+                                                      placeholder="—"
+                                                      className="w-full text-right rounded border bg-background px-1 py-0.5 text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                                    />
+                                                  </td>
+                                                )}
+                                                <td className="px-1 py-0.5 text-center">
+                                                  {hasVariants && (
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => toggleVariantPricing(product.id)}
+                                                      className="text-muted-foreground hover:text-foreground"
+                                                      title={`${product.variants.length} variant(s)`}
+                                                    >
+                                                      {expandedVariantPricing.has(product.id) ? (
+                                                        <ChevronDown className="h-3 w-3" />
+                                                      ) : (
+                                                        <ChevronRight className="h-3 w-3" />
+                                                      )}
+                                                    </button>
+                                                  )}
+                                                </td>
+                                              </tr>
+
+                                              {hasVariants && expandedVariantPricing.has(product.id) && product.variants.map((v) => {
+                                                const vp = line.variantPrices[v.id] ?? { rateListPrice: null, discount: 0, wholesalePrice: null, retailPrice: null };
+                                                return (
+                                                  <tr key={v.id} className="border-b bg-muted/10 hover:bg-muted/20">
+                                                    <td className="px-2 py-1 pl-8">
+                                                      <span className="text-muted-foreground">{v.name}</span>
+                                                    </td>
+                                                    <td className="px-2 py-1 font-mono text-muted-foreground text-[10px]">{v.sku}</td>
+                                                    {advancedMode && <td />}
+                                                    <td className="px-1 py-0.5">
+                                                      <input
+                                                        type="number"
+                                                        value={vp.rateListPrice ?? ""}
+                                                        onChange={(e) => {
+                                                          setVariantPrice(product.id, v.id, { rateListPrice: toDecimalOrNull(e.target.value) });
+                                                          setSelected((prev) => new Set([...prev, product.id]));
+                                                        }}
+                                                        placeholder="—"
+                                                        className="w-full text-right rounded border bg-background px-1 py-0.5 text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                                      />
+                                                    </td>
+                                                    <td className="px-1 py-0.5">
+                                                      <input
+                                                        type="number"
+                                                        value={vp.discount || ""}
+                                                        onChange={(e) => {
+                                                          setVariantPrice(product.id, v.id, { discount: toDecimalOrZero(e.target.value) });
+                                                          setSelected((prev) => new Set([...prev, product.id]));
+                                                        }}
+                                                        placeholder="0"
+                                                        className="w-full text-right rounded border bg-background px-1 py-0.5 text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                                      />
+                                                    </td>
+                                                    <td className="px-2 py-1 text-right tabular-nums text-muted-foreground bg-muted/20">
+                                                      {vp.rateListPrice != null && vp.discount != null
+                                                        ? Math.round(vp.rateListPrice * (1 - vp.discount / 100) * 100) / 100
+                                                        : ""}
+                                                    </td>
+                                                    {advancedMode && (
+                                                      <td className="px-1 py-0.5">
+                                                        <input
+                                                          type="number"
+                                                          value={vp.wholesalePrice ?? ""}
+                                                          onChange={(e) => {
+                                                            setVariantPrice(product.id, v.id, { wholesalePrice: toDecimalOrNull(e.target.value) });
+                                                            setSelected((prev) => new Set([...prev, product.id]));
+                                                          }}
+                                                          placeholder="—"
+                                                          className="w-full text-right rounded border bg-background px-1 py-0.5 text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                                        />
+                                                      </td>
+                                                    )}
+                                                    {advancedMode && (
+                                                      <td className="px-1 py-0.5">
+                                                        <input
+                                                          type="number"
+                                                          value={vp.retailPrice ?? ""}
+                                                          onChange={(e) => {
+                                                            setVariantPrice(product.id, v.id, { retailPrice: toDecimalOrNull(e.target.value) });
+                                                            setSelected((prev) => new Set([...prev, product.id]));
+                                                          }}
+                                                          placeholder="—"
+                                                          className="w-full text-right rounded border bg-background px-1 py-0.5 text-[11px] tabular-nums focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                                        />
+                                                      </td>
+                                                    )}
+                                                    <td />
+                                                  </tr>
+                                                );
+                                              })}
+                                            </Fragment>
+                                          );
+                                        })}
+                                      </Fragment>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
                             </div>
                           )}
                         </div>
@@ -1899,263 +2177,417 @@ export default function SupplierCatalogPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!addProductCategoryId} onOpenChange={(open) => { if (!open) { setAddProductCategoryId(""); setNewProductCode(""); setNewProductName(""); setNewProductUnit("PIECE"); } }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>
-              Add Product to {categories.find((c) => c.id === addProductCategoryId)?.name}
+      <Dialog open={!!productDialogMode} onOpenChange={(open) => { if (!open) setProductDialogMode(null); }}>
+        <DialogContent className="fixed inset-0 z-50 m-0 h-full w-full max-w-full rounded-none border-0 p-0 gap-0 overflow-hidden flex flex-col sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:border sm:m-4 sm:max-w-[calc(100%-2rem)] md:max-w-3xl lg:max-w-5xl sm:max-h-[92vh]">
+          <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 border-b shrink-0">
+            <DialogTitle className="text-base sm:text-lg">
+              {productDialogMode === "add"
+                ? `Add Product to ${categories.find((c) => c.id === productDialogCategoryId)?.name ?? ""}`
+                : "Edit Product"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Product Code</Label>
-              <Input
-                autoFocus
-                value={newProductCode}
-                onChange={(e) => setNewProductCode(e.target.value)}
-                placeholder="e.g. CM000000001"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Product Name</Label>
-              <Input
-                value={newProductName}
-                onChange={(e) => setNewProductName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") void createProduct(addProductCategoryId); }}
-                placeholder="e.g. PPC Cement 42.5"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Unit</Label>
-              <Select value={newProductUnit} onValueChange={setNewProductUnit}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRODUCT_UNITS.map((u) => (
-                    <SelectItem key={u} value={u}>{u}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => { setAddProductCategoryId(""); setNewProductCode(""); setNewProductName(""); setNewProductUnit("PIECE"); }}>
-                Cancel
-              </Button>
-              <Button size="sm" disabled={saving} onClick={() => void createProduct(addProductCategoryId)}>
-                {saving ? "Creating..." : "Create"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
-      <Dialog open={!!variantProductId} onOpenChange={(open) => { if (!open) { setVariantProductId(null); setEditingVariantId(null); } }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              Variants — {variantProduct?.name ?? ""}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 max-h-[60vh] overflow-auto">
-            {variantList.length === 0 && editingVariantId !== "__new__" && (
-              <p className="text-sm text-muted-foreground">No variants yet.</p>
-            )}
-            {variantList.map((v) => (
-              <div key={v.id} className="rounded-md border p-3 space-y-2">
-                {editingVariantId === v.id ? (
-                  <VariantForm
-                    form={variantForm}
-                    setForm={setVariantForm}
-                    onUpload={() => variantFileRef.current?.click()}
-                    saving={savingVariant}
-                    onSave={() => void saveVariant()}
-                    onCancel={() => setEditingVariantId(null)}
-                    productUnit={variantProduct?.unit}
+          <div className="flex-1 overflow-auto min-h-0">
+            <div className="grid grid-cols-1 divide-y sm:divide-y-0 lg:grid-cols-5 lg:divide-x min-h-full">
+              {/* LEFT: Product Details — 3 cols */}
+              <div className="lg:col-span-3 p-4 sm:p-5 space-y-3 sm:space-y-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Product Details</h3>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Name *</Label>
+                  <Input
+                    autoFocus
+                    value={productForm.name}
+                    onChange={(e) => {
+                      const name = e.target.value;
+                      setProductForm((f) => ({
+                        ...f,
+                        name,
+                        code: productDialogMode === "add" ? generateProductCode(name) : f.code,
+                      }));
+                    }}
+                    placeholder="e.g. PPC Cement 42.5"
+                    className="h-9"
                   />
-                ) : (
-                  <div className="flex items-center gap-3">
-                    {v.imageUrl ? (
-                      <img src={v.imageUrl} alt={v.name} className="h-10 w-10 rounded object-cover" />
-                    ) : (
-                      <div className="h-10 w-10 rounded bg-muted flex items-center justify-center text-[10px] text-muted-foreground">No img</div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{v.name}</p>
-                      <p className="text-[11px] text-muted-foreground">SKU: {v.sku}{v.barcode ? ` · Barcode: ${v.barcode}` : ""} · {v.sizeValue} {v.sizeUnit}</p>
-                    </div>
-                    <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => startEditVariant(v)}>
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive" onClick={() => void deleteVariant(v.id)}>
-                      <X className="h-3 w-3" />
-                    </Button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Code</Label>
+                  <Input
+                    value={productForm.code}
+                    onChange={(e) => setProductForm((f) => ({ ...f, code: e.target.value }))}
+                    placeholder="Auto-generated from name"
+                    className="h-9 font-mono text-xs"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Auto-generated from product name. You can edit it.</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Description</Label>
+                  <Textarea
+                    value={productForm.description}
+                    onChange={(e) => setProductForm((f) => ({ ...f, description: e.target.value }))}
+                    placeholder="Optional product description"
+                    className="min-h-[60px] text-sm resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Unit</Label>
+                    <Select value={productForm.unit} onValueChange={(v) => setProductForm((f) => ({ ...f, unit: v }))}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {PRODUCT_UNITS.map((u) => (
+                          <SelectItem key={u} value={u}>{u}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Status</Label>
+                    <Select value={productForm.status} onValueChange={(v) => setProductForm((f) => ({ ...f, status: v }))}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ACTIVE">Active</SelectItem>
+                        <SelectItem value="INACTIVE">Inactive</SelectItem>
+                        <SelectItem value="DISCONTINUED">Discontinued</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Category</Label>
+                  <Select value={productForm.categoryId} onValueChange={(v) => setProductForm((f) => ({ ...f, categoryId: v }))}>
+                    <SelectTrigger className="h-9"><SelectValue placeholder="None" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {categories.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Image URL</Label>
+                  <Input
+                    value={productForm.imageUrl}
+                    onChange={(e) => setProductForm((f) => ({ ...f, imageUrl: e.target.value }))}
+                    placeholder="https://..."
+                    className="h-9 text-xs"
+                  />
+                </div>
+
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={productForm.isFeatured}
+                    onChange={(e) => setProductForm((f) => ({ ...f, isFeatured: e.target.checked }))}
+                    className="h-4 w-4 rounded border-input accent-amber-600"
+                  />
+                  Featured product
+                </label>
+              </div>
+
+              {/* RIGHT: Variants — 2 cols */}
+              <div className="lg:col-span-2 p-4 sm:p-5 space-y-3 bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Variants</h3>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Optional — SKU auto-generated</p>
+                  </div>
+                  <Button variant="outline" size="sm" className="h-7 text-[11px] shrink-0" onClick={addVariantRow}>
+                    <Plus className="mr-1 h-3 w-3" />
+                    Add
+                  </Button>
+                </div>
+
+                {productVariants.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed rounded-lg">
+                    <p className="text-xs text-muted-foreground">No variants yet</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Product sold as a single unit</p>
                   </div>
                 )}
+
+                <div className="space-y-2 max-h-[45vh] overflow-auto pr-1">
+                  {productVariants.map((v, i) => (
+                    <div key={v.id} className="rounded-lg border bg-background p-3 space-y-2 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          <GripVertical className="h-3 w-3 text-muted-foreground/50" />
+                          <span className="text-[10px] font-medium text-muted-foreground">
+                            #{i + 1} · {v.name || "Unnamed"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                            disabled={i === 0}
+                            onClick={() => moveVariant(v.id, "up")}
+                            title="Move up"
+                          >
+                            <ArrowUp className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                            disabled={i === productVariants.length - 1}
+                            onClick={() => moveVariant(v.id, "down")}
+                            title="Move down"
+                          >
+                            <ArrowDown className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive" onClick={() => removeVariantRow(v.id)}>
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      <Input
+                        placeholder="Name (e.g. 50 kg bag)"
+                        value={v.name}
+                        onChange={(e) => updateVariantRow(v.id, { name: e.target.value })}
+                        className="h-8 text-xs"
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          placeholder="Size"
+                          inputMode="decimal"
+                          value={v.sizeValue}
+                          onChange={(e) => updateVariantRow(v.id, { sizeValue: e.target.value })}
+                          className="h-8 text-xs"
+                        />
+                        <Select value={v.sizeUnit} onValueChange={(val) => updateVariantRow(v.id, { sizeUnit: val })}>
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PRODUCT_UNITS.map((u) => (
+                              <SelectItem key={u} value={u}>{u}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-            {editingVariantId === "__new__" && (
-              <div className="rounded-md border p-3 space-y-2">
-                <VariantForm
-                  form={variantForm}
-                  setForm={setVariantForm}
-                  onUpload={() => variantFileRef.current?.click()}
-                  saving={savingVariant}
-                  onSave={() => void saveVariant()}
-                  onCancel={() => setEditingVariantId(null)}
-                  productUnit={variantProduct?.unit}
-                />
-              </div>
-            )}
-            {editingVariantId !== "__new__" && (
-              <Button variant="outline" size="sm" className="w-full" onClick={startAddVariant}>
-                <Plus className="mr-1 h-3 w-3" />
-                Add Variant
-              </Button>
-            )}
+            </div>
           </div>
-          <input ref={variantFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => void handleVariantImageUpload(e)} />
+
+          <div className="flex items-center justify-end gap-2 px-4 sm:px-6 py-3 border-t bg-background shrink-0">
+            <Button variant="outline" size="sm" onClick={() => setProductDialogMode(null)}>
+              Cancel
+            </Button>
+            <Button size="sm" className="min-w-[120px]" disabled={saving} onClick={() => void saveProductDialog()}>
+              {saving ? "Saving..." : productDialogMode === "add" ? "Create Product" : "Save Changes"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={showImport} onOpenChange={(open) => { if (!open) { setShowImport(false); setImportFile(null); setImportPreview([]); setImportResults({ success: 0, errors: [] }); } }}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Import Products from CSV</DialogTitle>
+        <DialogContent className="fixed inset-0 z-50 m-0 h-full w-full max-w-full rounded-none border-0 p-0 gap-0 overflow-hidden flex flex-col sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:border sm:m-4 sm:max-w-xl sm:max-h-[90vh]">
+          <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 border-b shrink-0">
+            <DialogTitle className="text-base sm:text-lg">Import Products from CSV</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              CSV columns: name, code, unit, category, brand, rateListPrice, discount, retailPrice, wholesalePrice
+          <div className="flex-1 overflow-auto min-h-0 p-4 sm:p-6 space-y-4">
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Columns: <span className="font-mono">name, code, unit, category, brand, rateListPrice, discount, retailPrice, wholesalePrice</span>
             </p>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  setImportFile(file);
-                  Papa.parse(file, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: (results) => {
-                      setImportPreview(results.data.slice(0, 5) as Record<string, string>[]);
-                    },
-                  });
-                }
-              }}
-            />
+
+            {/* Styled file input */}
+            <label className="flex flex-col items-center justify-center w-full h-24 sm:h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+              <div className="flex flex-col items-center gap-1">
+                <Upload className="h-5 w-5 text-muted-foreground" />
+                <span className="text-xs sm:text-sm text-muted-foreground">
+                  {importFile ? importFile.name : "Click to select CSV file"}
+                </span>
+              </div>
+              <input
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setImportFile(file);
+                    Papa.parse(file, {
+                      header: true,
+                      skipEmptyLines: true,
+                      complete: (results) => {
+                        setImportPreview(results.data.slice(0, 5) as Record<string, string>[]);
+                      },
+                    });
+                  }
+                }}
+              />
+            </label>
+
             {importPreview.length > 0 && (
-              <div className="overflow-x-auto rounded border">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b bg-muted">
-                      {Object.keys(importPreview[0]).map((key) => (
-                        <th key={key} className="px-2 py-1 text-left font-medium">{key}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {importPreview.map((row, i) => (
-                      <tr key={i} className="border-b">
-                        {Object.values(row).map((val, j) => (
-                          <td key={j} className="px-2 py-1">{String(val ?? "")}</td>
+              <div className="rounded border">
+                <p className="px-2 py-1 text-[10px] text-muted-foreground bg-muted/50 border-b">
+                  Preview (first {importPreview.length} rows)
+                </p>
+                <div className="overflow-x-auto max-h-40">
+                  <table className="w-full text-[11px]">
+                    <thead>
+                      <tr className="border-b bg-muted/30">
+                        {Object.keys(importPreview[0]).map((key) => (
+                          <th key={key} className="px-2 py-1 text-left font-medium whitespace-nowrap">{key}</th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {importPreview.map((row, i) => (
+                        <tr key={i} className="border-b last:border-0">
+                          {Object.values(row).map((val, j) => (
+                            <td key={j} className="px-2 py-1 whitespace-nowrap">{String(val ?? "")}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
+
             {importing && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Importing... {importResults.success} products created, {importResults.errors.length} errors
+                Importing... {importResults.success} created, {importResults.errors.length} errors
               </div>
             )}
+
             {importResults.errors.length > 0 && !importing && (
-              <div className="max-h-40 overflow-y-auto space-y-1">
+              <div className="max-h-32 overflow-y-auto space-y-1 rounded border border-destructive/30 bg-destructive/5 p-2">
                 {importResults.errors.map((err, i) => (
-                  <p key={i} className="text-xs text-destructive">{err}</p>
+                  <p key={i} className="text-[11px] text-destructive">{err}</p>
                 ))}
               </div>
             )}
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => { setShowImport(false); setImportFile(null); setImportPreview([]); }}>Cancel</Button>
-              <Button
-                disabled={!importFile || importing}
-                onClick={async () => {
-                  if (!importFile) return;
-                  setImporting(true);
-                  setImportResults({ success: 0, errors: [] });
-                  try {
-                    const results = await new Promise<{success: number; errors: string[]}>((resolve) => {
-                      Papa.parse(importFile, {
-                        header: true,
-                        skipEmptyLines: true,
-                        complete: async (parsed) => {
-                          let success = 0;
-                          const errors: string[] = [];
-                          for (const row of parsed.data as Record<string, string>[]) {
-                            const name = row.name?.trim();
-                            if (!name) continue;
-                            try {
-                              const code = row.code?.trim() || `CM-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 30)}`;
-                              const productRes = await fetch("/api/products", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  code,
-                                  name,
-                                  unit: row.unit?.trim() || "UNIT",
-                                  stockQuantity: 0,
-                                }),
-                              });
-                              if (!productRes.ok) {
-                                const errData = await productRes.json();
-                                if (productRes.status === 409) { errors.push(`Skipped (exists): ${name}`); continue; }
-                                throw new Error(errData.error || "Failed to create product");
-                              }
-                              const product = await productRes.json();
-                              if (supplierId) {
-                                await fetch(`/api/suppliers/${supplierId}/products`, {
-                                  method: "PUT",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({
-                                    items: [{
-                                      action: "set",
-                                      productId: product.id,
-                                      rate: toDecimalOrNull(row.rateListPrice),
-                                      discount: toDecimalOrZero(row.discount),
-                                      wholesalePrice: toDecimalOrNull(row.wholesalePrice),
-                                      retailPrice: toDecimalOrNull(row.retailPrice),
-                                    }],
-                                  }),
-                                });
-                              }
-                              success++;
-                            } catch (err) {
-                              errors.push(`Error: ${name} - ${err instanceof Error ? err.message : "Unknown"}`);
-                            }
-                          }
-                          resolve({ success, errors });
-                        },
-                      });
+
+            {importResults.success > 0 && !importing && (
+              <p className="text-xs text-green-600 font-medium">
+                Successfully imported {importResults.success} products.
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-2 px-4 sm:px-6 py-3 border-t bg-background shrink-0">
+            <Button variant="outline" size="sm" onClick={() => { setShowImport(false); setImportFile(null); setImportPreview([]); setImportResults({ success: 0, errors: [] }); }}>
+              {importResults.success > 0 ? "Done" : "Cancel"}
+            </Button>
+            <Button
+              size="sm"
+              disabled={!importFile || importing}
+              onClick={async () => {
+                if (!importFile) return;
+                setImporting(true);
+                setImportResults({ success: 0, errors: [] });
+                try {
+                  const parsed = await new Promise<Papa.ParseResult<Record<string, string>>>((resolve, reject) => {
+                    Papa.parse(importFile, {
+                      header: true,
+                      skipEmptyLines: true,
+                      complete: resolve,
+                      error: reject,
                     });
-                    setImportResults(results);
-                    if (results.success > 0) {
-                      toast.success(`Imported ${results.success} products`);
-                      await fetchInitial();
+                  });
+
+                  let success = 0;
+                  const errors: string[] = [];
+                  const createdProducts: Array<{ id: string; row: Record<string, string> }> = [];
+
+                  for (const row of parsed.data) {
+                    const rowName = row.name?.trim();
+                    if (!rowName) continue;
+                    try {
+                      const code = row.code?.trim() || `CM-${rowName.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30)}`;
+                      const productRes = await fetch("/api/products", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          code,
+                          name: rowName,
+                          unit: row.unit?.trim() || "UNIT",
+                          stockQuantity: 0,
+                        }),
+                      });
+                      if (!productRes.ok) {
+                        const errData = await productRes.json();
+                        if (productRes.status === 409) { errors.push(`Skipped (exists): ${rowName}`); continue; }
+                        throw new Error(errData.error || "Failed to create product");
+                      }
+                      const product = await productRes.json();
+                      createdProducts.push({ id: product.id, row });
+                      success++;
+                    } catch (err) {
+                      errors.push(`Error: ${rowName} - ${err instanceof Error ? err.message : "Unknown"}`);
                     }
-                  } catch (err) {
-                    toast.error("Import failed");
-                  } finally {
-                    setImporting(false);
                   }
-                }}
-              >
-                {importing ? "Importing..." : "Import"}
-              </Button>
-            </div>
+
+                  if (supplierId && createdProducts.length > 0) {
+                    try {
+                      const existingRes = await fetch(`/api/suppliers/${supplierId}/products`);
+                      const existingData = await existingRes.json();
+                      const existingItems = Array.isArray(existingData.items) ? existingData.items : [];
+
+                      const existingSupplierProducts = existingItems.map((item: { productId: string; rateListPrice: unknown; discount: unknown; wholesalePrice: unknown; retailPrice: unknown }) => ({
+                        action: "set" as const,
+                        productId: item.productId,
+                        rate: item.rateListPrice,
+                        discount: item.discount,
+                        wholesalePrice: item.wholesalePrice,
+                        retailPrice: item.retailPrice,
+                      }));
+
+                      const newItems = createdProducts.map(({ id, row }) => ({
+                        action: "set" as const,
+                        productId: id,
+                        rate: toDecimalOrNull(row.rateListPrice),
+                        discount: toDecimalOrZero(row.discount),
+                        wholesalePrice: toDecimalOrNull(row.wholesalePrice),
+                        retailPrice: toDecimalOrNull(row.retailPrice),
+                      }));
+
+                      const seen = new Set<string>();
+                      const allItems = [...existingSupplierProducts, ...newItems].filter((item) => {
+                        if (seen.has(item.productId)) return false;
+                        seen.add(item.productId);
+                        return true;
+                      });
+
+                      await fetch(`/api/suppliers/${supplierId}/products`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ items: allItems }),
+                      });
+                    } catch {
+                      errors.push("Warning: Products created but failed to link to supplier pricing.");
+                    }
+                  }
+
+                  setImportResults({ success, errors });
+                  if (success > 0) {
+                    toast.success(`Imported ${success} products`);
+                    await fetchInitial();
+                  } else if (errors.length > 0) {
+                    toast.error(`${errors.length} error(s) during import`);
+                  }
+                } catch {
+                  toast.error("Import failed");
+                } finally {
+                  setImporting(false);
+                }
+              }}
+            >
+              {importing ? "Importing..." : "Import"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

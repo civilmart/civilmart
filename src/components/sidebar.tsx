@@ -7,8 +7,6 @@ import {
   BarChart3,
   Barcode,
   Boxes,
-  ChevronDown,
-  ChevronRight,
   ClipboardList,
   FileText,
   LayoutDashboard,
@@ -179,9 +177,6 @@ export function Sidebar() {
   const { theme, setTheme } = useTheme();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [hasCategories, setHasCategories] = useState(false);
-  const [suppliers, setSuppliers] = useState<Array<{ id: string; name: string; tradeIds: string[]; isActive: boolean }>>([]);
-  const [trades, setTrades] = useState<Array<{ id: string; name: string }>>([]);
-  const [expandedTrades, setExpandedTrades] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (pathname === "/admin/login") return;
@@ -200,28 +195,7 @@ export function Sidebar() {
         setHasCategories(cats.length > 0);
       })
       .catch(() => {});
-
-    Promise.all([
-      fetch("/api/suppliers").then((r) => r.ok ? r.json() : []),
-      fetch("/api/trades").then((r) => r.ok ? r.json() : []),
-    ])
-      .then(([suppliersData, tradesData]) => {
-        const sups = Array.isArray(suppliersData) ? suppliersData : suppliersData?.data ?? [];
-        const tradesList = Array.isArray(tradesData) ? tradesData : tradesData?.data ?? [];
-        setSuppliers(sups);
-        setTrades(tradesList);
-      })
-      .catch(() => {});
   }, [pathname]);
-
-  function toggleTradeExpand(tradeId: string) {
-    setExpandedTrades((prev) => {
-      const next = new Set(prev);
-      if (next.has(tradeId)) next.delete(tradeId);
-      else next.add(tradeId);
-      return next;
-    });
-  }
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -293,93 +267,6 @@ export function Sidebar() {
                       </Link>
                     );
                   })}
-
-                {section.title === "PURCHASING" && suppliers.length > 0 && (
-                  <>
-                    {trades
-                      .filter((trade) =>
-                        suppliers.some((s) => s.tradeIds.includes(trade.id))
-                      )
-                      .map((trade) => {
-                        const tradeSuppliers = suppliers.filter((s) =>
-                          s.tradeIds.includes(trade.id)
-                        );
-                        const isExpanded = expandedTrades.has(trade.id);
-
-                        return (
-                          <div key={trade.id}>
-                            <button
-                              type="button"
-                              onClick={() => toggleTradeExpand(trade.id)}
-                              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted text-muted-foreground hover:text-foreground"
-                            >
-                              {isExpanded ? (
-                                <ChevronDown className="h-4 w-4 shrink-0" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4 shrink-0" />
-                              )}
-                              <Truck className="h-4 w-4 shrink-0" />
-                              <span className="truncate">{trade.name}</span>
-                              <span className="ml-auto text-[10px] text-muted-foreground">{tradeSuppliers.length}</span>
-                            </button>
-                            {isExpanded && (
-                              <div className="ml-6 space-y-0.5">
-                                {tradeSuppliers.map((supplier) => (
-                                  <Link
-                                    key={supplier.id}
-                                    href={`/admin/supplier-catalog?supplier=${supplier.id}`}
-                                    className={`flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs transition-colors hover:bg-muted ${
-                                      !supplier.isActive ? "text-muted-foreground line-through" : "text-muted-foreground hover:text-foreground"
-                                    }`}
-                                  >
-                                    <span className="truncate">{supplier.name}</span>
-                                  </Link>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-
-                    {suppliers.filter((s) => s.tradeIds.length === 0).length > 0 && (
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => toggleTradeExpand("unassigned")}
-                          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted text-muted-foreground hover:text-foreground"
-                        >
-                          {expandedTrades.has("unassigned") ? (
-                            <ChevronDown className="h-4 w-4 shrink-0" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 shrink-0" />
-                          )}
-                          <Truck className="h-4 w-4 shrink-0" />
-                          <span className="truncate">Unassigned</span>
-                          <span className="ml-auto text-[10px] text-muted-foreground">
-                            {suppliers.filter((s) => s.tradeIds.length === 0).length}
-                          </span>
-                        </button>
-                        {expandedTrades.has("unassigned") && (
-                          <div className="ml-6 space-y-0.5">
-                            {suppliers
-                              .filter((s) => s.tradeIds.length === 0)
-                              .map((supplier) => (
-                                <Link
-                                  key={supplier.id}
-                                  href={`/admin/supplier-catalog?supplier=${supplier.id}`}
-                                  className={`flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs transition-colors hover:bg-muted ${
-                                    !supplier.isActive ? "text-muted-foreground line-through" : "text-muted-foreground hover:text-foreground"
-                                  }`}
-                                >
-                                  <span className="truncate">{supplier.name}</span>
-                                </Link>
-                              ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
               </div>
             </div>
           ))}

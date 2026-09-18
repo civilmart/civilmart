@@ -658,6 +658,33 @@ export default function CataloguePage() {
       return;
     }
 
+    if (action === "Delete selected items") {
+      let deleted = 0;
+      const errors: string[] = [];
+      for (const productId of selected) {
+        try {
+          const res = await fetch(`/api/products/${productId}`, { method: "DELETE" });
+          if (res.ok) {
+            deleted++;
+          } else {
+            const data = await res.json();
+            const product = products.find((p) => p.id === productId);
+            errors.push(`${product?.name ?? productId}: ${data.error}`);
+          }
+        } catch {
+          errors.push(`${productId}: network error`);
+        }
+      }
+      await reloadProducts();
+      setSelected(new Set());
+      if (errors.length > 0) {
+        setNotice(`Deleted ${deleted} product(s). ${errors.length} failed: ${errors.join("; ")}`);
+      } else {
+        setNotice(`Deleted ${deleted} product(s).`);
+      }
+      return;
+    }
+
     const status = STATUS_BY_ACTION[action];
 
     if (!status) return;
@@ -679,9 +706,7 @@ export default function CataloguePage() {
       await reloadProducts();
       setSelected(new Set());
       setNotice(
-        action === "Delete selected items"
-          ? `Deleted ${data.count ?? selectedCount} product(s) (marked as discontinued).`
-          : `Marked ${data.count ?? selectedCount} product(s) as ${data.status}.`
+        `Marked ${data.count ?? selectedCount} product(s) as ${data.status}.`
       );
     } catch {
       setNotice("Network error while updating products.");

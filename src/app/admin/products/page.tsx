@@ -61,7 +61,7 @@ function ProductImage({
 }) {
   const [failed, setFailed] = useState(false);
 
-  if (!src || failed) {
+  if (!src || src === "null" || failed) {
     return (
       <div
         className={`flex items-center justify-center bg-muted text-muted-foreground ${className}`}
@@ -228,7 +228,7 @@ function ProductsContent() {
   async function deleteProduct(product: Product) {
     if (
       !confirm(
-        `Discontinue "${product.name}"? The product will be hidden from the storefront. Existing orders are unaffected.`
+        `Delete "${product.name}"? This action cannot be undone.`
       )
     ) {
       return;
