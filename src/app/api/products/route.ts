@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
     const preparedVariants: Array<{
       sku: string;
       name: string;
-      sizeValue: number;
+      sizeValue: string;
       sizeUnit: ProductUnit;
       imageUrl: string | null;
       status: "ACTIVE";
@@ -193,14 +193,7 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const sizeValue = Number(variant.sizeValue);
-
-        if (!Number.isFinite(sizeValue) || sizeValue <= 0) {
-          return NextResponse.json(
-            { error: `Invalid size for variant ${variant.name}` },
-            { status: 400 }
-          );
-        }
+        const sizeValue = String(variant.sizeValue ?? "1").trim() || "1";
 
         if (variant.sizeUnit && !isValidUnit(String(variant.sizeUnit))) {
           return NextResponse.json(

@@ -1002,7 +1002,7 @@ export default function SupplierCatalogPage() {
             id: isNew ? undefined : v.id,
             name: v.name.trim(),
             sku: isNew ? generateSku(code, newIndex - 1) : (v.sku || generateSku(code, 0)),
-            sizeValue: parseFloat(v.sizeValue) || 1,
+            sizeValue: v.sizeValue.trim() || "1",
             sizeUnit: v.sizeUnit,
           };
         });
@@ -2356,7 +2356,6 @@ export default function SupplierCatalogPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <Input
                           placeholder="Size"
-                          inputMode="decimal"
                           value={v.sizeValue}
                           onChange={(e) => updateVariantRow(v.id, { sizeValue: e.target.value })}
                           className="h-8 text-xs"

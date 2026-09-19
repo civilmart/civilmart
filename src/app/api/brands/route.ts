@@ -27,32 +27,40 @@ export async function POST(request: NextRequest) {
   try {
     await getSessionUserOrThrow();
     const body = await request.json();
-    const name = String(body.name ?? "").trim();
+    const raw = String(body.name ?? "").trim();
     const categoryId = body.categoryId ? String(body.categoryId).trim() : null;
 
-    if (!name) {
+    if (!raw) {
       return NextResponse.json({ error: "Brand name is required" }, { status: 400 });
     }
 
-    const existing = await prisma.brand.findFirst({
-      where: { name, categoryId: categoryId || null },
-    });
+    const names = raw
+      .split(/[,\n]+/)
+      .map((n: string) => n.trim())
+      .filter(Boolean);
 
-    if (existing) {
-      return NextResponse.json(
-        { error: "Brand already exists for this category" },
-        { status: 409 }
-      );
+    const created: string[] = [];
+    const skipped: string[] = [];
+
+    for (const name of names) {
+      const existing = await prisma.brand.findFirst({
+        where: { name, categoryId: categoryId || null },
+      });
+
+      if (existing) {
+        skipped.push(name);
+        continue;
+      }
+
+      await prisma.brand.create({
+        data: { name, categoryId: categoryId || null },
+      });
+      created.push(name);
     }
 
-    const brand = await prisma.brand.create({
-      data: { name, categoryId: categoryId || null },
-      include: { category: { select: { id: true, name: true, group: true } } },
-    });
-
-    return NextResponse.json(brand, { status: 201 });
+    return NextResponse.json({ created, skipped }, { status: 201 });
   } catch (error) {
     console.error("POST brand error:", error);
-    return NextResponse.json({ error: "Failed to create brand" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create brand(s)" }, { status: 500 });
   }
 }

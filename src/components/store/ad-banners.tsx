@@ -55,7 +55,7 @@ function AdSlide({ ad, compact }: { ad: StoreAd; compact?: boolean }) {
 
   const body = (
     <>
-      {ad.imageUrl ? (
+      {ad.imageUrl && ad.imageUrl !== "null" ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={ad.imageUrl}

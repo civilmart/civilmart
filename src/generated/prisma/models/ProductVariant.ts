@@ -20,18 +20,8 @@ export type ProductVariantModel = runtime.Types.Result.DefaultSelection<Prisma.$
 
 export type AggregateProductVariant = {
   _count: ProductVariantCountAggregateOutputType | null
-  _avg: ProductVariantAvgAggregateOutputType | null
-  _sum: ProductVariantSumAggregateOutputType | null
   _min: ProductVariantMinAggregateOutputType | null
   _max: ProductVariantMaxAggregateOutputType | null
-}
-
-export type ProductVariantAvgAggregateOutputType = {
-  sizeValue: runtime.Decimal | null
-}
-
-export type ProductVariantSumAggregateOutputType = {
-  sizeValue: runtime.Decimal | null
 }
 
 export type ProductVariantMinAggregateOutputType = {
@@ -40,7 +30,7 @@ export type ProductVariantMinAggregateOutputType = {
   barcode: string | null
   sku: string | null
   name: string | null
-  sizeValue: runtime.Decimal | null
+  sizeValue: string | null
   sizeUnit: $Enums.ProductUnit | null
   status: $Enums.ProductStatus | null
   imageUrl: string | null
@@ -54,7 +44,7 @@ export type ProductVariantMaxAggregateOutputType = {
   barcode: string | null
   sku: string | null
   name: string | null
-  sizeValue: runtime.Decimal | null
+  sizeValue: string | null
   sizeUnit: $Enums.ProductUnit | null
   status: $Enums.ProductStatus | null
   imageUrl: string | null
@@ -77,14 +67,6 @@ export type ProductVariantCountAggregateOutputType = {
   _all: number
 }
 
-
-export type ProductVariantAvgAggregateInputType = {
-  sizeValue?: true
-}
-
-export type ProductVariantSumAggregateInputType = {
-  sizeValue?: true
-}
 
 export type ProductVariantMinAggregateInputType = {
   id?: true
@@ -167,18 +149,6 @@ export type ProductVariantAggregateArgs<ExtArgs extends runtime.Types.Extensions
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
-   * Select which fields to average
-  **/
-  _avg?: ProductVariantAvgAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
-   * Select which fields to sum
-  **/
-  _sum?: ProductVariantSumAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
    * Select which fields to find the minimum value
   **/
   _min?: ProductVariantMinAggregateInputType
@@ -209,8 +179,6 @@ export type ProductVariantGroupByArgs<ExtArgs extends runtime.Types.Extensions.I
   take?: number
   skip?: number
   _count?: ProductVariantCountAggregateInputType | true
-  _avg?: ProductVariantAvgAggregateInputType
-  _sum?: ProductVariantSumAggregateInputType
   _min?: ProductVariantMinAggregateInputType
   _max?: ProductVariantMaxAggregateInputType
 }
@@ -221,15 +189,13 @@ export type ProductVariantGroupByOutputType = {
   barcode: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal
+  sizeValue: string
   sizeUnit: $Enums.ProductUnit
   status: $Enums.ProductStatus
   imageUrl: string | null
   createdAt: Date
   updatedAt: Date
   _count: ProductVariantCountAggregateOutputType | null
-  _avg: ProductVariantAvgAggregateOutputType | null
-  _sum: ProductVariantSumAggregateOutputType | null
   _min: ProductVariantMinAggregateOutputType | null
   _max: ProductVariantMaxAggregateOutputType | null
 }
@@ -258,7 +224,7 @@ export type ProductVariantWhereInput = {
   barcode?: Prisma.StringNullableFilter<"ProductVariant"> | string | null
   sku?: Prisma.StringFilter<"ProductVariant"> | string
   name?: Prisma.StringFilter<"ProductVariant"> | string
-  sizeValue?: Prisma.DecimalFilter<"ProductVariant"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFilter<"ProductVariant"> | string
   sizeUnit?: Prisma.EnumProductUnitFilter<"ProductVariant"> | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFilter<"ProductVariant"> | $Enums.ProductStatus
   imageUrl?: Prisma.StringNullableFilter<"ProductVariant"> | string | null
@@ -303,7 +269,7 @@ export type ProductVariantWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.ProductVariantWhereInput | Prisma.ProductVariantWhereInput[]
   productId?: Prisma.StringFilter<"ProductVariant"> | string
   name?: Prisma.StringFilter<"ProductVariant"> | string
-  sizeValue?: Prisma.DecimalFilter<"ProductVariant"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFilter<"ProductVariant"> | string
   sizeUnit?: Prisma.EnumProductUnitFilter<"ProductVariant"> | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFilter<"ProductVariant"> | $Enums.ProductStatus
   imageUrl?: Prisma.StringNullableFilter<"ProductVariant"> | string | null
@@ -331,10 +297,8 @@ export type ProductVariantOrderByWithAggregationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.ProductVariantCountOrderByAggregateInput
-  _avg?: Prisma.ProductVariantAvgOrderByAggregateInput
   _max?: Prisma.ProductVariantMaxOrderByAggregateInput
   _min?: Prisma.ProductVariantMinOrderByAggregateInput
-  _sum?: Prisma.ProductVariantSumOrderByAggregateInput
 }
 
 export type ProductVariantScalarWhereWithAggregatesInput = {
@@ -346,7 +310,7 @@ export type ProductVariantScalarWhereWithAggregatesInput = {
   barcode?: Prisma.StringNullableWithAggregatesFilter<"ProductVariant"> | string | null
   sku?: Prisma.StringWithAggregatesFilter<"ProductVariant"> | string
   name?: Prisma.StringWithAggregatesFilter<"ProductVariant"> | string
-  sizeValue?: Prisma.DecimalWithAggregatesFilter<"ProductVariant"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringWithAggregatesFilter<"ProductVariant"> | string
   sizeUnit?: Prisma.EnumProductUnitWithAggregatesFilter<"ProductVariant"> | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusWithAggregatesFilter<"ProductVariant"> | $Enums.ProductStatus
   imageUrl?: Prisma.StringNullableWithAggregatesFilter<"ProductVariant"> | string | null
@@ -359,7 +323,7 @@ export type ProductVariantCreateInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -380,7 +344,7 @@ export type ProductVariantUncheckedCreateInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -399,7 +363,7 @@ export type ProductVariantUpdateInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -420,7 +384,7 @@ export type ProductVariantUncheckedUpdateInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -440,7 +404,7 @@ export type ProductVariantCreateManyInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -453,7 +417,7 @@ export type ProductVariantUpdateManyMutationInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -467,7 +431,7 @@ export type ProductVariantUncheckedUpdateManyInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -499,10 +463,6 @@ export type ProductVariantCountOrderByAggregateInput = {
   updatedAt?: Prisma.SortOrder
 }
 
-export type ProductVariantAvgOrderByAggregateInput = {
-  sizeValue?: Prisma.SortOrder
-}
-
 export type ProductVariantMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   productId?: Prisma.SortOrder
@@ -529,10 +489,6 @@ export type ProductVariantMinOrderByAggregateInput = {
   imageUrl?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-}
-
-export type ProductVariantSumOrderByAggregateInput = {
-  sizeValue?: Prisma.SortOrder
 }
 
 export type ProductVariantScalarRelationFilter = {
@@ -686,7 +642,7 @@ export type ProductVariantCreateWithoutProductInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -705,7 +661,7 @@ export type ProductVariantUncheckedCreateWithoutProductInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -754,7 +710,7 @@ export type ProductVariantScalarWhereInput = {
   barcode?: Prisma.StringNullableFilter<"ProductVariant"> | string | null
   sku?: Prisma.StringFilter<"ProductVariant"> | string
   name?: Prisma.StringFilter<"ProductVariant"> | string
-  sizeValue?: Prisma.DecimalFilter<"ProductVariant"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFilter<"ProductVariant"> | string
   sizeUnit?: Prisma.EnumProductUnitFilter<"ProductVariant"> | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFilter<"ProductVariant"> | $Enums.ProductStatus
   imageUrl?: Prisma.StringNullableFilter<"ProductVariant"> | string | null
@@ -767,7 +723,7 @@ export type ProductVariantCreateWithoutSupplierPricesInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -787,7 +743,7 @@ export type ProductVariantUncheckedCreateWithoutSupplierPricesInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -821,7 +777,7 @@ export type ProductVariantUpdateWithoutSupplierPricesInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -841,7 +797,7 @@ export type ProductVariantUncheckedUpdateWithoutSupplierPricesInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -859,7 +815,7 @@ export type ProductVariantCreateWithoutInventoryTransactionsInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -879,7 +835,7 @@ export type ProductVariantUncheckedCreateWithoutInventoryTransactionsInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -913,7 +869,7 @@ export type ProductVariantUpdateWithoutInventoryTransactionsInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -933,7 +889,7 @@ export type ProductVariantUncheckedUpdateWithoutInventoryTransactionsInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -951,7 +907,7 @@ export type ProductVariantCreateWithoutPurchaseItemsInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -971,7 +927,7 @@ export type ProductVariantUncheckedCreateWithoutPurchaseItemsInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -1005,7 +961,7 @@ export type ProductVariantUpdateWithoutPurchaseItemsInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1025,7 +981,7 @@ export type ProductVariantUncheckedUpdateWithoutPurchaseItemsInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1043,7 +999,7 @@ export type ProductVariantCreateWithoutPurchaseOrderItemsInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -1063,7 +1019,7 @@ export type ProductVariantUncheckedCreateWithoutPurchaseOrderItemsInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -1097,7 +1053,7 @@ export type ProductVariantUpdateWithoutPurchaseOrderItemsInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1117,7 +1073,7 @@ export type ProductVariantUncheckedUpdateWithoutPurchaseOrderItemsInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1135,7 +1091,7 @@ export type ProductVariantCreateWithoutCustomerOrderItemsInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -1155,7 +1111,7 @@ export type ProductVariantUncheckedCreateWithoutCustomerOrderItemsInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -1189,7 +1145,7 @@ export type ProductVariantUpdateWithoutCustomerOrderItemsInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1209,7 +1165,7 @@ export type ProductVariantUncheckedUpdateWithoutCustomerOrderItemsInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1227,7 +1183,7 @@ export type ProductVariantCreateWithoutInvoiceItemsInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -1247,7 +1203,7 @@ export type ProductVariantUncheckedCreateWithoutInvoiceItemsInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -1281,7 +1237,7 @@ export type ProductVariantUpdateWithoutInvoiceItemsInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1301,7 +1257,7 @@ export type ProductVariantUncheckedUpdateWithoutInvoiceItemsInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1319,7 +1275,7 @@ export type ProductVariantCreateManyProductInput = {
   barcode?: string | null
   sku: string
   name: string
-  sizeValue: runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: string
   sizeUnit: $Enums.ProductUnit
   status?: $Enums.ProductStatus
   imageUrl?: string | null
@@ -1332,7 +1288,7 @@ export type ProductVariantUpdateWithoutProductInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1351,7 +1307,7 @@ export type ProductVariantUncheckedUpdateWithoutProductInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1370,7 +1326,7 @@ export type ProductVariantUncheckedUpdateManyWithoutProductInput = {
   barcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sku?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  sizeValue?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  sizeValue?: Prisma.StringFieldUpdateOperationsInput | string
   sizeUnit?: Prisma.EnumProductUnitFieldUpdateOperationsInput | $Enums.ProductUnit
   status?: Prisma.EnumProductStatusFieldUpdateOperationsInput | $Enums.ProductStatus
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1555,7 +1511,7 @@ export type $ProductVariantPayload<ExtArgs extends runtime.Types.Extensions.Inte
     barcode: string | null
     sku: string
     name: string
-    sizeValue: runtime.Decimal
+    sizeValue: string
     sizeUnit: $Enums.ProductUnit
     status: $Enums.ProductStatus
     imageUrl: string | null
@@ -1996,7 +1952,7 @@ export interface ProductVariantFieldRefs {
   readonly barcode: Prisma.FieldRef<"ProductVariant", 'String'>
   readonly sku: Prisma.FieldRef<"ProductVariant", 'String'>
   readonly name: Prisma.FieldRef<"ProductVariant", 'String'>
-  readonly sizeValue: Prisma.FieldRef<"ProductVariant", 'Decimal'>
+  readonly sizeValue: Prisma.FieldRef<"ProductVariant", 'String'>
   readonly sizeUnit: Prisma.FieldRef<"ProductVariant", 'ProductUnit'>
   readonly status: Prisma.FieldRef<"ProductVariant", 'ProductStatus'>
   readonly imageUrl: Prisma.FieldRef<"ProductVariant", 'String'>

@@ -16,7 +16,7 @@ export type StoreProductListItem = {
     name: string;
     sku: string;
     barcode: string | null;
-    sizeValue: number;
+    sizeValue: string;
     sizeUnit: string;
     imageUrl: string | null;
   }[];
@@ -52,7 +52,7 @@ export type AdminProductListItem = {
     sku: string;
     barcode: string | null;
     name: string;
-    sizeValue: number;
+    sizeValue: string;
     sizeUnit: string;
     imageUrl: string | null;
     status: string;
@@ -84,7 +84,7 @@ export type InventoryRow = {
     sku: string;
     barcode: string | null;
     name: string;
-    sizeValue: number;
+    sizeValue: string;
     sizeUnit: string;
     stockQuantity: number;
     status: string;

@@ -79,6 +79,7 @@ export default async function StoreHomePage() {
                   key={slide.id}
                   className="relative flex min-h-[200px] items-center bg-slate-900 px-6 py-10 sm:min-h-[280px] sm:px-12"
                 >
+          {slide.imageUrl && slide.imageUrl !== "null" ? (
                   <Image
                     src={slide.imageUrl}
                     alt={slide.heading || "Promotional banner"}
@@ -87,6 +88,7 @@ export default async function StoreHomePage() {
                     sizes="100vw"
                     className="object-contain object-right"
                   />
+                ) : null}
 
                   <div className="absolute inset-0 bg-gradient-to-r from-slate-950/75 via-slate-950/40 to-slate-950/10" />
 
@@ -256,7 +258,7 @@ function MainCategoryGrid({ tiles }: { tiles: StoreHomeData["mainCategories"] })
           href={tile.href}
           className="group relative flex h-28 flex-col justify-end overflow-hidden rounded-xl border bg-slate-900 p-4 transition hover:shadow-md sm:h-32"
         >
-          {tile.imageUrl ? (
+          {tile.imageUrl && tile.imageUrl !== "null" ? (
             <Image
               src={tile.imageUrl}
               alt={tile.name}

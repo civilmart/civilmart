@@ -44,7 +44,7 @@ function mapProduct(p: {
       id: v.id,
       sku: v.sku,
       name: v.name,
-      sizeValue: Number(v.sizeValue),
+      sizeValue: String(v.sizeValue ?? "1"),
       sizeUnit: v.sizeUnit,
       imageUrl: v.imageUrl,
     })),

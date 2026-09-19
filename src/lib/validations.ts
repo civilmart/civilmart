@@ -23,7 +23,7 @@ export const variantSchema = z.object({
   name: z.string().min(1, "Variant name is required").max(100),
   sku: z.string().min(1, "SKU is required").max(50),
   barcode: z.string().max(50).optional().nullable(),
-  sizeValue: z.coerce.number().positive("Size must be positive"),
+  sizeValue: z.string().min(1, "Size is required"),
   sizeUnit: z.string().refine((v) => PRODUCT_UNITS.includes(v), "Invalid unit"),
   imageUrl: z.string().url().optional().nullable(),
 });

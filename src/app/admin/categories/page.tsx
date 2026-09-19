@@ -8,6 +8,7 @@ import {
   Plus,
   Tag,
   Trash2,
+  X,
 } from "lucide-react";
 
 import { fetchJson, ApiError } from "@/lib/fetch-json";
@@ -371,17 +372,42 @@ export default function CategoriesPage() {
       });
       const data = await response.json();
       if (!response.ok) {
-        toast.error(data.error || "Failed to create brand.");
+        toast.error(data.error || "Failed to create brand(s).");
         return;
+      }
+      const created = data.created as string[];
+      const skipped = data.skipped as string[];
+      if (skipped.length > 0) {
+        toast.success(`Created ${created.length} brand(s). Skipped ${skipped.length} duplicate(s): ${skipped.join(", ")}`);
+      } else if (created.length > 1) {
+        toast.success(`Created ${created.length} brand(s): ${created.join(", ")}`);
+      } else {
+        toast.success(`Brand "${created[0]}" created.`);
       }
       setAddingBrandCategoryId(null);
       setNewBrandName("");
       await loadData();
     } catch (e) {
       console.error(e);
-      toast.error("Failed to create brand.");
+      toast.error("Failed to create brand(s).");
     } finally {
       setSavingBrand(false);
+    }
+  }
+
+  async function deleteBrand(brandId: string, brandName: string) {
+    if (!confirm(`Delete brand "${brandName}"?`)) return;
+    try {
+      const response = await fetch(`/api/brands/${brandId}`, { method: "DELETE" });
+      const data = await response.json();
+      if (!response.ok) {
+        toast.error(data.error || "Failed to delete brand.");
+        return;
+      }
+      toast.success(`Brand "${brandName}" deleted.`);
+      await loadData();
+    } catch {
+      toast.error("Failed to delete brand.");
     }
   }
 
@@ -576,9 +602,17 @@ export default function CategoriesPage() {
                             {brands
                               .filter((b) => b.categoryId === category.id)
                               .map((brand) => (
-                                <Badge key={brand.id} variant="secondary" className="text-xs">
-                                  <Tag className="mr-1 h-2.5 w-2.5" />
+                                <Badge key={brand.id} variant="secondary" className="text-xs gap-1">
+                                  <Tag className="h-2.5 w-2.5" />
                                   {brand.name}
+                                  <button
+                                    type="button"
+                                    className="ml-0.5 text-muted-foreground hover:text-destructive"
+                                    onClick={() => void deleteBrand(brand.id, brand.name)}
+                                    title={`Delete ${brand.name}`}
+                                  >
+                                    <X className="h-2.5 w-2.5" />
+                                  </button>
                                 </Badge>
                               ))}
                           </div>
@@ -596,7 +630,7 @@ export default function CategoriesPage() {
                                   setNewBrandName("");
                                 }
                               }}
-                              placeholder="Brand name"
+                              placeholder="Brand name(s) — comma separated"
                               className="h-7 text-xs"
                             />
                             <Button size="sm" className="h-7 text-xs" disabled={savingBrand} onClick={() => void createBrand()}>
@@ -717,9 +751,17 @@ export default function CategoriesPage() {
                           {brands
                             .filter((b) => b.categoryId === category.id)
                             .map((brand) => (
-                              <Badge key={brand.id} variant="secondary" className="text-xs">
-                                <Tag className="mr-1 h-2.5 w-2.5" />
+                              <Badge key={brand.id} variant="secondary" className="text-xs gap-1">
+                                <Tag className="h-2.5 w-2.5" />
                                 {brand.name}
+                                <button
+                                  type="button"
+                                  className="ml-0.5 text-muted-foreground hover:text-destructive"
+                                  onClick={() => void deleteBrand(brand.id, brand.name)}
+                                  title={`Delete ${brand.name}`}
+                                >
+                                  <X className="h-2.5 w-2.5" />
+                                </button>
                               </Badge>
                             ))}
                         </div>
@@ -737,7 +779,7 @@ export default function CategoriesPage() {
                                 setNewBrandName("");
                               }
                             }}
-                            placeholder="Brand name"
+                            placeholder="Brand name(s) — comma separated"
                             className="h-7 text-xs"
                           />
                           <Button size="sm" className="h-7 text-xs" disabled={savingBrand} onClick={() => void createBrand()}>

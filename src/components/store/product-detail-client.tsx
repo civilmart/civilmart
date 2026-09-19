@@ -63,8 +63,11 @@ export function ProductDetailClient({ product }: { product: StoreProduct }) {
   const unitPrice = effectivePrice(product);
   const inStock = isInStock(product);
 
+  const validUrl = (s: string | null | undefined): s is string =>
+    !!s && s !== "null" && s !== "undefined";
+
   const images: React.ReactNode[] = [];
-  if (currentVariant?.imageUrl) {
+  if (validUrl(currentVariant?.imageUrl)) {
     images.push(
       <Image
         key="variant"
@@ -76,7 +79,7 @@ export function ProductDetailClient({ product }: { product: StoreProduct }) {
       />
     );
   }
-  if (product.imageUrl && product.imageUrl !== currentVariant?.imageUrl) {
+  if (validUrl(product.imageUrl) && product.imageUrl !== currentVariant?.imageUrl) {
     images.push(
       <Image
         key="product"
@@ -89,7 +92,7 @@ export function ProductDetailClient({ product }: { product: StoreProduct }) {
     );
   }
   if (
-    product.imageUrl2 &&
+    validUrl(product.imageUrl2) &&
     product.imageUrl2 !== currentVariant?.imageUrl &&
     product.imageUrl2 !== product.imageUrl
   ) {
@@ -195,7 +198,7 @@ export function ProductDetailClient({ product }: { product: StoreProduct }) {
                       : "bg-white text-slate-700 hover:border-slate-400"
                   }`}
                 >
-                  {maybeInt(v.sizeValue)} {v.sizeUnit.toLowerCase()}
+                  {v.sizeValue} {v.sizeUnit.toLowerCase()}
                 </button>
               ))}
             </div>

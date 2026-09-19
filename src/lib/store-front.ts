@@ -42,7 +42,7 @@ export type StoreVariant = {
   id: string;
   sku: string;
   name: string;
-  sizeValue: number;
+  sizeValue: string;
   sizeUnit: string;
   imageUrl: string | null;
 };
@@ -74,7 +74,8 @@ export function isInStock(product: StoreProduct): boolean {
 }
 
 export function sizeLabel(variant: StoreVariant): string {
-  return `${maybeInt(variant.sizeValue)} ${unitLabel(variant.sizeUnit)}`;
+  const val = variant.sizeValue || "1";
+  return `${val} ${unitLabel(variant.sizeUnit)}`.trim();
 }
 
 export function productUnitLabel(product: StoreProduct): string {

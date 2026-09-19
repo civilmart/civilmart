@@ -45,7 +45,7 @@ export async function GET(_request: Request, context: RouteContext) {
         id: v.id,
         sku: v.sku,
         name: v.name,
-        sizeValue: Number(v.sizeValue),
+        sizeValue: String(v.sizeValue ?? "1"),
         sizeUnit: v.sizeUnit,
         price: null,
         imageUrl: v.imageUrl,

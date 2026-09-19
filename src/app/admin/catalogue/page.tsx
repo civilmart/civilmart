@@ -994,7 +994,7 @@ export default function CataloguePage() {
               </button>
             </div>
 
-            {detailProduct.imageUrl && (
+            {detailProduct.imageUrl && detailProduct.imageUrl !== "null" && (
               <div className="flex justify-center border-b bg-muted/40 p-4">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img

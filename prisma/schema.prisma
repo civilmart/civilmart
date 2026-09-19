@@ -311,8 +311,8 @@ model ProductVariant {
   sku  String @unique
   name String
 
-  // Examples: 50 kg, 1 Ton, 500 pcs, 25 m roll
-  sizeValue Decimal     @db.Decimal(10, 2)
+  // Examples: 50, 1 Ton, 500 pcs, 25 m roll, 4x8
+  sizeValue String   @default("1")
   sizeUnit  ProductUnit
 
   status ProductStatus @default(ACTIVE)

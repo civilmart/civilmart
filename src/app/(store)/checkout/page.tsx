@@ -470,7 +470,7 @@ export default function CheckoutPage() {
                 <div key={item.id} className="flex gap-3 text-sm">
                   <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
                     <Image
-                      src={item.imageUrl || placeholderImage(item.productName)}
+                      src={(item.imageUrl && item.imageUrl !== "null") ? item.imageUrl : placeholderImage(item.productName)}
                       alt={item.productName}
                       fill
                       sizes="48px"

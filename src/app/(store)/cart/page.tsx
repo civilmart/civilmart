@@ -46,7 +46,7 @@ export default function CartPage() {
             >
               <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md border bg-muted">
                 <Image
-                  src={item.imageUrl || placeholderImage(item.productName)}
+                  src={(item.imageUrl && item.imageUrl !== "null") ? item.imageUrl : placeholderImage(item.productName)}
                   alt={item.productName}
                   fill
                   sizes="96px"

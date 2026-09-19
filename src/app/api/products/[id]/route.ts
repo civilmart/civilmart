@@ -68,7 +68,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         sku: v.sku,
         barcode: v.barcode,
         name: v.name,
-        sizeValue: Number(v.sizeValue),
+        sizeValue: String(v.sizeValue ?? "1"),
         sizeUnit: v.sizeUnit,
         price: null,
         imageUrl: v.imageUrl,
@@ -270,7 +270,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         const prepared: Array<{
           sku: string;
           name: string;
-          sizeValue: number;
+          sizeValue: string;
           sizeUnit: string;
           imageUrl: string | null;
           barcode: string | null;
@@ -280,14 +280,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         for (const v of variants) {
           const sku = String(v.sku ?? "").trim();
           const name = String(v.name ?? "").trim();
-          const sizeValue = Number(v.sizeValue);
+          const sizeValue = String(v.sizeValue ?? "1").trim() || "1";
 
           if (!sku || !name) {
             throw new Error("Every variant requires an SKU and name");
-          }
-
-          if (!Number.isFinite(sizeValue) || sizeValue <= 0) {
-            throw new Error(`Invalid size for variant ${name}`);
           }
 
           if (v.sizeUnit && !isValidUnit(String(v.sizeUnit))) {
@@ -406,7 +402,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         sku: v.sku,
         barcode: v.barcode,
         name: v.name,
-        sizeValue: Number(v.sizeValue),
+        sizeValue: String(v.sizeValue ?? "1"),
         sizeUnit: v.sizeUnit,
         price: null,
         imageUrl: v.imageUrl,

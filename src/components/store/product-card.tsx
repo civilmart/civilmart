@@ -59,7 +59,7 @@ export function ProductCard({
   const price = effectivePrice(product);
   const wishlisted = wishlistedIds.has(product.id);
 
-  const mainSrc = product.imageUrl || placeholderImage(product.name);
+  const mainSrc = (product.imageUrl && product.imageUrl !== "null" && product.imageUrl !== "undefined") ? product.imageUrl : placeholderImage(product.name);
   const cartItem = buildCartItem(product);
 
   async function handleToggleWishlist(e: React.MouseEvent) {
