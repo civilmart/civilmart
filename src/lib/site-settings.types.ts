@@ -17,6 +17,40 @@ export type FooterCta = {
   secondaryHref: string;
 };
 
+export type LogoDisplayMode = "logo" | "text" | "both";
+
+export type SiteLogo = {
+  imageUrl: string;
+  displayMode: LogoDisplayMode;
+};
+
+export const DEFAULT_SITE_LOGO: SiteLogo = {
+  imageUrl: "",
+  displayMode: "text",
+};
+
+export type Favicons = {
+  icon: string;
+  png16: string;
+  png32: string;
+  apple: string;
+  android192: string;
+  android512: string;
+  webp: string;
+  svg: string;
+};
+
+export const DEFAULT_FAVICONS: Favicons = {
+  icon: "",
+  png16: "",
+  png32: "",
+  apple: "",
+  android192: "",
+  android512: "",
+  webp: "",
+  svg: "",
+};
+
 export type SiteSettings = {
   siteName: string;
   siteDescription: string;
@@ -30,6 +64,8 @@ export type SiteSettings = {
   codNote: string;
   featuredProductCount: number;
   footerCta: FooterCta;
+  logo: SiteLogo;
+  favicons: Favicons;
 };
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
@@ -59,6 +95,8 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
     secondaryText: "Browse Products",
     secondaryHref: "/products",
   },
+  logo: DEFAULT_SITE_LOGO,
+  favicons: DEFAULT_FAVICONS,
 };
 
 export function parseJsonArray(
@@ -88,4 +126,6 @@ export const SITE_SETTING_KEYS = [
   "codNote",
   "featuredProductCount",
   "footerCta",
+  "logo",
+  "favicons",
 ] as const;

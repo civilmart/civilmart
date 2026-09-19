@@ -13,11 +13,17 @@ export async function generateMetadata(): Promise<Metadata> {
   let siteName = "Civil Mart";
   let siteDescription =
     "Building materials, tools and hardware for every project — order online and pay on delivery.";
+  let faviconUrl = "";
+  let faviconPng16 = "";
+  let faviconApple = "";
 
   try {
     const settings = await getSiteSettings();
     siteName = settings.siteName || siteName;
     siteDescription = settings.siteDescription || siteDescription;
+    faviconUrl = settings.favicons.icon;
+    faviconPng16 = settings.favicons.png16;
+    faviconApple = settings.favicons.apple;
   } catch {
     // Fall back to defaults when settings are unavailable.
   }
@@ -25,6 +31,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: siteName,
     description: siteDescription,
+    icons: {
+      icon: faviconUrl || undefined,
+      shortcut: faviconPng16 || undefined,
+      apple: faviconApple || undefined,
+    },
   };
 }
 

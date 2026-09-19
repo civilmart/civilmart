@@ -20,6 +20,14 @@ const UPLOAD_PRESETS: Record<
     folder: "civilmart/categories",
     transformation: "w_640,h_360,c_fill,q_auto,f_auto",
   },
+  logo: {
+    folder: "civilmart/logo",
+    transformation: "w_400,h_120,c_fit,q_auto,f_auto",
+  },
+  favicon: {
+    folder: "civilmart/favicon",
+    transformation: "w_512,h_512,c_fill,q_auto,f_auto",
+  },
 };
 
 function getCloudinaryConfig() {

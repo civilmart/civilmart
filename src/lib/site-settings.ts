@@ -1,8 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import {
   DEFAULT_SITE_SETTINGS,
+  DEFAULT_SITE_LOGO,
+  DEFAULT_FAVICONS,
   type HeroSlide,
   type SiteSettings,
+  type SiteLogo,
+  type Favicons,
   parseJsonArray,
 } from "@/lib/site-settings.types";
 
@@ -12,6 +16,8 @@ export {
   type FooterCta,
   type HeroSlide,
   type SiteSettings,
+  type SiteLogo,
+  type Favicons,
 } from "@/lib/site-settings.types";
 
 function readNumber(
@@ -67,6 +73,26 @@ export async function getSiteSettings(): Promise<SiteSettings> {
         return { ...DEFAULT_SITE_SETTINGS.footerCta, ...parsed };
       } catch {
         return DEFAULT_SITE_SETTINGS.footerCta;
+      }
+    })(),
+    logo: (() => {
+      const raw = map.get("logo");
+      if (!raw) return DEFAULT_SITE_LOGO;
+      try {
+        const parsed = JSON.parse(raw);
+        return { ...DEFAULT_SITE_LOGO, ...parsed };
+      } catch {
+        return DEFAULT_SITE_LOGO;
+      }
+    })(),
+    favicons: (() => {
+      const raw = map.get("favicons");
+      if (!raw) return DEFAULT_FAVICONS;
+      try {
+        const parsed = JSON.parse(raw);
+        return { ...DEFAULT_FAVICONS, ...parsed };
+      } catch {
+        return DEFAULT_FAVICONS;
       }
     })(),
   };

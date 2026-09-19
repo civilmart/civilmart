@@ -26,8 +26,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   DEFAULT_SITE_SETTINGS,
+  DEFAULT_SITE_LOGO,
+  DEFAULT_FAVICONS,
+  type Favicons,
   type FooterCta,
   type HeroSlide,
+  type LogoDisplayMode,
   type SiteSettings,
 } from "@/lib/site-settings.types";
 
@@ -73,10 +77,24 @@ export default function SiteSettingsPage() {
   const [ctaSecondaryText, setCtaSecondaryText] = useState("");
   const [ctaSecondaryHref, setCtaSecondaryHref] = useState("");
 
+  const [logoUrl, setLogoUrl] = useState(DEFAULT_SITE_LOGO.imageUrl);
+  const [logoDisplayMode, setLogoDisplayMode] = useState<LogoDisplayMode>(
+    DEFAULT_SITE_LOGO.displayMode
+  );
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInput = useRef<HTMLInputElement>(null);
+
+  const [favicons, setFavicons] = useState<Favicons>(DEFAULT_FAVICONS);
+  const [uploadingFaviconKey, setUploadingFaviconKey] = useState<
+    string | null
+  >(null);
+  const faviconInput = useRef<HTMLInputElement>(null);
+
   const heroInput = useRef<HTMLInputElement>(null);
   const [uploadingSlideId, setUploadingSlideId] = useState<string | null>(
     null
   );
+  const [heroExpanded, setHeroExpanded] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -106,6 +124,13 @@ export default function SiteSettingsPage() {
         setCtaButtonHref(cta.buttonHref);
         setCtaSecondaryText(cta.secondaryText);
         setCtaSecondaryHref(cta.secondaryHref);
+
+        const logo = settings.logo ?? DEFAULT_SITE_LOGO;
+        setLogoUrl(logo.imageUrl);
+        setLogoDisplayMode(logo.displayMode);
+
+        const fav = settings.favicons ?? DEFAULT_FAVICONS;
+        setFavicons(fav);
       })
       .catch((e) => {
         setError(e.message || "Failed to load settings");
@@ -183,6 +208,66 @@ export default function SiteSettingsPage() {
       });
   }
 
+  function uploadLogoImage() {
+    const file = logoInput.current?.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("purpose", "logo");
+
+    setUploadingLogo(true);
+
+    fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Upload failed.");
+        return data.url as string;
+      })
+      .then((url) => {
+        setLogoUrl(url);
+        setSuccess("Logo uploaded — save settings to keep changes.");
+      })
+      .catch((e) => setError(e.message || "Upload failed."))
+      .finally(() => {
+        setUploadingLogo(false);
+        if (logoInput.current) logoInput.current.value = "";
+      });
+  }
+
+  function uploadFavicon(key: string) {
+    const file = faviconInput.current?.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("purpose", "favicon");
+
+    setUploadingFaviconKey(key);
+
+    fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Upload failed.");
+        return data.url as string;
+      })
+      .then((url) => {
+        setFavicons((prev) => ({ ...prev, [key]: url }));
+        setSuccess("Favicon uploaded — save settings to keep changes.");
+      })
+      .catch((e) => setError(e.message || "Upload failed."))
+      .finally(() => {
+        setUploadingFaviconKey(null);
+        if (faviconInput.current) faviconInput.current.value = "";
+      });
+  }
+
   async function save() {
     setError("");
     setSuccess("");
@@ -220,6 +305,20 @@ export default function SiteSettingsPage() {
           secondaryText: ctaSecondaryText.trim(),
           secondaryHref: ctaSecondaryHref.trim(),
         },
+        logo: {
+          imageUrl: logoUrl.trim(),
+          displayMode: logoDisplayMode,
+        },
+        favicons: {
+          icon: favicons.icon.trim(),
+          png16: favicons.png16.trim(),
+          png32: favicons.png32.trim(),
+          apple: favicons.apple.trim(),
+          android192: favicons.android192.trim(),
+          android512: favicons.android512.trim(),
+          webp: favicons.webp.trim(),
+          svg: favicons.svg.trim(),
+        },
       };
 
       const response = await fetch("/api/settings", {
@@ -251,7 +350,7 @@ export default function SiteSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -426,10 +525,28 @@ export default function SiteSettingsPage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Hero Slider</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <button
+            type="button"
+            onClick={() => setHeroExpanded((prev) => !prev)}
+            className="flex w-full items-center justify-between px-6 py-4 text-left hover:bg-muted/50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <CardTitle>Hero Slider</CardTitle>
+              {heroSlides.length > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {heroSlides.length} slide{heroSlides.length !== 1 && "s"}
+                </Badge>
+              )}
+            </div>
+            <ChevronDown
+              className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${
+                heroExpanded ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {heroExpanded && (
+            <CardContent className="space-y-4 border-t px-6 pb-6 pt-4">
             <input
               ref={heroInput}
               type="file"
@@ -611,6 +728,7 @@ export default function SiteSettingsPage() {
               Add Slide
             </Button>
           </CardContent>
+          )}
         </Card>
       </div>
 
@@ -681,6 +799,183 @@ export default function SiteSettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Logo & Branding</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <input
+              ref={logoInput}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={() => uploadLogoImage()}
+            />
+
+            <div className="space-y-2">
+              <Label>Header Display Mode</Label>
+              <div className="flex gap-4">
+                {(["text", "logo", "both"] as LogoDisplayMode[]).map(
+                  (mode) => (
+                    <label
+                      key={mode}
+                      className="flex cursor-pointer items-center gap-2 text-sm"
+                    >
+                      <input
+                        type="radio"
+                        name="logoDisplayMode"
+                        value={mode}
+                        checked={logoDisplayMode === mode}
+                        onChange={(e) =>
+                          setLogoDisplayMode(e.target.value as LogoDisplayMode)
+                        }
+                        className="h-4 w-4 border-input accent-amber-600"
+                      />
+                      {mode === "text"
+                        ? "Text Only"
+                        : mode === "logo"
+                          ? "Logo Only"
+                          : "Logo + Text"}
+                    </label>
+                  )
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Controls what is shown in the store header.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Logo Image</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={uploadingLogo}
+                  onClick={() => logoInput.current?.click()}
+                >
+                  <Upload className="mr-1 h-3 w-3" />
+                  {uploadingLogo ? "Uploading..." : "Upload Logo"}
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={logoUrl}
+                    alt="Logo preview"
+                    className="h-14 w-auto rounded-md border bg-white object-contain p-1"
+                  />
+                ) : (
+                  <div className="flex h-14 w-32 items-center justify-center rounded-md border bg-muted text-muted-foreground">
+                    <ImagePlus className="h-5 w-5" />
+                  </div>
+                )}
+
+                <Input
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  placeholder="https://res.cloudinary.com/..."
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Favicons</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <input
+              ref={faviconInput}
+              type="file"
+              accept=".ico,.png,.webp,.svg,image/*"
+              className="hidden"
+              onChange={() => {
+                if (uploadingFaviconKey) uploadFavicon(uploadingFaviconKey);
+              }}
+            />
+
+            <p className="text-xs text-muted-foreground">
+              Upload multiple sizes for different devices. Recommended formats:
+              PNG for raster, SVG for scalable, ICO for legacy browsers.
+            </p>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(
+                [
+                  ["icon", "Favicon (.ico)", "32x32 — browser tabs"],
+                  ["png16", "PNG 16x16", "Small browser tabs"],
+                  ["png32", "PNG 32x32", "Standard browser tabs"],
+                  ["apple", "Apple Touch", "180x180 — iOS home screen"],
+                  ["android192", "Android 192px", "192x192 — Android home"],
+                  ["android512", "Android 512px", "512x512 — Android splash"],
+                  ["webp", "WebP", "Modern browsers"],
+                  ["svg", "SVG", "Scalable vector"],
+                ] as const
+              ).map(([key, label, hint]) => (
+                <div key={key} className="rounded-md border p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-medium">{label}</span>
+                      <p className="text-[11px] text-muted-foreground">
+                        {hint}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={uploadingFaviconKey !== null}
+                      onClick={() => {
+                        setUploadingFaviconKey(key);
+                        faviconInput.current?.click();
+                      }}
+                    >
+                      {uploadingFaviconKey === key ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Upload className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {favicons[key as keyof Favicons] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={favicons[key as keyof Favicons]}
+                        alt={label}
+                        className="h-8 w-8 rounded border object-contain bg-white p-0.5"
+                      />
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded border bg-muted">
+                        <ImagePlus className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                    )}
+                    <Input
+                      value={favicons[key as keyof Favicons]}
+                      onChange={(e) =>
+                        setFavicons((prev) => ({
+                          ...prev,
+                          [key]: e.target.value,
+                        }))
+                      }
+                      placeholder="URL or upload"
+                      className="text-xs"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
