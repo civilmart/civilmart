@@ -52,7 +52,7 @@ function serializeProduct(p: WishlistProduct) {
       sizeValue: String(v.sizeValue ?? "1"),
       sizeUnit: v.sizeUnit,
       price: null,
-      imageUrl: v.imageUrl,
+      imageUrl: v.imageUrl || p.imageUrl,
     })),
   };
 }

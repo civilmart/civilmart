@@ -374,7 +374,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         where: { id },
         include: productInclude,
       });
-    });
+    }, { timeout: 30000 });
 
     return NextResponse.json({
       id: updatedProduct.id,
@@ -419,7 +419,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     return NextResponse.json(
-      { error: "Failed to update product" },
+      { error: message },
       { status: 500 }
     );
   }

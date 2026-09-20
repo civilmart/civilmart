@@ -61,33 +61,41 @@ export async function GET(request: NextRequest) {
       include: {
         category: { select: { id: true, name: true, slug: true } },
         variants: { orderBy: { sizeValue: "asc" } },
+        supplierProducts: { select: { retailPrice: true } },
       },
     });
 
-    const data = products.map((p) => ({
-      id: p.id,
-      code: p.code,
-      name: p.name,
-      description: p.description,
-      unit: p.unit,
-      stockQuantity: Number(p.stockQuantity),
-      imageUrl: p.imageUrl,
-      imageUrl2: p.imageUrl2,
-      category: p.category?.name ?? null,
-      categorySlug: p.category?.slug ?? null,
-      subcategory: p.subcategory,
-      trades: p.trades,
-      isFeatured: p.isFeatured,
-      retailPrice: null,
-      variants: p.variants.map((v) => ({
-        id: v.id,
-        sku: v.sku,
-        name: v.name,
-        sizeValue: String(v.sizeValue ?? "1"),
-        sizeUnit: v.sizeUnit,
-        imageUrl: v.imageUrl,
-      })),
-    }));
+    const data = products.map((p) => {
+      const retailPrices = p.supplierProducts
+        .map((sp) => (sp.retailPrice != null ? Number(sp.retailPrice) : null))
+        .filter((r): r is number => r !== null);
+      const retailPrice = retailPrices.length > 0 ? Math.min(...retailPrices) : null;
+
+      return {
+        id: p.id,
+        code: p.code,
+        name: p.name,
+        description: p.description,
+        unit: p.unit,
+        stockQuantity: Number(p.stockQuantity),
+        imageUrl: p.imageUrl,
+        imageUrl2: p.imageUrl2,
+        category: p.category?.name ?? null,
+        categorySlug: p.category?.slug ?? null,
+        subcategory: p.subcategory,
+        trades: p.trades,
+        isFeatured: p.isFeatured,
+        retailPrice,
+        variants: p.variants.map((v) => ({
+          id: v.id,
+          sku: v.sku,
+          name: v.name,
+          sizeValue: String(v.sizeValue ?? "1"),
+          sizeUnit: v.sizeUnit,
+          imageUrl: v.imageUrl || p.imageUrl,
+        })),
+      };
+    }).filter((p) => p.retailPrice != null);
 
     let filtered = data;
 

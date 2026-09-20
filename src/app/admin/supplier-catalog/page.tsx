@@ -9,6 +9,7 @@ import {
   Download,
   FileText,
   GripVertical,
+  ImagePlus,
   Loader2,
   Pencil,
   Plus,
@@ -291,6 +292,10 @@ export default function SupplierCatalogPage() {
 
   const [expandedVariantPricing, setExpandedVariantPricing] = useState<Set<string>>(new Set());
 
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const productImageInput = useRef<HTMLInputElement>(null);
+  const variantImageInputs = useRef<Map<string, HTMLInputElement>>(new Map());
+
   const [productDialogMode, setProductDialogMode] = useState<"add" | "edit" | null>(null);
   const [productDialogCategoryId, setProductDialogCategoryId] = useState("");
   const [productForm, setProductForm] = useState({
@@ -298,7 +303,7 @@ export default function SupplierCatalogPage() {
     categoryId: "", imageUrl: "", isFeatured: false, status: "ACTIVE",
   });
   const [productVariants, setProductVariants] = useState<Array<{
-    id: string; name: string; sizeValue: string; sizeUnit: string; sku?: string;
+    id: string; name: string; sizeValue: string; sizeUnit: string; sku?: string; imageUrl?: string;
   }>>([]);
 
   const fetchInitial = useCallback(async () => {
@@ -936,8 +941,8 @@ export default function SupplierCatalogPage() {
           barcode: data.barcode ?? "",
         }));
         if (Array.isArray(data.variants)) {
-          setProductVariants(data.variants.map((v: { id: string; name: string; sizeValue: number; sizeUnit: string; sku?: string }) => ({
-            id: v.id, name: v.name, sizeValue: String(v.sizeValue), sizeUnit: v.sizeUnit, sku: v.sku,
+          setProductVariants(data.variants.map((v: { id: string; name: string; sizeValue: string; sizeUnit: string; sku?: string; imageUrl?: string | null }) => ({
+            id: v.id, name: v.name, sizeValue: String(v.sizeValue), sizeUnit: v.sizeUnit, sku: v.sku, imageUrl: v.imageUrl ?? "",
           })));
         }
       }
@@ -959,6 +964,35 @@ export default function SupplierCatalogPage() {
 
   function removeVariantRow(id: string) {
     setProductVariants((prev) => prev.filter((v) => v.id !== id));
+  }
+
+  function uploadImage(field: string, purpose: string, callback: (url: string) => void) {
+    const inputKey = field;
+    const input = field === "product"
+      ? productImageInput.current
+      : variantImageInputs.current.get(field);
+
+    const file = input?.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("purpose", purpose);
+
+    setUploadingField(inputKey);
+
+    fetch("/api/upload", { method: "POST", body: formData })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Upload failed.");
+        callback(data.url as string);
+        setNotice("Image uploaded — save to keep changes.");
+      })
+      .catch((e) => setNotice(e.message || "Upload failed."))
+      .finally(() => {
+        setUploadingField(null);
+        if (input) input.value = "";
+      });
   }
 
   function moveVariant(id: string, direction: "up" | "down") {
@@ -1004,6 +1038,7 @@ export default function SupplierCatalogPage() {
             sku: isNew ? generateSku(code, newIndex - 1) : (v.sku || generateSku(code, 0)),
             sizeValue: v.sizeValue.trim() || "1",
             sizeUnit: v.sizeUnit,
+            imageUrl: v.imageUrl?.trim() || null,
           };
         });
 
@@ -2271,13 +2306,47 @@ export default function SupplierCatalogPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Image URL</Label>
-                  <Input
-                    value={productForm.imageUrl}
-                    onChange={(e) => setProductForm((f) => ({ ...f, imageUrl: e.target.value }))}
-                    placeholder="https://..."
-                    className="h-9 text-xs"
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Product Image</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-[11px]"
+                      disabled={uploadingField === "product"}
+                      onClick={() => productImageInput.current?.click()}
+                    >
+                      <Upload className="mr-1 h-3 w-3" />
+                      {uploadingField === "product" ? "Uploading..." : "Upload"}
+                    </Button>
+                  </div>
+                  <input
+                    ref={productImageInput}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={() => uploadImage("product", "product", (url) => setProductForm((f) => ({ ...f, imageUrl: url })))}
                   />
+                  <div className="flex items-center gap-2">
+                    {productForm.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={productForm.imageUrl}
+                        alt="Product"
+                        className="h-10 w-10 rounded border object-cover bg-muted shrink-0"
+                      />
+                    ) : (
+                      <div className="flex h-10 w-10 items-center justify-center rounded border bg-muted shrink-0">
+                        <ImagePlus className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    )}
+                    <Input
+                      value={productForm.imageUrl}
+                      onChange={(e) => setProductForm((f) => ({ ...f, imageUrl: e.target.value }))}
+                      placeholder="https://..."
+                      className="h-9 text-xs"
+                    />
+                  </div>
                 </div>
 
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -2370,6 +2439,49 @@ export default function SupplierCatalogPage() {
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground">Variant Image</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 text-[10px] px-1.5"
+                            disabled={uploadingField === v.id}
+                            onClick={() => variantImageInputs.current.get(v.id)?.click()}
+                          >
+                            <Upload className="mr-1 h-2.5 w-2.5" />
+                            {uploadingField === v.id ? "Uploading..." : "Upload"}
+                          </Button>
+                        </div>
+                        <input
+                          ref={(el) => { if (el) variantImageInputs.current.set(v.id, el); }}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={() => uploadImage(v.id, "product", (url) => updateVariantRow(v.id, { imageUrl: url }))}
+                        />
+                        <div className="flex items-center gap-1.5">
+                          {v.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={v.imageUrl}
+                              alt="Variant"
+                              className="h-7 w-7 rounded border object-cover bg-muted shrink-0"
+                            />
+                          ) : (
+                            <div className="flex h-7 w-7 items-center justify-center rounded border bg-muted shrink-0">
+                              <ImagePlus className="h-3 w-3 text-muted-foreground" />
+                            </div>
+                          )}
+                          <Input
+                            placeholder="Image URL"
+                            value={v.imageUrl ?? ""}
+                            onChange={(e) => updateVariantRow(v.id, { imageUrl: e.target.value })}
+                            className="h-7 text-[10px]"
+                          />
+                        </div>
                       </div>
                     </div>
                   ))}

@@ -16,6 +16,10 @@ function mapProduct(p: {
   subcategory: string | null;
   trades: string[];
   isFeatured: boolean;
+  supplierProducts?: Array<{
+    retailPrice: unknown;
+    variantPrices?: Array<{ retailPrice: unknown }>;
+  }>;
   variants: Array<{
     id: string;
     sku: string;
@@ -25,6 +29,12 @@ function mapProduct(p: {
     imageUrl: string | null;
   }>;
 }): StoreProduct {
+  const spRetailPrices = (p.supplierProducts ?? [])
+    .map((sp) => (sp.retailPrice != null ? Number(sp.retailPrice) : null))
+    .filter((r): r is number => r !== null);
+
+  const retailPrice = spRetailPrices.length > 0 ? Math.min(...spRetailPrices) : null;
+
   return {
     id: p.id,
     code: p.code,
@@ -39,17 +49,21 @@ function mapProduct(p: {
     subcategory: p.subcategory,
     trades: p.trades,
     isFeatured: p.isFeatured,
-    retailPrice: null,
+    retailPrice,
     variants: p.variants.map((v) => ({
       id: v.id,
       sku: v.sku,
       name: v.name,
       sizeValue: String(v.sizeValue ?? "1"),
       sizeUnit: v.sizeUnit,
-      imageUrl: v.imageUrl,
+      imageUrl: v.imageUrl || p.imageUrl,
     })),
   };
 }
+
+const supplierProductsSelect = {
+  select: { retailPrice: true },
+};
 
 export async function getFeaturedProducts(limit = 8): Promise<StoreProduct[]> {
   const products = await prisma.product.findMany({
@@ -57,12 +71,13 @@ export async function getFeaturedProducts(limit = 8): Promise<StoreProduct[]> {
     include: {
       category: { select: { name: true, slug: true } },
       variants: { orderBy: { sizeValue: "asc" } },
+      supplierProducts: supplierProductsSelect,
     },
     take: limit,
     orderBy: { updatedAt: "desc" },
   });
 
-  return products.map(mapProduct);
+  return products.map(mapProduct).filter((p) => p.retailPrice != null);
 }
 
 export async function getLatestProducts(limit = 8): Promise<StoreProduct[]> {
@@ -71,12 +86,13 @@ export async function getLatestProducts(limit = 8): Promise<StoreProduct[]> {
     include: {
       category: { select: { name: true, slug: true } },
       variants: { orderBy: { sizeValue: "asc" } },
+      supplierProducts: supplierProductsSelect,
     },
     take: limit,
     orderBy: { createdAt: "desc" },
   });
 
-  return products.map(mapProduct);
+  return products.map(mapProduct).filter((p) => p.retailPrice != null);
 }
 
 export async function getHomeData(): Promise<StoreHomeData> {
@@ -224,12 +240,14 @@ export async function getProductById(id: string): Promise<StoreProduct | null> {
     include: {
       category: { select: { name: true, slug: true } },
       variants: { orderBy: { sizeValue: "asc" } },
+      supplierProducts: supplierProductsSelect,
     },
   });
 
   if (!product) return null;
 
-  return mapProduct(product);
+  const mapped = mapProduct(product);
+  return mapped.retailPrice != null ? mapped : null;
 }
 
 export async function getRelatedProducts(
@@ -243,11 +261,12 @@ export async function getRelatedProducts(
       include: {
         category: { select: { name: true, slug: true } },
         variants: { orderBy: { sizeValue: "asc" } },
+        supplierProducts: supplierProductsSelect,
       },
       take: limit,
       orderBy: { updatedAt: "desc" },
     });
-    return products.map(mapProduct);
+    return products.map(mapProduct).filter((p) => p.retailPrice != null);
   }
 
   const category = await prisma.category.findFirst({
@@ -266,12 +285,13 @@ export async function getRelatedProducts(
     include: {
       category: { select: { name: true, slug: true } },
       variants: { orderBy: { sizeValue: "asc" } },
+      supplierProducts: supplierProductsSelect,
     },
     take: limit,
     orderBy: { updatedAt: "desc" },
   });
 
-  return products.map(mapProduct);
+  return products.map(mapProduct).filter((p) => p.retailPrice != null);
 }
 
 export async function getSiteSettingsData(): Promise<SiteSettings> {

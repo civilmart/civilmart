@@ -15,10 +15,23 @@ export async function GET(_request: Request, context: RouteContext) {
       include: {
         category: { select: { id: true, name: true, slug: true } },
         variants: { orderBy: { sizeValue: "asc" } },
+        supplierProducts: { select: { retailPrice: true } },
       },
     });
 
     if (!product) {
+      return NextResponse.json(
+        { success: false, error: "Product not found" },
+        { status: 404 }
+      );
+    }
+
+    const retailPrices = product.supplierProducts
+      .map((sp) => (sp.retailPrice != null ? Number(sp.retailPrice) : null))
+      .filter((r): r is number => r !== null);
+    const retailPrice = retailPrices.length > 0 ? Math.min(...retailPrices) : null;
+
+    if (retailPrice == null) {
       return NextResponse.json(
         { success: false, error: "Product not found" },
         { status: 404 }
@@ -40,7 +53,7 @@ export async function GET(_request: Request, context: RouteContext) {
       subcategory: product.subcategory,
       trades: product.trades,
       isFeatured: product.isFeatured,
-      price: null,
+      retailPrice,
       variants: product.variants.map((v) => ({
         id: v.id,
         sku: v.sku,
@@ -48,7 +61,7 @@ export async function GET(_request: Request, context: RouteContext) {
         sizeValue: String(v.sizeValue ?? "1"),
         sizeUnit: v.sizeUnit,
         price: null,
-        imageUrl: v.imageUrl,
+        imageUrl: v.imageUrl || product.imageUrl,
       })),
     };
 
