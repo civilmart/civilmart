@@ -462,7 +462,7 @@ export default function SupplierCatalogPage() {
       suppliers.find((s) => s.id === supplierId)?.tradeIds ?? []
     );
 
-    if (tradeIds.size === 0) return categories;
+    if (tradeIds.size === 0) return [];
 
     return categories.filter((category) => {
       const catTrade = category.tradeId ?? null;
@@ -491,7 +491,7 @@ export default function SupplierCatalogPage() {
 
       return productMatch;
     });
-  }, [categories, products, search]);
+  }, [tradeScopedCategories, products, search]);
 
   const gridProducts = useMemo(() => {
     const catIds = new Set(filteredTree.map((c) => c.id));
