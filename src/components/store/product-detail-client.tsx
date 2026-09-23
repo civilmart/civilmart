@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/cart-context";
 import { useWishlist } from "@/context/wishlist-context";
 import {
-  effectivePrice,
+  effectivePriceForVariant,
   formatPrice,
   isInStock,
   maybeInt,
@@ -60,7 +60,7 @@ export function ProductDetailClient({ product }: { product: StoreProduct }) {
     product.variants.find((v) => v.id === selectedVariant?.id) ??
     product.variants[0] ??
     null;
-  const unitPrice = effectivePrice(product);
+  const unitPrice = effectivePriceForVariant(product, currentVariant);
   const inStock = isInStock(product);
 
   const validUrl = (s: string | null | undefined): s is string =>

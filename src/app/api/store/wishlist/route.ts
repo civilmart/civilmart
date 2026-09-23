@@ -18,6 +18,10 @@ type WishlistProduct = {
   subcategory: string | null;
   trades: string[];
   category: { id: string; name: string; slug: string } | null;
+  supplierProducts: Array<{
+    retailPrice: Numeric | null;
+    variantPrices: Array<{ productVariantId: string; retailPrice: Numeric | null }>;
+  }>;
   variants: Array<{
     id: string;
     sku: string;
@@ -28,7 +32,36 @@ type WishlistProduct = {
   }>;
 };
 
+function computeRetailPrice(
+  supplierProducts: WishlistProduct["supplierProducts"]
+): { retailPrice: number | null; variantPriceMap: Map<string, number> } {
+  const allPrices: number[] = [];
+  const variantPriceMap = new Map<string, number>();
+
+  for (const sp of supplierProducts) {
+    if (sp.retailPrice != null) {
+      allPrices.push(Number(sp.retailPrice));
+    }
+    for (const vp of sp.variantPrices) {
+      if (vp.retailPrice == null) continue;
+      const price = Number(vp.retailPrice);
+      allPrices.push(price);
+      const current = variantPriceMap.get(vp.productVariantId);
+      if (current == null || price < current) {
+        variantPriceMap.set(vp.productVariantId, price);
+      }
+    }
+  }
+
+  return {
+    retailPrice: allPrices.length > 0 ? Math.min(...allPrices) : null,
+    variantPriceMap,
+  };
+}
+
 function serializeProduct(p: WishlistProduct) {
+  const { retailPrice, variantPriceMap } = computeRetailPrice(p.supplierProducts);
+
   return {
     id: p.id,
     code: p.code,
@@ -44,14 +77,14 @@ function serializeProduct(p: WishlistProduct) {
     subcategory: p.subcategory,
     trades: p.trades,
     isFeatured: p.isFeatured,
-    price: null,
+    price: retailPrice,
     variants: p.variants.map((v) => ({
       id: v.id,
       sku: v.sku,
       name: v.name,
       sizeValue: String(v.sizeValue ?? "1"),
       sizeUnit: v.sizeUnit,
-      price: null,
+      price: variantPriceMap.get(v.id) ?? null,
       imageUrl: v.imageUrl || p.imageUrl,
     })),
   };
@@ -86,6 +119,17 @@ export async function GET() {
           subcategory: true,
           trades: true,
           category: { select: { id: true, name: true, slug: true } },
+          supplierProducts: {
+            select: {
+              retailPrice: true,
+              variantPrices: {
+                select: {
+                  productVariantId: true,
+                  retailPrice: true,
+                },
+              },
+            },
+          },
           variants: {
             select: {
               id: true,

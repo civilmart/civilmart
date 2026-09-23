@@ -15,7 +15,17 @@ export async function GET(_request: Request, context: RouteContext) {
       include: {
         category: { select: { id: true, name: true, slug: true } },
         variants: { orderBy: { sizeValue: "asc" } },
-        supplierProducts: { select: { retailPrice: true } },
+        supplierProducts: {
+          select: {
+            retailPrice: true,
+            variantPrices: {
+              select: {
+                productVariantId: true,
+                retailPrice: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -26,10 +36,25 @@ export async function GET(_request: Request, context: RouteContext) {
       );
     }
 
-    const retailPrices = product.supplierProducts
-      .map((sp) => (sp.retailPrice != null ? Number(sp.retailPrice) : null))
-      .filter((r): r is number => r !== null);
-    const retailPrice = retailPrices.length > 0 ? Math.min(...retailPrices) : null;
+    const allPrices: number[] = [];
+    const variantPriceMap = new Map<string, number>();
+
+    for (const sp of product.supplierProducts) {
+      if (sp.retailPrice != null) {
+        allPrices.push(Number(sp.retailPrice));
+      }
+      for (const vp of sp.variantPrices) {
+        if (vp.retailPrice == null) continue;
+        const price = Number(vp.retailPrice);
+        allPrices.push(price);
+        const current = variantPriceMap.get(vp.productVariantId);
+        if (current == null || price < current) {
+          variantPriceMap.set(vp.productVariantId, price);
+        }
+      }
+    }
+
+    const retailPrice = allPrices.length > 0 ? Math.min(...allPrices) : null;
 
     if (retailPrice == null) {
       return NextResponse.json(
@@ -60,7 +85,7 @@ export async function GET(_request: Request, context: RouteContext) {
         name: v.name,
         sizeValue: String(v.sizeValue ?? "1"),
         sizeUnit: v.sizeUnit,
-        price: null,
+        retailPrice: variantPriceMap.get(v.id) ?? null,
         imageUrl: v.imageUrl || product.imageUrl,
       })),
     };

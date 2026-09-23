@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Pencil, Phone, Plus, Trash2, Truck } from "lucide-react";
+import { Check, Loader2, Pencil, Phone, Plus, Trash2, Truck, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,10 +47,102 @@ const emptyForm: FormState = {
   notes: "",
 };
 
+function InlineForm({
+  form,
+  setForm,
+  saving,
+  onClose,
+  onSave,
+}: {
+  form: FormState;
+  setForm: React.Dispatch<React.SetStateAction<FormState>>;
+  saving: boolean;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  return (
+    <div className="rounded-md border border-amber-300 bg-amber-50/50 p-4 space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Company Name *</Label>
+          <Input
+            placeholder="AL-Fatah Traders"
+            value={form.name}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            className="h-8 text-sm"
+            autoFocus
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Contact Person</Label>
+          <Input
+            placeholder="MessManager"
+            value={form.contactName}
+            onChange={(e) => setForm((f) => ({ ...f, contactName: e.target.value }))}
+            className="h-8 text-sm"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Phone</Label>
+          <Input
+            placeholder="#0300 1234567"
+            value={form.phone}
+            onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+            className="h-8 text-sm"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Email</Label>
+          <Input
+            type="email"
+            placeholder="sales@alfatah.com"
+            value={form.email}
+            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+            className="h-8 text-sm"
+          />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs">Address</Label>
+        <Input
+          placeholder="Shop 12, Building Material Market, Muridke"
+          value={form.address}
+          onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+          className="h-8 text-sm"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs">Notes</Label>
+        <Textarea
+          placeholder="Payment terms, delivery notes..."
+          value={form.notes}
+          onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+          className="min-h-16 text-sm"
+        />
+      </div>
+      <div className="flex justify-end gap-2 pt-1">
+        <Button variant="ghost" size="sm" onClick={onClose}>
+          <X className="mr-1 h-3 w-3" />
+          Cancel
+        </Button>
+        <Button size="sm" onClick={onSave} disabled={saving} className="min-w-[100px]">
+          {saving ? (
+            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+          ) : (
+            <Check className="mr-1 h-3 w-3" />
+          )}
+          {form.id ? "Update" : "Create"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<FormState>({ ...emptyForm });
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -81,7 +173,8 @@ export default function SuppliersPage() {
 
   function startCreate() {
     setForm({ ...emptyForm });
-    setShowForm(true);
+    setCreating(true);
+    setEditingId(null);
   }
 
   function startEdit(supplier: Supplier) {
@@ -94,11 +187,13 @@ export default function SuppliersPage() {
       address: supplier.address ?? "",
       notes: supplier.notes ?? "",
     });
-    setShowForm(true);
+    setEditingId(supplier.id);
+    setCreating(false);
   }
 
   function closeForm() {
-    setShowForm(false);
+    setEditingId(null);
+    setCreating(false);
     setForm({ ...emptyForm });
   }
 
@@ -203,90 +298,13 @@ export default function SuppliersPage() {
           </p>
         </div>
 
-        <Button onClick={startCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Supplier
-        </Button>
+        {!creating && (
+          <Button onClick={startCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Supplier
+          </Button>
+        )}
       </div>
-
-      {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{form.id ? "Edit Supplier" : "Create Supplier"}</CardTitle>
-          </CardHeader>
-
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Company Name</Label>
-                <Input
-                  placeholder="AL-Fatah Traders"
-                  value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Contact Person</Label>
-                <Input
-                  placeholder="MessManager"
-                  value={form.contactName}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, contactName: e.target.value }))
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Phone</Label>
-                <Input
-                  placeholder="#0300 1234567"
-                  value={form.phone}
-                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  placeholder="sales@alfatah.com"
-                  value={form.email}
-                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Address</Label>
-              <Input
-                placeholder="Shop 12, Building Material Market, Muridke"
-                value={form.address}
-                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Textarea
-                placeholder="Payment terms, delivery notes..."
-                value={form.notes}
-                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                className="min-h-20"
-              />
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={closeForm}>
-                Cancel
-              </Button>
-              <Button onClick={saveSupplier} disabled={saving}>
-                {saving ? "Saving..." : form.id ? "Save Changes" : "Save Supplier"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <Card>
         <CardHeader>
@@ -298,73 +316,101 @@ export default function SuppliersPage() {
             <div className="flex h-40 items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : suppliers.length === 0 ? (
+          ) : suppliers.length === 0 && !creating ? (
             <div className="py-12 text-center text-muted-foreground">
               No suppliers found.
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
+              {creating && (
+                <div className="rounded-md border bg-muted/20 p-1">
+                  <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    New Supplier
+                  </p>
+                  <div className="pt-1">
+                    <InlineForm
+                      form={form}
+                      setForm={setForm}
+                      saving={saving}
+                      onClose={closeForm}
+                      onSave={saveSupplier}
+                    />
+                  </div>
+                </div>
+              )}
+
               {suppliers.map((supplier) => (
-                <div
-                  key={supplier.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-3"
-                >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">{supplier.name}</span>
-                      {!supplier.isActive && (
-                        <Badge variant="secondary">Inactive</Badge>
-                      )}
+                <div key={supplier.id} className="rounded-md border bg-muted/20 p-1">
+                  {editingId === supplier.id ? (
+                    <div className="pt-1">
+                      <InlineForm
+                        form={form}
+                        setForm={setForm}
+                        saving={saving}
+                        onClose={closeForm}
+                        onSave={saveSupplier}
+                      />
                     </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md px-3 py-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium">{supplier.name}</span>
+                          {!supplier.isActive && (
+                            <Badge variant="secondary">Inactive</Badge>
+                          )}
+                        </div>
 
-                    <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                      {supplier.contactName && (
-                        <span>{supplier.contactName}</span>
-                      )}
-                      {supplier.phone && (
-                        <span className="inline-flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          {supplier.phone}
-                        </span>
-                      )}
-                      {supplier.email && <span>{supplier.email}</span>}
+                        <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                          {supplier.contactName && (
+                            <span>{supplier.contactName}</span>
+                          )}
+                          {supplier.phone && (
+                            <span className="inline-flex items-center gap-1">
+                              <Phone className="h-3 w-3" />
+                              {supplier.phone}
+                            </span>
+                          )}
+                          {supplier.email && <span>{supplier.email}</span>}
+                        </div>
+
+                        {supplier.address && (
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {supplier.address}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Button
+                          variant={supplier.isActive ? "outline" : "default"}
+                          size="sm"
+                          onClick={() => toggleActive(supplier)}
+                          disabled={togglingId === supplier.id}
+                        >
+                          {supplier.isActive ? "Deactivate" : "Activate"}
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => startEdit(supplier)}>
+                          <Pencil className="mr-1 h-3 w-3" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive"
+                          onClick={() => deleteSupplier(supplier)}
+                          disabled={deletingId === supplier.id}
+                        >
+                          {deletingId === supplier.id ? (
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="mr-1 h-3 w-3" />
+                          )}
+                          Delete
+                        </Button>
+                      </div>
                     </div>
-
-                    {supplier.address && (
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {supplier.address}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Button
-                      variant={supplier.isActive ? "outline" : "default"}
-                      size="sm"
-                      onClick={() => toggleActive(supplier)}
-                      disabled={togglingId === supplier.id}
-                    >
-                      {supplier.isActive ? "Deactivate" : "Activate"}
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => startEdit(supplier)}>
-                      <Pencil className="mr-1 h-3 w-3" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-destructive"
-                      onClick={() => deleteSupplier(supplier)}
-                      disabled={deletingId === supplier.id}
-                    >
-                      {deletingId === supplier.id ? (
-                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                      ) : (
-                        <Trash2 className="mr-1 h-3 w-3" />
-                      )}
-                      Delete
-                    </Button>
-                  </div>
+                  )}
                 </div>
               ))}
             </div>

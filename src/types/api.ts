@@ -19,6 +19,7 @@ export type StoreProductListItem = {
     sizeValue: string;
     sizeUnit: string;
     imageUrl: string | null;
+    retailPrice: number | null;
   }[];
   retailPrice: number | null;
 };

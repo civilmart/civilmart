@@ -462,6 +462,12 @@ export default function SupplierCatalogPage() {
       suppliers.find((s) => s.id === supplierId)?.tradeIds ?? []
     );
 
+    for (const [tradeId, supplierIds] of Object.entries(manualTradeSuppliers)) {
+      if (supplierIds.includes(supplierId)) {
+        tradeIds.add(tradeId);
+      }
+    }
+
     if (tradeIds.size === 0) return [];
 
     return categories.filter((category) => {
@@ -469,7 +475,7 @@ export default function SupplierCatalogPage() {
       if (!catTrade) return false;
       return tradeIds.has(catTrade);
     });
-  }, [supplierId, suppliers, categories]);
+  }, [supplierId, suppliers, categories, manualTradeSuppliers]);
 
   const filteredTree = useMemo(() => {
     const term = search.toLowerCase().trim();
@@ -509,11 +515,10 @@ export default function SupplierCatalogPage() {
     const seen = new Set<string>();
     return filteredTree.filter((c) => {
       if (seen.has(c.id)) return false;
-      if (!gridProducts.some((p) => p.categoryId === c.id)) return false;
       seen.add(c.id);
       return true;
     });
-  }, [filteredTree, gridProducts]);
+  }, [filteredTree]);
 
   const selectedCount = products.filter((p) => selected.has(p.id)).length;
 
@@ -1894,9 +1899,9 @@ export default function SupplierCatalogPage() {
                               <Loader2 className="mx-auto h-4 w-4 animate-spin mb-2" />
                               Loading rate list…
                             </div>
-                          ) : gridProducts.length === 0 ? (
+                          ) : gridCategories.length === 0 ? (
                             <div className="px-3 py-8 text-center text-xs text-muted-foreground">
-                              No products match your search.
+                              No categories to display.
                             </div>
                           ) : (
                             <div className="overflow-x-auto">
@@ -1991,7 +1996,7 @@ export default function SupplierCatalogPage() {
                                                       className="w-full rounded border bg-background px-1 py-0.5 text-[11px]"
                                                     >
                                                       <option value="generic">Generic</option>
-                                                      {brands.filter((b) => !b.inCategory || b.categoryId === product.categoryId).map((brand) => (
+                                                      {brands.filter((b) => b.categoryId === product.categoryId).map((brand) => (
                                                         <option key={brand.id} value={brand.id}>{brand.name}</option>
                                                       ))}
                                                     </select>

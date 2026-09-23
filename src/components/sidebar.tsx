@@ -18,6 +18,7 @@ import {
   Receipt,
   Settings,
   ShoppingCart,
+  Star,
   Sun,
   Truck,
   Users,
@@ -61,6 +62,11 @@ const menuSections: MenuSection[] = [
         name: "Products",
         icon: Package,
         href: "/admin/products",
+      },
+      {
+        name: "Featured",
+        icon: Star,
+        href: "/admin/featured",
       },
       {
         name: "Barcode Labels",

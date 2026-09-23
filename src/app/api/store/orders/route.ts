@@ -106,7 +106,20 @@ export async function POST(request: NextRequest) {
     const productIds = Array.from(new Set(lineItems.map((i) => i.productId)));
     const products = await prisma.product.findMany({
       where: { id: { in: productIds }, status: "ACTIVE" },
-      include: { variants: true },
+      include: {
+        variants: true,
+        supplierProducts: {
+          select: {
+            retailPrice: true,
+            variantPrices: {
+              select: {
+                productVariantId: true,
+                retailPrice: true,
+              },
+            },
+          },
+        },
+      },
     });
     const productsById = new Map(products.map((p) => [p.id, p]));
 
@@ -151,7 +164,29 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      const unitPrice = null;
+      const variantPriceMap = new Map<string, number>();
+      const allPrices: number[] = [];
+
+      for (const sp of product.supplierProducts) {
+        if (sp.retailPrice != null) {
+          allPrices.push(Number(sp.retailPrice));
+        }
+        for (const vp of sp.variantPrices) {
+          if (vp.retailPrice == null) continue;
+          const price = Number(vp.retailPrice);
+          allPrices.push(price);
+          const current = variantPriceMap.get(vp.productVariantId);
+          if (current == null || price < current) {
+            variantPriceMap.set(vp.productVariantId, price);
+          }
+        }
+      }
+
+      const productPrice = allPrices.length > 0 ? Math.min(...allPrices) : null;
+      const unitPrice =
+        variant != null
+          ? variantPriceMap.get(variant.id) ?? productPrice
+          : productPrice;
 
       if (unitPrice === null || unitPrice === undefined) {
         return NextResponse.json(

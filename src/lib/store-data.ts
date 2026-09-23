@@ -18,7 +18,7 @@ function mapProduct(p: {
   isFeatured: boolean;
   supplierProducts?: Array<{
     retailPrice: unknown;
-    variantPrices?: Array<{ retailPrice: unknown }>;
+    variantPrices?: Array<{ productVariantId: string; retailPrice: unknown }>;
   }>;
   variants: Array<{
     id: string;
@@ -29,11 +29,25 @@ function mapProduct(p: {
     imageUrl: string | null;
   }>;
 }): StoreProduct {
-  const spRetailPrices = (p.supplierProducts ?? [])
-    .map((sp) => (sp.retailPrice != null ? Number(sp.retailPrice) : null))
-    .filter((r): r is number => r !== null);
+  const allPrices: number[] = [];
+  const variantPriceMap = new Map<string, number>();
 
-  const retailPrice = spRetailPrices.length > 0 ? Math.min(...spRetailPrices) : null;
+  for (const sp of p.supplierProducts ?? []) {
+    if (sp.retailPrice != null) {
+      allPrices.push(Number(sp.retailPrice));
+    }
+    for (const vp of sp.variantPrices ?? []) {
+      if (vp.retailPrice == null) continue;
+      const price = Number(vp.retailPrice);
+      allPrices.push(price);
+      const current = variantPriceMap.get(vp.productVariantId);
+      if (current == null || price < current) {
+        variantPriceMap.set(vp.productVariantId, price);
+      }
+    }
+  }
+
+  const retailPrice = allPrices.length > 0 ? Math.min(...allPrices) : null;
 
   return {
     id: p.id,
@@ -57,12 +71,21 @@ function mapProduct(p: {
       sizeValue: String(v.sizeValue ?? "1"),
       sizeUnit: v.sizeUnit,
       imageUrl: v.imageUrl || p.imageUrl,
+      retailPrice: variantPriceMap.get(v.id) ?? null,
     })),
   };
 }
 
 const supplierProductsSelect = {
-  select: { retailPrice: true },
+  select: {
+    retailPrice: true,
+    variantPrices: {
+      select: {
+        productVariantId: true,
+        retailPrice: true,
+      },
+    },
+  },
 };
 
 export async function getFeaturedProducts(limit = 8): Promise<StoreProduct[]> {

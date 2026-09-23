@@ -13,6 +13,7 @@ import { useWishlist } from "@/context/wishlist-context";
 import {
   defaultCartVariant,
   effectivePrice,
+  effectivePriceForVariant,
   formatPrice,
   isInStock,
   placeholderImage,
@@ -25,7 +26,7 @@ type Layout = "grid" | "list";
 
 function buildCartItem(product: StoreProduct) {
   const variant = defaultCartVariant(product);
-  const price = effectivePrice(product);
+  const price = effectivePriceForVariant(product, variant);
 
   if (price === null) return null;
 

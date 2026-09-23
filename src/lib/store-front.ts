@@ -45,6 +45,7 @@ export type StoreVariant = {
   sizeValue: string;
   sizeUnit: string;
   imageUrl: string | null;
+  retailPrice: number | null;
 };
 
 export type StoreProduct = {
@@ -67,6 +68,13 @@ export type StoreProduct = {
 
 export function effectivePrice(product: StoreProduct): number | null {
   return product.retailPrice ?? null;
+}
+
+export function effectivePriceForVariant(
+  product: StoreProduct,
+  variant: StoreVariant | null | undefined
+): number | null {
+  return variant?.retailPrice ?? product.retailPrice ?? null;
 }
 
 export function isInStock(product: StoreProduct): boolean {

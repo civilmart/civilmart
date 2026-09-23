@@ -61,15 +61,40 @@ export async function GET(request: NextRequest) {
       include: {
         category: { select: { id: true, name: true, slug: true } },
         variants: { orderBy: { sizeValue: "asc" } },
-        supplierProducts: { select: { retailPrice: true } },
+        supplierProducts: {
+          select: {
+            retailPrice: true,
+            variantPrices: {
+              select: {
+                productVariantId: true,
+                retailPrice: true,
+              },
+            },
+          },
+        },
       },
     });
 
     const data = products.map((p) => {
-      const retailPrices = p.supplierProducts
-        .map((sp) => (sp.retailPrice != null ? Number(sp.retailPrice) : null))
-        .filter((r): r is number => r !== null);
-      const retailPrice = retailPrices.length > 0 ? Math.min(...retailPrices) : null;
+      const allPrices: number[] = [];
+      const variantPriceMap = new Map<string, number>();
+
+      for (const sp of p.supplierProducts) {
+        if (sp.retailPrice != null) {
+          allPrices.push(Number(sp.retailPrice));
+        }
+        for (const vp of sp.variantPrices) {
+          if (vp.retailPrice == null) continue;
+          const price = Number(vp.retailPrice);
+          allPrices.push(price);
+          const current = variantPriceMap.get(vp.productVariantId);
+          if (current == null || price < current) {
+            variantPriceMap.set(vp.productVariantId, price);
+          }
+        }
+      }
+
+      const retailPrice = allPrices.length > 0 ? Math.min(...allPrices) : null;
 
       return {
         id: p.id,
@@ -93,6 +118,7 @@ export async function GET(request: NextRequest) {
           sizeValue: String(v.sizeValue ?? "1"),
           sizeUnit: v.sizeUnit,
           imageUrl: v.imageUrl || p.imageUrl,
+          retailPrice: variantPriceMap.get(v.id) ?? null,
         })),
       };
     }).filter((p) => p.retailPrice != null);
